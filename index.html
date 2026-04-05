@@ -1,0 +1,1368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Scorecard" />
+<meta name="mobile-web-app-capable" content="yes" />
+<title>Baseball Scorecard</title>
+<style>
+/* ── Reset & base ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f4f0; color: #1a1a1a; font-size: 14px;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+:root {
+  --green:#1D9E75; --gl:#E1F5EE; --gc:#9FE1CB;
+  --amber:#BA7517; --al:#FAEEDA; --ac:#FAC775;
+  --red:#E24B4A; --rl:#FCEBEB;
+  --blue:#185FA5; --bl:#E6F1FB;
+  --purple:#534AB7; --pl:#EEEDFE;
+  --teal:#0F6E56;
+  --coral:#993C1D; --cl:#FAECE7;
+  --border:#d6d4cc; --surface:#fff; --bg:#f5f4f0; --muted:#888780; --text:#1a1a1a;
+  --radius:8px;
+}
+
+/* ── Layout ── */
+.app { max-width: 960px; margin: 0 auto; padding: 14px; }
+.header { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; gap:10px; flex-wrap:wrap; }
+.team-names { display:flex; gap:8px; flex:1; min-width:200px; align-items:center; }
+.team-picker { display:flex; align-items:center; gap:7px; flex:1; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:4px 8px; }
+.team-logo { width:32px; height:32px; object-fit:contain; flex-shrink:0; display:none; }
+.team-logo.visible { display:block; }
+.team-input { flex:1; padding:4px 2px; border:none; border-radius:0; font-size:13px; font-weight:600; background:transparent; color:var(--text); cursor:pointer; outline:none; min-width:0; }
+.vs { font-size:12px; color:var(--muted); align-self:center; }
+.hdr-btns { display:flex; gap:8px; }
+.reset-btn { padding:6px 14px; border:1px solid var(--border); border-radius:var(--radius); background:transparent; color:var(--muted); font-size:13px; cursor:pointer; }
+.extra-inn-btn { font-size:12px; padding:3px 12px; border:1px solid var(--blue); border-radius:6px; background:transparent; color:var(--blue); cursor:pointer; font-weight:600; }
+.extra-inn-btn:hover { background:var(--bl); }
+#undoBtn:not(:disabled) { border-color:var(--amber); color:var(--amber); }
+#undoBtn:not(:disabled):hover { background:var(--al); }
+.pdf-btn { padding:6px 16px; border:none; border-radius:var(--radius); background:var(--blue); color:#fff; font-size:13px; font-weight:600; cursor:pointer; }
+.pdf-btn:hover { background:#1150a0; }
+
+/* ── Score strip ── */
+.score-strip { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow-x:auto; margin-bottom:10px; }
+.score-table { width:100%; border-collapse:collapse; min-width:440px; }
+.score-table th, .score-table td { padding:6px 8px; text-align:center; font-size:13px; border-right:1px solid var(--border); }
+.score-table th:last-child, .score-table td:last-child { border-right:none; }
+.score-table thead th { background:#f0efe8; font-weight:600; font-size:11px; color:var(--muted); }
+.team-label { text-align:left!important; font-weight:600; padding-left:12px!important; min-width:80px; }
+.total-cell { font-weight:600; background:#f0efe8; }
+.inning-cell { cursor:pointer; min-width:30px; }
+.inning-cell:hover { background:#f0efe8; }
+.active-inn { background:var(--bl)!important; color:var(--blue); font-weight:600; }
+.score-table tr { border-top:1px solid var(--border); }
+
+/* ── Game state cards ── */
+.game-state { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:10px; }
+@media(max-width:520px){ .game-state{ grid-template-columns:1fr 1fr; } }
+.card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:10px 12px; }
+.label { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; margin-bottom:6px; }
+
+/* indicators */
+.dot-row { display:flex; gap:5px; align-items:center; flex-wrap:wrap; }
+.dot { width:20px; height:20px; border-radius:50%; border:1.5px solid var(--border); cursor:pointer; flex-shrink:0; }
+.dot.ball.on { background:var(--green); border-color:var(--green); }
+.dot.strike.on { background:var(--red); border-color:var(--red); }
+.dot.foul.on { background:var(--purple); border-color:var(--purple); }
+.dot.out.on { background:#888; border-color:#888; }
+.dlabel { font-size:12px; color:var(--muted); margin-right:2px; }
+.btns { display:flex; gap:4px; margin-top:6px; flex-wrap:wrap; }
+.btn { padding:3px 9px; font-size:12px; border:1px solid var(--border); border-radius:6px; background:transparent; cursor:pointer; color:var(--text); }
+.btn:hover { background:#f0efe8; }
+.btn.ball { border-color:var(--green); color:var(--green); }
+.btn.strike { border-color:var(--red); color:var(--red); }
+.btn.foul { border-color:var(--purple); color:var(--purple); }
+
+/* inning ctrl */
+.inn-ctrl { display:flex; align-items:center; gap:8px; }
+.inn-num { font-size:24px; font-weight:600; }
+.half-pill { font-size:11px; padding:2px 8px; border-radius:20px; font-weight:600; }
+.half-top { background:var(--bl); color:var(--blue); }
+.half-bot { background:var(--al); color:var(--amber); }
+.arr { width:26px; height:26px; border:1px solid var(--border); border-radius:6px; background:transparent; cursor:pointer; font-size:15px; color:var(--muted); display:flex; align-items:center; justify-content:center; }
+.arr:hover { background:#f0efe8; }
+.half-tog { font-size:12px; padding:3px 8px; border:1px solid var(--border); border-radius:6px; background:transparent; cursor:pointer; color:var(--muted); margin-top:4px; }
+.half-tog:hover { background:#f0efe8; }
+.foul-note { font-size:11px; color:var(--muted); margin-top:3px; font-style:italic; }
+
+/* bases */
+.bases-wrap { display:flex; justify-content:center; padding:4px 0; }
+.diamond { position:relative; width:82px; height:82px; }
+.base { position:absolute; width:22px; height:22px; background:#f0efe8; border:1.5px solid var(--border); cursor:pointer; transform:rotate(45deg); border-radius:3px; }
+.base.on { background:var(--amber); border-color:var(--amber); }
+.base-2b { top:4px; left:30px; }
+.base-3b { top:30px; left:4px; }
+.base-1b { top:30px; left:56px; }
+.base-home { bottom:4px; left:30px; background:#f0efe8; }
+
+/* action row */
+.action-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px; }
+@media(max-width:480px){ .action-row{ grid-template-columns:1fr; } }
+.hit-btns { display:grid; grid-template-columns:repeat(5,1fr); gap:6px; margin-top:6px; }
+.hit-btn { padding:8px 4px; font-size:13px; font-weight:600; border-radius:8px; cursor:pointer; text-align:center; border:1.5px solid; }
+.hit-btn:active { opacity:.75; }
+.h1b { background:var(--gl); color:var(--teal); border-color:var(--gc); }
+.h2b { background:var(--bl); color:var(--blue); border-color:#B5D4F4; }
+.h3b { background:var(--pl); color:var(--purple); border-color:#CECBF6; }
+.hhr { background:var(--rl); color:var(--red); border-color:#F7C1C1; }
+.hhbp { background:#FAEEDA; color:#BA7517; border-color:#FAC775; }
+.hlabel { font-size:10px; font-weight:400; display:block; color:inherit; opacity:.75; margin-top:1px; }
+.hit-err-toggle { font-size:12px; padding:3px 10px; border:1.5px solid var(--border); border-radius:6px; background:transparent; cursor:pointer; color:var(--muted); font-weight:600; }
+.hit-err-toggle.on { border-color:#BA7517; color:#BA7517; background:#FAEEDA; }
+.hit-err-hint { font-size:11px; color:var(--muted); font-style:italic; }
+.ko-btns { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:6px; }
+.ko-btn { padding:8px 6px; font-size:13px; font-weight:600; border-radius:8px; cursor:pointer; text-align:center; border:1.5px solid; }
+.ko-btn:active { opacity:.75; }
+.kol { background:var(--cl); color:var(--coral); border-color:#F5C4B3; }
+.kos { background:var(--rl); color:var(--red); border-color:#F7C1C1; }
+.kolabel { font-size:10px; font-weight:400; display:block; color:inherit; opacity:.75; margin-top:1px; }
+
+/* ── Out recording ── */
+.out-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:10px 12px; margin-bottom:10px; }
+.out-type-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-top:6px; }
+.out-type-btn { padding:9px 6px; font-size:13px; font-weight:600; border-radius:8px; cursor:pointer; text-align:center; border:1.5px solid; transition:box-shadow .1s; }
+.out-type-btn:active { opacity:.75; }
+.otf { background:#F1EFE8; color:#5F5E5A; border-color:#D3D1C7; }
+.otg { background:#EAF3DE; color:#3B6D11; border-color:#C0DD97; }
+.ote { background:#FAEEDA; color:#BA7517; border-color:#FAC775; }
+.out-type-btn.sel { box-shadow:inset 0 0 0 2px currentColor; }
+.fielder-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:5px; margin-top:8px; }
+.fld-btn { padding:5px 2px; font-size:11px; border:1px solid var(--border); border-radius:6px; background:transparent; cursor:pointer; text-align:center; color:var(--muted); line-height:1.3; }
+.fld-btn:hover { background:#f0efe8; }
+.fld-btn.sel { background:var(--bl); border-color:var(--blue); color:var(--blue); font-weight:700; }
+.fld-btn.sel-err { background:#FAEEDA; border-color:#FAC775; color:#BA7517; font-weight:700; }
+.fld-num { font-size:14px; font-weight:700; display:block; }
+.fld-pos-name { font-size:9px; display:block; opacity:.8; }
+.rec-out-btn { width:100%; margin-top:8px; padding:7px; font-size:13px; font-weight:600; border:none; border-radius:8px; background:var(--blue); color:#fff; cursor:pointer; }
+.rec-out-btn:hover { background:#1150a0; }
+.rec-out-btn.rec-err-btn { background:#BA7517; }
+.rec-out-btn.rec-err-btn:hover { background:#9a6010; }
+.rec-out-btn:disabled { background:#ccc; cursor:not-allowed; }
+.out-hint { font-size:11px; color:var(--muted); margin-top:4px; text-align:center; }
+.hberr { background:#FAEEDA; color:#BA7517; }
+
+/* section title */
+.sec-title { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; margin-bottom:6px; }
+
+/* lineup */
+.lineup-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px; }
+@media(max-width:480px){ .lineup-grid{ grid-template-columns:1fr; } }
+.lineup-panel { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+.lineup-hdr { padding:8px 12px; background:#f0efe8; display:flex; justify-content:space-between; align-items:center; font-size:13px; font-weight:600; border-bottom:1px solid var(--border); }
+.lineup-slot { border-bottom:1px solid var(--border); }
+.lineup-slot:last-child { border-bottom:none; }
+.lineup-row { display:flex; align-items:center; gap:5px; padding:5px 8px; }
+.lineup-row.dimmed { opacity:.42; }
+.bnum { font-size:12px; color:var(--muted); width:14px; text-align:center; flex-shrink:0; }
+.bname { flex:1; font-size:13px; background:transparent; border:none; color:var(--text); font-family:inherit; outline:none; min-width:0; }
+.bname:disabled { color:var(--muted); }
+.roster-sel { flex:1; font-size:13px; padding:3px 6px; border:1px solid var(--border); border-radius:6px; background:var(--surface); color:var(--text); font-family:inherit; cursor:pointer; min-width:60px; max-width:100%; }
+.pos-sel { width:52px; font-size:12px; padding:3px 2px; border:1px solid var(--border); border-radius:6px; background:var(--surface); color:var(--muted); font-family:inherit; cursor:pointer; flex-shrink:0; }
+.pos-sel:disabled { opacity:.5; }
+.ab-dot { width:8px; height:8px; border-radius:50%; background:var(--blue); flex-shrink:0; }
+.ab-dot.hidden { background:transparent; }
+.set-btn { font-size:11px; padding:2px 5px; border:1px solid var(--border); border-radius:4px; background:transparent; cursor:pointer; color:var(--muted); flex-shrink:0; }
+.set-btn:hover { background:#f0efe8; }
+.sub-btn { font-size:11px; padding:2px 5px; border:1px solid var(--gc); border-radius:4px; background:transparent; cursor:pointer; color:var(--teal); flex-shrink:0; }
+.sub-btn:hover { background:var(--gl); }
+/* sub rows */
+.sub-row { display:flex; align-items:center; gap:5px; padding:4px 8px 4px 18px; background:var(--gl); border-top:1px solid var(--gc); }
+.sub-arrow { font-size:13px; color:var(--teal); flex-shrink:0; }
+.sub-inn { font-size:10px; padding:1px 5px; border-radius:3px; background:var(--gc); color:var(--teal); font-weight:600; flex-shrink:0; white-space:nowrap; }
+.sub-pos { width:52px; font-size:12px; padding:3px 2px; border:1px solid var(--gc); border-radius:6px; background:var(--surface); color:var(--teal); font-family:inherit; cursor:pointer; flex-shrink:0; }
+.sub-name-el { flex:1; font-size:13px; font-weight:600; background:transparent; border:none; color:var(--teal); font-family:inherit; outline:none; min-width:0; }
+/* pending sub form */
+.sub-form { display:flex; align-items:center; gap:5px; padding:5px 8px 5px 18px; background:var(--al); border-top:1px solid var(--ac); flex-wrap:wrap; }
+.sub-form-lbl { font-size:11px; color:var(--amber); font-weight:600; flex-shrink:0; }
+.sub-form-pos { width:58px; font-size:12px; padding:3px 4px; border:1px solid var(--ac); border-radius:6px; background:var(--surface); color:var(--muted); font-family:inherit; flex-shrink:0; }
+.sub-form-inp { flex:1; font-size:13px; padding:3px 6px; border:1px solid var(--ac); border-radius:4px; background:var(--surface); color:var(--text); font-family:inherit; min-width:80px; outline:none; }
+.sub-form-inp:focus { border-color:var(--amber); }
+.sub-ok { font-size:11px; padding:3px 8px; border:1px solid var(--amber); border-radius:4px; background:transparent; cursor:pointer; color:var(--amber); font-weight:600; flex-shrink:0; }
+.sub-cancel { font-size:11px; padding:3px 8px; border:1px solid var(--border); border-radius:4px; background:transparent; cursor:pointer; color:var(--muted); flex-shrink:0; }
+/* hit badges */
+.hits { display:flex; gap:2px; flex-shrink:0; flex-wrap:wrap; }
+.hbadge { font-size:10px; padding:1px 4px; border-radius:3px; font-weight:600; }
+.hb1 { background:var(--gl); color:var(--teal); }
+.hb2 { background:var(--bl); color:var(--blue); }
+.hb3 { background:var(--pl); color:var(--purple); }
+.hbhr { background:var(--rl); color:var(--red); }
+.hbkl { background:var(--cl); color:var(--coral); }
+.hbks { background:var(--rl); color:var(--red); }
+.hbfo { background:#F1EFE8; color:#5F5E5A; }
+.hbgo { background:#EAF3DE; color:#3B6D11; }
+.hbsb { background:#E6F1FB; color:#185FA5; }
+.hbcs { background:#FAEEDA; color:#BA7517; }
+.hberr { background:#FAEEDA; color:#BA7517; }
+.hbhbp { background:#FAEEDA; color:#BA7517; }
+
+/* pitchers */
+.prow { display:flex; align-items:center; gap:8px; padding:7px 12px; border-bottom:1px solid var(--border); cursor:pointer; }
+.prow:last-child { border-bottom:none; }
+.prow.active-p { background:var(--bl); }
+.p-dot { width:8px; height:8px; border-radius:50%; background:var(--blue); flex-shrink:0; }
+.p-dot.hidden { background:transparent; }
+.p-name { flex:1; font-size:13px; background:transparent; border:none; color:var(--text); font-family:inherit; }
+.pc { font-size:13px; font-weight:600; min-width:28px; text-align:right; }
+.padj { display:flex; gap:3px; }
+.pb { width:22px; height:22px; border:1px solid var(--border); border-radius:4px; background:transparent; font-size:14px; cursor:pointer; display:flex; align-items:center; justify-content:center; color:var(--muted); line-height:1; }
+.pb:hover { background:#f0efe8; }
+.add-p { display:flex; align-items:center; gap:6px; padding:6px 12px; font-size:13px; color:var(--muted); cursor:pointer; }
+.add-p:hover { background:#f0efe8; }
+.pitcher-panel { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin-bottom:10px; }
+.ph { padding:8px 12px; background:#f0efe8; display:flex; justify-content:space-between; align-items:center; font-size:13px; font-weight:600; border-bottom:1px solid var(--border); }
+.ph-hint { font-size:11px; color:var(--muted); font-style:italic; }
+.p-name-sel { flex:1; font-size:13px; padding:3px 4px; border:1px solid var(--border); border-radius:6px; background:var(--surface); color:var(--text); font-family:inherit; min-width:60px; }
+.p-stats { display:flex; gap:4px; flex-shrink:0; }
+.pstat { font-size:10px; padding:2px 5px; border-radius:3px; font-weight:600; }
+.pstat-k  { background:var(--rl); color:var(--red); }
+.pstat-bb { background:var(--gl); color:var(--teal); }
+.pstat-r  { background:var(--bl); color:var(--blue); }
+
+/* log */
+.log-panel { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+.log-inner { max-height:130px; overflow-y:auto; }
+.log-row { font-size:12px; color:var(--muted); padding:4px 12px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; }
+.log-row:last-child { border-bottom:none; }
+.ltag { font-size:11px; padding:1px 5px; border-radius:3px; font-weight:600; }
+.t-ball { background:var(--gl); color:var(--green); }
+.t-k { background:var(--rl); color:var(--red); }
+.t-foul { background:var(--pl); color:var(--purple); }
+.t-out { background:#F1EFE8; color:#888; }
+.t-kl { background:var(--cl); color:var(--coral); }
+.t-ks { background:var(--rl); color:var(--red); }
+.t-run { background:var(--bl); color:var(--blue); }
+.t-info { background:var(--al); color:var(--amber); }
+.t-hit { background:var(--gl); color:var(--teal); }
+.t-hr { background:var(--rl); color:var(--red); }
+.t-sub { background:var(--gl); color:var(--teal); }
+.t-fo { background:#F1EFE8; color:#5F5E5A; }
+.t-go { background:#EAF3DE; color:#3B6D11; }
+.t-err { background:#FAEEDA; color:#BA7517; }
+.t-sb { background:#E6F1FB; color:#185FA5; }
+.t-cs { background:#FAEEDA; color:#BA7517; }
+.t-pb { background:#FAECE7; color:#993C1D; }
+.t-hbp { background:#FAEEDA; color:#BA7517; }
+.empty-log { font-size:13px; color:var(--muted); padding:16px 12px; text-align:center; }
+
+/* ═══════════════════════════════════════════════
+   PRINT / PDF STYLES
+═══════════════════════════════════════════════ */
+@media print {
+  @page { size: letter landscape; margin: 0.5in; }
+  body { background:#fff; font-size:11px; }
+  .app { max-width:none; padding:0; }
+  /* hide interactive controls */
+  .hdr-btns, .half-tog, .btns, .action-row, .add-p, .padj,
+  .set-btn, .sub-btn, .sub-form, .log-panel, .sec-title-log,
+  .pdf-btn, .reset-btn, .out-card { display:none!important; }
+  /* score strip */
+  .score-strip { border:1.5px solid #333; border-radius:0; }
+  .score-table th, .score-table td { font-size:10px; padding:4px 6px; border-right:1px solid #ccc; }
+  .score-table thead th { background:#e8e8e0!important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  .total-cell { background:#e8e8e0!important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  /* game state */
+  .game-state { grid-template-columns:1fr 1fr 1fr; gap:6px; }
+  .card { border:1px solid #ccc; padding:6px 8px; border-radius:0; page-break-inside:avoid; }
+  .dot { width:16px; height:16px; }
+  .dot.on { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  .dot.ball.on { background:var(--green)!important; border-color:var(--green)!important; }
+  .dot.strike.on { background:var(--red)!important; border-color:var(--red)!important; }
+  .dot.foul.on { background:var(--purple)!important; border-color:var(--purple)!important; }
+  .dot.out.on { background:#888!important; border-color:#888!important; }
+  .base.on { background:var(--amber)!important; border-color:var(--amber)!important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  /* lineup */
+  .lineup-grid { grid-template-columns:1fr 1fr; gap:6px; }
+  .lineup-panel { border:1.5px solid #333; border-radius:0; page-break-inside:avoid; }
+  .lineup-hdr { background:#e8e8e0!important; -webkit-print-color-adjust:exact; print-color-adjust:exact; font-size:11px; padding:5px 8px; }
+  .lineup-row { padding:3px 6px; }
+  .bname, .bname:disabled { color:#333!important; }
+  .pos-sel, .pos-sel:disabled { color:#333!important; border-color:#ccc!important; background:#fff!important; font-size:11px; }
+  .sub-row { background:var(--gl)!important; -webkit-print-color-adjust:exact; print-color-adjust:exact; padding:3px 6px 3px 16px; }
+  .sub-inn { background:var(--gc)!important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  .sub-name-el { color:var(--teal)!important; font-size:11px; }
+  .sub-pos { color:var(--teal)!important; border-color:var(--gc)!important; font-size:11px; }
+  .dimmed { opacity:.5; }
+  /* hit badges */
+  .hbadge { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  .hb1 { background:var(--gl)!important; color:var(--teal)!important; }
+  .hb2 { background:var(--bl)!important; color:var(--blue)!important; }
+  .hb3 { background:var(--pl)!important; color:var(--purple)!important; }
+  .hbhr { background:var(--rl)!important; color:var(--red)!important; }
+  .hbkl { background:var(--cl)!important; color:var(--coral)!important; }
+  .hbks { background:var(--rl)!important; color:var(--red)!important; }
+  /* pitchers */
+  .pitcher-panel { border:1.5px solid #333; border-radius:0; page-break-inside:avoid; margin-bottom:6px; }
+  .ph { background:#e8e8e0!important; -webkit-print-color-adjust:exact; print-color-adjust:exact; font-size:11px; padding:5px 8px; }
+  .prow { padding:4px 8px; }
+  .prow.active-p { background:var(--bl)!important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  .p-dot.hidden { display:none; }
+  /* score color accents */
+  .active-inn { background:var(--bl)!important; color:var(--blue)!important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  .half-top { background:var(--bl)!important; color:var(--blue)!important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  .half-bot { background:var(--al)!important; color:var(--amber)!important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  /* section titles on print */
+  .sec-title { font-size:10px; margin-bottom:4px; margin-top:8px; }
+  /* print header */
+  .print-header { display:block!important; }
+  .header { margin-bottom:8px; }
+}
+
+.print-header {
+  display:none;
+  text-align:center;
+  font-size:18px;
+  font-weight:700;
+  letter-spacing:.04em;
+  margin-bottom:6px;
+  border-bottom:2px solid #333;
+  padding-bottom:4px;
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="print-header" id="printHeader">⚾ Official Game Scorecard</div>
+
+  <div class="header">
+    <div class="team-names">
+      <div class="team-picker">
+        <img class="team-logo" id="logoAway" src="" alt="" />
+        <select class="team-input" id="teamAway" onchange="onTeamChange()"></select>
+      </div>
+      <span class="vs">vs</span>
+      <div class="team-picker">
+        <img class="team-logo" id="logoHome" src="" alt="" />
+        <select class="team-input" id="teamHome" onchange="onTeamChange()"></select>
+      </div>
+    </div>
+    <div class="hdr-btns">
+      <button class="reset-btn" id="undoBtn" onclick="undoAction()" disabled>↩ Undo</button>
+      <button class="reset-btn" onclick="resetGame()">Reset</button>
+      <button class="pdf-btn" onclick="exportPDF()">⬇ Export PDF</button>
+    </div>
+  </div>
+
+  <!-- Score strip -->
+  <div class="score-strip">
+    <table class="score-table" id="scoreTable"></table>
+    <div style="text-align:center;padding:4px 0 6px;">
+      <button class="extra-inn-btn" onclick="addExtraInning()">+ Extra inning</button>
+    </div>
+  </div>
+
+  <!-- Game state -->
+  <div class="game-state">
+    <div class="card">
+      <div class="label">Inning</div>
+      <div class="inn-ctrl">
+        <button class="arr" onclick="changeInning(-1)">&#8249;</button>
+        <span class="inn-num" id="innNum">1</span>
+        <button class="arr" onclick="changeInning(1)">&#8250;</button>
+        <span class="half-pill" id="halfPill">Top</span>
+      </div>
+      <button class="half-tog" onclick="toggleHalf()">Switch half</button>
+      <div style="margin-top:8px">
+        <div class="label" style="margin-bottom:4px">Outs</div>
+        <div class="dot-row">
+          <div class="dot out" id="o0" onclick="toggleOut(0)"></div>
+          <div class="dot out" id="o1" onclick="toggleOut(1)"></div>
+          <div class="dot out" id="o2" onclick="toggleOut(2)"></div>
+        </div>
+        <div class="btns">
+          <button class="btn" onclick="addOut()">+ Out</button>
+          <button class="btn" onclick="clearOuts()">Clear</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="label">Count</div>
+      <div style="margin-bottom:5px">
+        <span class="dlabel">B</span>
+        <div class="dot-row">
+          <div class="dot ball" id="b0"></div>
+          <div class="dot ball" id="b1"></div>
+          <div class="dot ball" id="b2"></div>
+          <div class="dot ball" id="b3"></div>
+        </div>
+      </div>
+      <div style="margin-bottom:5px">
+        <span class="dlabel">K</span>
+        <div class="dot-row">
+          <div class="dot strike" id="s0"></div>
+          <div class="dot strike" id="s1"></div>
+          <div class="dot foul" id="f0"></div>
+        </div>
+        <div class="foul-note" id="foulNote"></div>
+      </div>
+      <div class="btns">
+        <button class="btn ball" onclick="addBall()">Ball</button>
+        <button class="btn strike" onclick="addStrike()">Strike</button>
+        <button class="btn foul" onclick="addFoul()">Foul</button>
+        <button class="btn" onclick="clearCount()">Clear</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="label">Bases</div>
+      <div style="display:flex;align-items:flex-start;gap:8px;">
+        <div class="bases-wrap" style="flex-shrink:0">
+          <div class="diamond">
+            <div class="base base-2b" id="base2" onclick="toggleBase(2)"></div>
+            <div class="base base-3b" id="base3" onclick="toggleBase(3)"></div>
+            <div class="base base-1b" id="base1" onclick="toggleBase(1)"></div>
+            <div class="base base-home"></div>
+          </div>
+        </div>
+        <div id="stadiumWrap" style="flex:1;min-width:0;"></div>
+      </div>
+      <div class="btns" style="justify-content:center;margin-top:4px">
+        <button class="btn" onclick="addRun()">+ Run</button>
+        <button class="btn" onclick="clearBases()">Clear</button>
+      </div>
+      <div style="border-top:1px solid var(--border);margin-top:8px;padding-top:8px">
+        <div class="label" style="margin-bottom:5px">Stolen bases / passed ball</div>
+        <div class="btns">
+          <button class="btn" style="border-color:#185FA5;color:#185FA5" onclick="recordSB()">SB</button>
+          <button class="btn" style="border-color:#BA7517;color:#BA7517" onclick="recordCS()">CS</button>
+          <button class="btn" style="border-color:#993C1D;color:#993C1D" onclick="recordPB()">PB</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Actions -->
+  <div class="action-row">
+    <div class="card">
+      <div class="label">Record hit — active batter</div>
+      <div class="hit-btns">
+        <button class="hit-btn h1b" onclick="recordHit(1)">1B<span class="hlabel">Single</span></button>
+        <button class="hit-btn h2b" onclick="recordHit(2)">2B<span class="hlabel">Double</span></button>
+        <button class="hit-btn h3b" onclick="recordHit(3)">3B<span class="hlabel">Triple</span></button>
+        <button class="hit-btn hhr" onclick="recordHit(4)">HR<span class="hlabel">Home Run</span></button>
+        <button class="hit-btn hhbp" onclick="recordHBP()">HBP<span class="hlabel">Hit by pitch</span></button>
+      </div>
+      <div style="margin-top:7px;display:flex;align-items:center;gap:8px;">
+        <button class="hit-err-toggle" id="hitErrToggle" onclick="toggleHitErr()">+ E on play</button>
+        <span class="hit-err-hint" id="hitErrHint"></span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="label">Strikeout — active batter</div>
+      <div class="ko-btns">
+        <button class="ko-btn kol" onclick="recordKO('looking')">&#x24C0;<span class="kolabel">Looking</span></button>
+        <button class="ko-btn kos" onclick="recordKO('swinging')">K<span class="kolabel">Swinging</span></button>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px">Records out + pitch. Use instead of Strike on K.</div>
+    </div>
+  </div>
+
+  <!-- Flyout / Groundout recording -->
+  <div class="out-card">
+    <div class="label">Record out / error — active batter</div>
+    <div class="out-type-row">
+      <button class="out-type-btn otf" id="outTypeFly" onclick="selectOutType('fly')">
+        F<span style="font-size:10px;font-weight:400;display:block;opacity:.75;margin-top:1px">Flyout</span>
+      </button>
+      <button class="out-type-btn otg" id="outTypeGround" onclick="selectOutType('ground')">
+        G<span style="font-size:10px;font-weight:400;display:block;opacity:.75;margin-top:1px">Groundout</span>
+      </button>
+      <button class="out-type-btn ote" id="outTypeError" onclick="selectOutType('error')">
+        E<span style="font-size:10px;font-weight:400;display:block;opacity:.75;margin-top:1px">Error</span>
+      </button>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-top:8px;margin-bottom:2px" id="fielderLabel">Fielder who made the play:</div>
+    <div class="fielder-grid" id="fielderGrid"></div>
+    <div id="throwToWrap" style="display:none">
+      <div style="font-size:11px;color:var(--muted);margin-top:8px;margin-bottom:2px">Thrown to (optional):</div>
+      <div class="fielder-grid" id="throwToGrid"></div>
+    </div>
+    <button class="rec-out-btn" id="recordOutBtn" onclick="recordOut()" disabled>Select type &amp; fielder to record</button>
+    <div class="out-hint" id="outHint"></div>
+  </div>
+
+  <!-- Lineups -->
+  <div class="sec-title">Batting lineups</div>
+  <div class="lineup-grid">
+    <div class="lineup-panel">
+      <div class="lineup-hdr"><span id="awayLineupTitle">Away</span><span style="font-size:11px;color:var(--muted)">Pos / Name</span></div>
+      <div id="awayLineup"></div>
+    </div>
+    <div class="lineup-panel">
+      <div class="lineup-hdr"><span id="homeLineupTitle">Home</span><span style="font-size:11px;color:var(--muted)">Pos / Name</span></div>
+      <div id="homeLineup"></div>
+    </div>
+  </div>
+
+  <!-- Pitchers -->
+  <div class="sec-title">Pitchers</div>
+  <div class="lineup-grid">
+    <div class="pitcher-panel" id="awayPitcherPanel"></div>
+    <div class="pitcher-panel" id="homePitcherPanel"></div>
+  </div>
+
+  <!-- Log -->
+  <div class="sec-title sec-title-log">Play log</div>
+  <div class="log-panel">
+    <div class="log-inner" id="logInner"><div class="empty-log">No plays logged yet</div></div>
+  </div>
+
+</div><!-- /app -->
+
+<script>
+var POSITIONS = ['—','P','C','1B','2B','3B','SS','LF','CF','RF','DH','PH','PR','IF','OF'];
+function mkSlot(){ return {name:'',pos:'—',hits:{s:0,d:0,t:0,hr:0,kl:0,ks:0,fo:0,go:0,sb:0,cs:0,err:0,hbp:0},subs:[],pending:false}; }
+function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+function posOpts(sel){ return POSITIONS.map(function(p){ return '<option value="'+p+'"'+(p===sel?' selected':'')+'>'+p+'</option>'; }).join(''); }
+
+var G = {
+  inning:1, half:'top', outs:0, balls:0, strikes:0, fouls:0,
+  bases:[false,false,false],
+  totalInnings: 9,
+  scores:{home:Array(9).fill(null), away:Array(9).fill(null)},
+  rhe:{home:[0,0,0], away:[0,0,0]},
+  homeBatter:0, awayBatter:0,
+  lineup:{home:Array(9).fill(null).map(mkSlot), away:Array(9).fill(null).map(mkSlot)},
+  pitchers:{home:[{name:'',pitches:0,k:0,bb:0,r:0,active:true}], away:[{name:'',pitches:0,k:0,bb:0,r:0,active:true}]},
+  log:[]
+};
+
+// ── Undo history ──
+var HISTORY = [];
+var MAX_HISTORY = 30;
+
+function saveState(){
+  HISTORY.push(JSON.stringify(G));
+  if(HISTORY.length > MAX_HISTORY) HISTORY.shift();
+  var btn = document.getElementById('undoBtn');
+  if(btn) btn.disabled = false;
+  saveToStorage();
+}
+
+function undoAction(){
+  if(!HISTORY.length) return;
+  G = JSON.parse(HISTORY.pop());
+  var btn = document.getElementById('undoBtn');
+  if(btn) btn.disabled = HISTORY.length === 0;
+  renderAll();
+}
+
+function renderAll(){
+  renderScore(); renderInn(); renderCount(); renderOuts(); renderBases();
+  renderLineup('home'); renderLineup('away');
+  renderPitchers('home'); renderPitchers('away');
+  renderLog();
+  buildFielderGrid(); updateOutBtn();
+  // Restore outState UI
+  document.getElementById('outTypeFly').className    = 'out-type-btn otf' + (outState.type==='fly'   ?' sel':'');
+  document.getElementById('outTypeGround').className = 'out-type-btn otg' + (outState.type==='ground'?' sel':'');
+  document.getElementById('outTypeError').className  = 'out-type-btn ote' + (outState.type==='error' ?' sel':'');
+}
+
+function team(s){ var v=s==='home'?(document.getElementById('teamHome').value):(document.getElementById('teamAway').value); return (!v||v==='— Select Team —')?(s==='home'?'Home':'Away'):v; }
+function fielding(){ return G.half==='top'?'home':'away'; }
+function batting(){ return G.half==='top'?'away':'home'; }
+function abIdx(side){ return side==='home'?G.homeBatter:G.awayBatter; }
+function curName(side,i){ var sl=G.lineup[side][i]; return sl.subs.length>0?sl.subs[sl.subs.length-1].name||'Sub':sl.name||'Batter '+(i+1); }
+
+function activePIdx(side){ var p=G.pitchers[side]; for(var i=0;i<p.length;i++) if(p[i].active) return i; return 0; }
+function addPitch(side){ var idx=activePIdx(side); G.pitchers[side][idx].pitches++; var el=document.getElementById(side+'pc'+idx); if(el) el.textContent=G.pitchers[side][idx].pitches; }
+function addPitcherStat(side, stat){ var idx=activePIdx(side); G.pitchers[side][idx][stat]++; renderPitchers(side); }
+
+function addLog(text,tag,cls){ var inn=(G.half==='top'?'T':'B')+G.inning; G.log.unshift({text:inn+' — '+text,tag:tag,cls:cls}); if(G.log.length>80) G.log.pop(); renderLog(); }
+function renderLog(){ var el=document.getElementById('logInner'); if(!G.log.length){el.innerHTML='<div class="empty-log">No plays logged yet</div>';return;} el.innerHTML=G.log.map(function(e){return '<div class="log-row"><span>'+e.text+'</span><span class="ltag '+e.cls+'">'+e.tag+'</span></div>';}).join(''); }
+
+function badges(h){ var b=''; if(h.s>0)b+='<span class="hbadge hb1">'+(h.s>1?h.s:'')+'1B</span>'; if(h.d>0)b+='<span class="hbadge hb2">'+(h.d>1?h.d:'')+'2B</span>'; if(h.t>0)b+='<span class="hbadge hb3">'+(h.t>1?h.t:'')+'3B</span>'; if(h.hr>0)b+='<span class="hbadge hbhr">'+(h.hr>1?h.hr:'')+'HR</span>'; if(h.kl>0)b+='<span class="hbadge hbkl">'+(h.kl>1?h.kl:'')+'&#x24C0;</span>'; if(h.ks>0)b+='<span class="hbadge hbks">'+(h.ks>1?h.ks:'')+'K</span>'; if(h.fo>0)b+='<span class="hbadge hbfo">'+(h.fo>1?h.fo:'')+'F</span>'; if(h.go>0)b+='<span class="hbadge hbgo">'+(h.go>1?h.go:'')+'G</span>'; if(h.sb>0)b+='<span class="hbadge hbsb">'+(h.sb>1?h.sb:'')+'SB</span>'; if(h.cs>0)b+='<span class="hbadge hbcs">'+(h.cs>1?h.cs:'')+'CS</span>'; if(h.err>0)b+='<span class="hbadge hberr">'+(h.err>1?h.err:'')+'E</span>'; if(h.hbp>0)b+='<span class="hbadge hbhbp">'+(h.hbp>1?h.hbp:'')+'HBP</span>'; return b; }
+
+function recordSB(){
+  saveState(); var side=batting(); var idx=abIdx(side); var nm=curName(side,idx);
+  G.lineup[side][idx].hits.sb++;
+  addLog(nm+' — stolen base','SB','t-sb');
+  renderLineup(side);
+}
+function recordCS(){
+  saveState(); var side=batting(); var idx=abIdx(side); var nm=curName(side,idx);
+  G.lineup[side][idx].hits.cs++;
+  addLog(nm+' — caught stealing','CS','t-cs');
+  var isThirdOut = (G.outs === 2);
+  addOut();
+  if(isThirdOut){ G.balls=0; G.strikes=0; G.fouls=0; renderCount(); }
+  renderLineup(side);
+  nextBatter(side);
+}
+
+function recordPB(){
+  saveState();
+  var fSide = fielding();
+  G.rhe[fSide][2]++;
+  renderScore();
+  addLog('Passed ball — E charged to '+team(fSide)+' C','PB','t-pb');
+}
+
+function recordHBP(){
+  saveState();
+  var side=batting(); var idx=abIdx(side); var nm=curName(side,idx);
+  G.lineup[side][idx].hits.hbp++;
+  addPitch(fielding());
+  G.balls=0; G.strikes=0; G.fouls=0;
+  renderCount();
+  addLog(nm+' — hit by pitch','HBP','t-hbp');
+  renderLineup(side);
+  nextBatter(side);
+}
+
+// ── Flyout / Groundout state ──
+var outState = { type: null, fielder: null, throwTo: null };
+
+var FIELDERS = [
+  {num:1, pos:'P'},  {num:2, pos:'C'},  {num:3, pos:'1B'},
+  {num:4, pos:'2B'}, {num:5, pos:'3B'}, {num:6, pos:'SS'},
+  {num:7, pos:'LF'}, {num:8, pos:'CF'}, {num:9, pos:'RF'}
+];
+
+function buildFielderGrid(){
+  var g = document.getElementById('fielderGrid'); if(!g) return;
+  var isErr = outState.type === 'error';
+  g.innerHTML = FIELDERS.map(function(f){
+    var selClass = outState.fielder===f.num ? (isErr ? ' sel-err' : ' sel') : '';
+    return '<button class="fld-btn'+selClass+'" onclick="selectFielder('+f.num+')">'
+      +'<span class="fld-num">'+f.num+'</span>'
+      +'<span class="fld-pos-name">'+f.pos+'</span>'
+      +'</button>';
+  }).join('');
+  // Show/hide throw-to grid for groundouts
+  var wrap = document.getElementById('throwToWrap');
+  if(wrap) wrap.style.display = outState.type==='ground' ? '' : 'none';
+  buildThrowToGrid();
+}
+
+function buildThrowToGrid(){
+  var g = document.getElementById('throwToGrid'); if(!g) return;
+  g.innerHTML = FIELDERS.map(function(f){
+    // Dim the fielder already selected as the primary
+    var isSelected = outState.throwTo===f.num;
+    var isPrimary  = outState.fielder===f.num;
+    var selClass   = isSelected ? ' sel' : '';
+    return '<button class="fld-btn'+selClass+'" onclick="selectThrowTo('+f.num+')" '+(isPrimary?'style="opacity:.4"':'')+' title="'+f.pos+'">'
+      +'<span class="fld-num">'+f.num+'</span>'
+      +'<span class="fld-pos-name">'+f.pos+'</span>'
+      +'</button>';
+  }).join('');
+}
+
+function selectFielder(num){
+  outState.fielder = outState.fielder===num ? null : num;
+  // If throw-to was same position, clear it
+  if(outState.throwTo===num) outState.throwTo=null;
+  buildFielderGrid();
+  updateOutBtn();
+}
+
+function selectThrowTo(num){
+  // Toggle; don't allow same as primary fielder
+  if(num===outState.fielder) return;
+  outState.throwTo = outState.throwTo===num ? null : num;
+  buildThrowToGrid();
+  updateOutBtn();
+}
+
+function selectOutType(type){
+  outState.type = outState.type===type ? null : type;
+  // Clear throwTo when switching away from groundout
+  if(outState.type !== 'ground') outState.throwTo = null;
+  document.getElementById('outTypeFly').className    = 'out-type-btn otf' + (outState.type==='fly'   ?' sel':'');
+  document.getElementById('outTypeGround').className = 'out-type-btn otg' + (outState.type==='ground'?' sel':'');
+  document.getElementById('outTypeError').className  = 'out-type-btn ote' + (outState.type==='error' ?' sel':'');
+  var lbl = document.getElementById('fielderLabel');
+  if(lbl) lbl.textContent = outState.type==='error' ? 'Fielder who made the error:' : 'Fielder who fielded the ball:';
+  buildFielderGrid();
+  updateOutBtn();
+}
+
+function updateOutBtn(){
+  var btn = document.getElementById('recordOutBtn');
+  var hint = document.getElementById('outHint');
+  if(!btn) return;
+  var isErr = outState.type === 'error';
+  var isGround = outState.type === 'ground';
+  btn.className = 'rec-out-btn' + (isErr ? ' rec-err-btn' : '');
+
+  if(outState.type && outState.fielder){
+    var tLabel = outState.type==='fly' ? 'Flyout' : outState.type==='ground' ? 'Groundout' : 'Error';
+    var fInfo  = FIELDERS.filter(function(f){return f.num===outState.fielder;})[0];
+    var ttInfo = outState.throwTo ? FIELDERS.filter(function(f){return f.num===outState.throwTo;})[0] : null;
+
+    if(isErr){
+      btn.disabled = false;
+      btn.textContent = 'Record Error — E'+outState.fielder+' ('+fInfo.pos+')';
+      hint.textContent = 'Does NOT record an out. Increments E column.';
+    } else if(isGround && ttInfo){
+      // Groundout with throw: e.g. "6-3" (SS to 1B)
+      btn.disabled = false;
+      btn.textContent = 'Record Groundout — '+outState.fielder+'-'+outState.throwTo+' ('+fInfo.pos+' to '+ttInfo.pos+')';
+      hint.textContent = '';
+    } else {
+      btn.disabled = false;
+      btn.textContent = 'Record ' + tLabel + ' — ' + outState.fielder + ' ('+fInfo.pos+')';
+      hint.textContent = isGround ? 'Tap "Thrown to" to add the receiving fielder.' : '';
+    }
+  } else if(outState.type && !outState.fielder){
+    btn.disabled = true;
+    btn.textContent = 'Select fielder';
+    hint.textContent = '';
+  } else if(!outState.type && outState.fielder){
+    btn.disabled = true;
+    btn.textContent = 'Select flyout, groundout, or error';
+    hint.textContent = '';
+  } else {
+    btn.disabled = true;
+    btn.textContent = 'Select type & fielder to record';
+    hint.textContent = '';
+  }
+}
+
+function recordOut(){
+  if(!outState.type || !outState.fielder) return;
+  saveState();
+  var side = batting();
+  var idx = abIdx(side);
+  var nm = curName(side, idx);
+  var h = G.lineup[side][idx].hits;
+  var fInfo  = FIELDERS.filter(function(f){return f.num===outState.fielder;})[0];
+  var ttInfo = outState.throwTo ? FIELDERS.filter(function(f){return f.num===outState.throwTo;})[0] : null;
+
+  if(outState.type==='error'){
+    h.err++;
+    var fSide = fielding();
+    G.rhe[fSide][2]++;
+    renderScore();
+    addLog(nm+' reached on E'+outState.fielder+' — '+fInfo.pos+' error','E'+outState.fielder,'t-err');
+    renderLineup(side);
+    nextBatter(side);
+  } else {
+    if(outState.type==='fly'){
+      h.fo++;
+      addLog(nm+' — flyout '+outState.fielder+' ('+fInfo.pos+')','F'+outState.fielder,'t-fo');
+    } else {
+      h.go++;
+      if(ttInfo){
+        addLog(nm+' — groundout '+outState.fielder+'-'+outState.throwTo+' ('+fInfo.pos+' to '+ttInfo.pos+')','G'+outState.fielder+'-'+outState.throwTo,'t-go');
+      } else {
+        addLog(nm+' — groundout '+outState.fielder+' ('+fInfo.pos+')','G'+outState.fielder,'t-go');
+      }
+    }
+    addPitch(fielding());
+    addOut();
+    G.balls=0; G.strikes=0; G.fouls=0;
+    renderCount(); renderLineup(side);
+    nextBatter(side);
+  }
+
+  // Reset
+  outState.type=null; outState.fielder=null; outState.throwTo=null;
+  document.getElementById('outTypeFly').className='out-type-btn otf';
+  document.getElementById('outTypeGround').className='out-type-btn otg';
+  document.getElementById('outTypeError').className='out-type-btn ote';
+  var lbl = document.getElementById('fielderLabel');
+  if(lbl) lbl.textContent='Fielder who fielded the ball:';
+  var wrap = document.getElementById('throwToWrap');
+  if(wrap) wrap.style.display='none';
+  buildFielderGrid();
+  updateOutBtn();
+}
+
+// ── Roster data ──
+var ROSTERS = { home: [], away: [] }; // [{name, pos, jersey}]
+var ROSTER_LOADING = { home: false, away: false };
+
+// Map team name → MLB Stats API team ID
+var TEAM_IDS = {
+  'Arizona Diamondbacks':109,'Atlanta Braves':144,'Baltimore Orioles':110,
+  'Boston Red Sox':111,'Chicago Cubs':112,'Chicago White Sox':145,
+  'Cincinnati Reds':113,'Cleveland Guardians':114,'Colorado Rockies':115,
+  'Detroit Tigers':116,'Houston Astros':117,'Kansas City Royals':118,
+  'Los Angeles Angels':108,'Los Angeles Dodgers':119,'Miami Marlins':146,
+  'Milwaukee Brewers':158,'Minnesota Twins':142,'New York Mets':121,
+  'New York Yankees':147,'Oakland Athletics':133,'Philadelphia Phillies':143,
+  'Pittsburgh Pirates':134,'San Diego Padres':135,'San Francisco Giants':137,
+  'Seattle Mariners':136,'St. Louis Cardinals':138,'Tampa Bay Rays':139,
+  'Texas Rangers':140,'Toronto Blue Jays':141,'Washington Nationals':120
+};
+
+function fetchRoster(side, teamName) {
+  var teamId = TEAM_IDS[teamName];
+  if(!teamId){ ROSTERS[side]=[]; renderLineup(side); return; }
+  ROSTER_LOADING[side] = true;
+  ROSTERS[side] = [];
+  renderLineup(side); // show loading state
+  fetch('https://statsapi.mlb.com/api/v1/teams/'+teamId+'/roster?rosterType=40Man&season=2026')
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      ROSTERS[side] = (data.roster||[]).map(function(p){
+        return {
+          name: p.person.fullName,
+          pos: (p.position && p.position.abbreviation) || '—',
+          jersey: p.jerseyNumber || ''
+        };
+      }).sort(function(a,b){ return a.name.localeCompare(b.name); });
+      ROSTER_LOADING[side] = false;
+      renderLineup(side);
+    })
+    .catch(function(){
+      ROSTER_LOADING[side] = false;
+      ROSTERS[side] = [];
+      renderLineup(side);
+    });
+}
+
+function playerOpts(side, selectedName, includeBlank) {
+  var roster = ROSTERS[side];
+  var html = includeBlank ? '<option value="">— Select player —</option>' : '';
+  roster.forEach(function(p){
+    var label = (p.jersey ? '#'+p.jersey+' ' : '') + p.name + ' ('+p.pos+')';
+    html += '<option value="'+esc(p.name)+'"'+(p.name===selectedName?' selected':'')+'>'+label+'</option>';
+  });
+  if(!roster.length) html += '<option value="">No roster loaded</option>';
+  return html;
+}
+
+function onPlayerSelect(side, slotIdx, val) {
+  G.lineup[side][slotIdx].name = val;
+  // auto-fill position from roster if blank
+  var match = ROSTERS[side].filter(function(p){ return p.name===val; })[0];
+  if(match && G.lineup[side][slotIdx].pos==='—') {
+    G.lineup[side][slotIdx].pos = match.pos;
+  }
+  renderLineup(side);
+}
+
+function startSub(side,i){ G.lineup[side][i].pending=true; renderLineup(side); var el=document.getElementById(side+'_si_'+i)||document.getElementById(side+'_ss_'+i); if(el) el.focus(); }
+function cancelSub(side,i){ G.lineup[side][i].pending=false; renderLineup(side); }
+function confirmSub(side,i){
+  saveState();
+  // support both roster dropdown and free-text input
+  var selEl = document.getElementById(side+'_ss_'+i);
+  var inpEl = document.getElementById(side+'_si_'+i);
+  var nm = selEl ? (selEl.value||'').trim() : (inpEl ? (inpEl.value||'').trim() : '');
+  if(!nm){ if(selEl) selEl.focus(); else if(inpEl) inpEl.focus(); return; }
+  var pos=(document.getElementById(side+'_sp_'+i)||{}).value||'—';
+  // auto-fill position from roster if still blank
+  if(pos==='—'){
+    var match=ROSTERS[side].filter(function(p){return p.name===nm;})[0];
+    if(match) pos=match.pos;
+  }
+  var prev=curName(side,i);
+  G.lineup[side][i].subs.push({name:nm,pos:pos,inning:G.inning,half:G.half});
+  G.lineup[side][i].pending=false;
+  addLog(nm+' replaces '+prev+' (spot '+(i+1)+')','Sub','t-sub');
+  renderLineup(side);
+}
+
+function renderLineup(side){
+  var panel=document.getElementById(side+'Lineup');
+  var ab=side==='home'?G.homeBatter:G.awayBatter;
+  var hasRoster = ROSTERS[side].length > 0;
+  var isLoading = ROSTER_LOADING[side];
+  var html='';
+  for(var i=0;i<9;i++){
+    var sl=G.lineup[side][i]; var hasSubs=sl.subs.length>0; var isActive=(i===ab);
+    html+='<div class="lineup-slot">';
+    html+='<div class="lineup-row'+(hasSubs?' dimmed':'')+'">';
+    html+='<span class="bnum">'+(i+1)+'</span>';
+    html+='<span class="ab-dot'+(isActive&&!hasSubs?'':' hidden')+'"></span>';
+    html+='<select class="pos-sel"'+(hasSubs?' disabled':'')+' onchange="G.lineup.'+side+'['+i+'].pos=this.value">'+posOpts(sl.pos)+'</select>';
+    if(hasRoster && !hasSubs){
+      html+='<select class="bname roster-sel" id="'+side+'_rs_'+i+'" onchange="onPlayerSelect(\''+side+'\','+i+',this.value)">'
+        +'<option value="">— Select player —</option>'
+        +playerOpts(side, sl.name, false)
+        +'</select>';
+    } else if(isLoading && !hasSubs){
+      html+='<input class="bname" value="'+esc(sl.name)+'" placeholder="Loading roster…" disabled />';
+    } else {
+      html+='<input class="bname" id="'+side+'_n_'+i+'" value="'+esc(sl.name)+'" placeholder="Player '+(i+1)+'"'+(hasSubs?' disabled':'')+' onchange="G.lineup.'+side+'['+i+'].name=this.value" />';
+    }
+    if(!hasSubs){ var hb=badges(sl.hits); if(hb) html+='<div class="hits">'+hb+'</div>'; }
+    if(!hasSubs&&!sl.pending){ html+='<button class="set-btn" onclick="setAtBat(\''+side+'\','+i+')">At bat</button><button class="sub-btn" onclick="startSub(\''+side+'\','+i+')">Sub</button>'; }
+    html+='</div>';
+    for(var s=0;s<sl.subs.length;s++){
+      var sub=sl.subs[s]; var isLast=(s===sl.subs.length-1); var inn=(sub.half==='top'?'T':'B')+sub.inning;
+      html+='<div class="sub-row"><span class="sub-arrow">&#8627;</span><span class="sub-inn">'+inn+'</span>';
+      html+='<select class="sub-pos" onchange="G.lineup.'+side+'['+i+'].subs['+s+'].pos=this.value">'+posOpts(sub.pos)+'</select>';
+      html+='<input class="sub-name-el" value="'+esc(sub.name)+'" onchange="G.lineup.'+side+'['+i+'].subs['+s+'].name=this.value" />';
+      if(isLast){ var hb2=badges(sl.hits); if(hb2) html+='<div class="hits">'+hb2+'</div>'; html+='<span class="ab-dot'+(isActive&&isLast?'':' hidden')+'" style="margin-left:2px"></span>'; if(!sl.pending){ html+='<button class="set-btn" onclick="setAtBat(\''+side+'\','+i+')">At bat</button><button class="sub-btn" onclick="startSub(\''+side+'\','+i+')">Sub</button>'; } }
+      html+='</div>';
+    }
+    if(sl.pending){
+      html+='<div class="sub-form"><span class="sub-form-lbl">&#8627; Sub in:</span>';
+      html+='<select class="sub-form-pos" id="'+side+'_sp_'+i+'">'+posOpts('—')+'</select>';
+      if(hasRoster){
+        html+='<select class="sub-form-inp" id="'+side+'_ss_'+i+'"><option value="">— Select player —</option>'+playerOpts(side,'',false)+'</select>';
+      } else {
+        html+='<input class="sub-form-inp" id="'+side+'_si_'+i+'" placeholder="New player name" />';
+      }
+      html+='<button class="sub-ok" onclick="confirmSub(\''+side+'\','+i+')">Confirm</button>';
+      html+='<button class="sub-cancel" onclick="cancelSub(\''+side+'\','+i+')">Cancel</button>';
+      html+='</div>';
+    }
+    html+='</div>';
+  }
+  panel.innerHTML=html;
+}
+
+function setAtBat(side,i){ saveState(); if(side==='home') G.homeBatter=i; else G.awayBatter=i; addLog(curName(side,i)+' up to bat','AB','t-info'); renderLineup(side); }
+
+function nextBatter(side){
+  var cur = side==='home' ? G.homeBatter : G.awayBatter;
+  var next = (cur + 1) % 9;
+  if(side==='home') G.homeBatter=next; else G.awayBatter=next;
+  addLog(curName(side,next)+' up to bat','AB','t-info');
+  renderLineup(side);
+}
+
+var hitWithErr = false;
+
+function toggleHitErr(){
+  hitWithErr = !hitWithErr;
+  var btn = document.getElementById('hitErrToggle');
+  var hint = document.getElementById('hitErrHint');
+  if(btn) btn.className = 'hit-err-toggle' + (hitWithErr ? ' on' : '');
+  if(hint) hint.textContent = hitWithErr ? 'Next hit will also charge an E to fielding team' : '';
+}
+
+function recordHit(b){
+  saveState();
+  var side=batting(); var idx=abIdx(side); var nm=curName(side,idx); var h=G.lineup[side][idx].hits;
+  if(b===1)h.s++;else if(b===2)h.d++;else if(b===3)h.t++;else h.hr++;
+  G.rhe[side][1]++;
+  var L=['','Single','Double','Triple','Home Run'], T=['','1B','2B','3B','HR'];
+  var logText = nm+' — '+L[b];
+  var logTag  = T[b];
+  var logCls  = b===4?'t-hr':'t-hit';
+  // If error toggle is on, also charge E to fielding team
+  if(hitWithErr){
+    h.err++;
+    G.rhe[fielding()][2]++;
+    logText += ' + E (fielder error)';
+    logTag  += '+E';
+  }
+  renderScore();
+  addPitch(fielding());
+  addLog(logText, logTag, logCls);
+  if(b===4){G.balls=0;G.strikes=0;G.fouls=0;renderCount();}
+  renderLineup(side);
+  nextBatter(side);
+  // Auto-reset the error toggle after each hit
+  if(hitWithErr){
+    hitWithErr = false;
+    var btn2 = document.getElementById('hitErrToggle');
+    var hint2 = document.getElementById('hitErrHint');
+    if(btn2) btn2.className='hit-err-toggle';
+    if(hint2) hint2.textContent='';
+  }
+}
+function recordKO(type){ saveState(); var side=batting(); var idx=abIdx(side); var nm=curName(side,idx); var h=G.lineup[side][idx].hits; addPitch(fielding()); addPitcherStat(fielding(),'k'); if(type==='looking'){h.kl++;addLog(nm+' — strikeout looking','&#x24C0;','t-kl');}else{h.ks++;addLog(nm+' — strikeout swinging','K','t-ks');} addOut();G.balls=0;G.strikes=0;G.fouls=0;renderCount();renderLineup(side); nextBatter(side); }
+
+function renderScore(){
+  var n = G.totalInnings;
+  var tbl = document.getElementById('scoreTable');
+  // Header row
+  var hdr = '<thead><tr><th></th>';
+  for(var i=1;i<=n;i++) hdr += '<th id="h'+i+'" class="inning-cell'+(G.inning===i?' active-inn':'')+'" onclick="setInning('+i+')">'+i+'</th>';
+  hdr += '<th>R</th><th>H</th><th>E</th></tr></thead>';
+  // Body rows
+  var body = '<tbody>';
+  ['away','home'].forEach(function(side){
+    var tName=team(side);
+    var logo=TEAM_LOGOS[tName]?'<img src="'+TEAM_LOGOS[tName]+'" style="width:20px;height:20px;object-fit:contain;vertical-align:middle;margin-right:5px;" alt="" />':'';
+    var c = '<tr id="row-'+side+'"><td class="team-label">'+logo+tName+'</td>';
+    for(var i=0;i<n;i++){
+      var v = G.scores[side][i];
+      var a = (G.inning-1)===i ? 'active-inn' : '';
+      c += '<td class="inning-cell '+a+'" onclick="editScore(\''+side+'\','+i+')">'+(v===null?'':v)+'</td>';
+    }
+    c += '<td class="total-cell">'+G.rhe[side][0]+'</td>';
+    c += '<td class="total-cell">'+G.rhe[side][1]+'</td>';
+    c += '<td class="total-cell">'+G.rhe[side][2]+'</td>';
+    c += '</tr>';
+    body += c;
+  });
+  body += '</tbody>';
+  tbl.innerHTML = hdr + body;
+}
+function editScore(side,idx){ var cur=G.scores[side][idx]; var v=prompt('Runs for '+team(side)+' inning '+(idx+1)+':',(cur===null?'':cur)); if(v===null) return; saveState(); var n=parseInt(v); G.scores[side][idx]=isNaN(n)?null:n; recalc();renderScore(); }
+function recalc(){ ['home','away'].forEach(function(side){ G.rhe[side][0]=G.scores[side].reduce(function(a,b){return a+(b||0);},0); }); }
+
+function setInning(n){saveState();G.inning=n;renderScore();renderInn();}
+function changeInning(d){saveState();G.inning=Math.max(1,Math.min(G.totalInnings,G.inning+d));renderScore();renderInn();}
+
+function addExtraInning(){
+  saveState();
+  G.totalInnings++;
+  G.scores.home.push(null);
+  G.scores.away.push(null);
+  G.inning = G.totalInnings;
+  renderScore();
+  renderInn();
+  addLog('Extra inning '+G.totalInnings+' added','Inn '+G.totalInnings,'t-info');
+}
+function toggleHalf(){ saveState(); G.half=G.half==='top'?'bot':'top'; G.outs=0;G.balls=0;G.strikes=0;G.fouls=0;G.bases=[false,false,false]; renderInn();renderCount();renderOuts();renderBases(); }
+function renderInn(){ document.getElementById('innNum').textContent=G.inning; var b=document.getElementById('halfPill'); if(G.half==='top'){b.textContent='Top';b.className='half-pill half-top';}else{b.textContent='Bot';b.className='half-pill half-bot';} }
+
+function addBall(){ if(G.balls>=4) return; saveState(); addPitch(fielding());G.balls++; addLog('Ball '+G.balls,'Ball','t-ball'); if(G.balls===4){addLog('Walk','Walk','t-ball');addPitcherStat(fielding(),'bb');G.balls=0;G.strikes=0;G.fouls=0;renderCount();nextBatter(batting());return;} renderCount(); }
+function addStrike(){ saveState(); addPitch(fielding()); if(G.strikes>=2){addLog('Strike 3','Out','t-out');addOut();G.balls=0;G.strikes=0;G.fouls=0;renderCount();return;} G.strikes++;addLog('Strike '+G.strikes,'K','t-k');renderCount(); }
+function addFoul(){ saveState(); addPitch(fielding());G.fouls++; if(G.strikes<2){G.strikes++;addLog('Foul — strike '+G.strikes+' ('+G.fouls+' fouls)','Foul','t-foul');}else{addLog('Foul — holds at 2 ('+G.fouls+' fouls)','Foul','t-foul');} renderCount(); }
+function clearCount(){saveState();G.balls=0;G.strikes=0;G.fouls=0;renderCount();}
+function renderCount(){ for(var i=0;i<4;i++) document.getElementById('b'+i).className='dot ball'+(i<G.balls?' on':''); for(var i=0;i<2;i++) document.getElementById('s'+i).className='dot strike'+(i<G.strikes?' on':''); document.getElementById('f0').className='dot foul'+(G.fouls>0&&G.strikes>=2?' on':''); document.getElementById('foulNote').textContent=G.fouls>0?G.fouls+' foul'+(G.fouls>1?'s':'')+' this at-bat':''; }
+
+function addOut(){ if(G.outs>=3) G.outs=0; G.outs++; addLog('Out — '+G.outs,'Out','t-out'); if(G.outs===3) addLog('3 outs — inning over','Inn','t-info'); G.balls=0;G.strikes=0;G.fouls=0;renderCount();renderOuts(); }
+function clearOuts(){saveState();G.outs=0;renderOuts();}
+function toggleOut(i){saveState();G.outs=i+1<=G.outs?i:i+1;renderOuts();}
+function renderOuts(){ for(var i=0;i<3;i++) document.getElementById('o'+i).className='dot out'+(i<G.outs?' on':''); }
+
+function toggleBase(b){saveState();G.bases[b-1]=!G.bases[b-1];renderBases();}
+function clearBases(){saveState();G.bases=[false,false,false];renderBases();}
+function addRun(){ saveState(); var side=batting(); G.rhe[side][0]++;G.scores[side][G.inning-1]=(G.scores[side][G.inning-1]||0)+1; addLog('Run scored — '+team(side)+' '+G.rhe[side][0],'Run','t-run'); addPitcherStat(fielding(),'r'); renderScore(); }
+function renderBases(){ [1,2,3].forEach(function(b){document.getElementById('base'+b).className='base base-'+b+'b'+(G.bases[b-1]?' on':'');}); }
+
+function setActivePitcher(side,idx){ saveState(); G.pitchers[side].forEach(function(p,i){p.active=(i===idx);}); addLog((G.pitchers[side][idx].name||'P'+(idx+1))+' pitching for '+team(side),'P','t-info'); renderPitchers(side); }
+
+function pitcherOpts(side, selectedName) {
+  var pitchers = ROSTERS[side].filter(function(p){ return p.pos==='P' || p.pos==='SP' || p.pos==='RP'; });
+  if(!pitchers.length) return null; // no roster loaded — fall back to text input
+  var html = '<option value="">— Select pitcher —</option>';
+  pitchers.forEach(function(p){
+    var label = (p.jersey ? '#'+p.jersey+' ' : '') + p.name;
+    html += '<option value="'+esc(p.name)+'"'+(p.name===selectedName?' selected':'')+'>'+label+'</option>';
+  });
+  return html;
+}
+
+function renderPitchers(side){
+  var panel=document.getElementById(side+'PitcherPanel');
+  var pp=G.pitchers[side];
+  var tName=team(side);
+  var logo=TEAM_LOGOS[tName]?'<img src="'+TEAM_LOGOS[tName]+'" style="width:20px;height:20px;object-fit:contain;vertical-align:middle;margin-right:6px;" alt="" />':'';
+  var html='<div class="ph">'+logo+'<span>'+tName+'</span><span class="ph-hint">tap row to set active</span></div>';
+  pp.forEach(function(p,i){
+    var a=p.active;
+    var opts = pitcherOpts(side, p.name);
+    html+='<div class="prow'+(a?' active-p':'')+'" onclick="setActivePitcher(\''+side+'\','+i+')">';
+    html+='<span class="p-dot'+(a?'':' hidden')+'"></span>';
+    if(opts !== null){
+      // Roster loaded — show dropdown
+      html+='<select class="p-name-sel" onclick="event.stopPropagation()" onchange="G.pitchers.'+side+'['+i+'].name=this.value;renderPitchers(\''+side+'\')">'+opts+'</select>';
+    } else {
+      // No roster — show text input
+      html+='<input class="p-name" value="'+esc(p.name)+'" placeholder="Pitcher '+(i+1)+'" onclick="event.stopPropagation()" onchange="G.pitchers.'+side+'['+i+'].name=this.value;renderPitchers(\''+side+'\')" />';
+    }
+    html+='<span class="pc" id="'+side+'pc'+i+'">'+p.pitches+'</span>';
+    // Stat badges
+    var stats='<div class="p-stats">';
+    if(p.k>0)  stats+='<span class="pstat pstat-k">'+p.k+'K</span>';
+    if(p.bb>0) stats+='<span class="pstat pstat-bb">'+p.bb+'BB</span>';
+    if(p.r>0)  stats+='<span class="pstat pstat-r">'+p.r+'R</span>';
+    stats+='</div>';
+    html+=stats;
+    html+='<div class="padj" onclick="event.stopPropagation()"><button class="pb" onclick="adj(\''+side+'\','+i+',-1)">−</button><button class="pb" onclick="adj(\''+side+'\','+i+',1)">+</button></div>';
+    html+='</div>';
+  });
+  html+='<div class="add-p" onclick="addPitcher(\''+side+'\')"><span style="font-size:16px;margin-right:4px">+</span>Add pitcher</div>';
+  panel.innerHTML=html;
+}
+function adj(side,i,d){ G.pitchers[side][i].pitches=Math.max(0,G.pitchers[side][i].pitches+d); document.getElementById(side+'pc'+i).textContent=G.pitchers[side][i].pitches; }
+function addPitcher(side){G.pitchers[side].push({name:'',pitches:0,k:0,bb:0,r:0,active:false});renderPitchers(side);}
+
+function exportPDF(){
+  var away = document.getElementById('teamAway').value || 'Away';
+  var home = document.getElementById('teamHome').value || 'Home';
+  var awayLogo = TEAM_LOGOS[away] ? '<img src="'+TEAM_LOGOS[away]+'" style="width:36px;height:36px;object-fit:contain;vertical-align:middle;margin-right:8px;" />' : '';
+  var homeLogo = TEAM_LOGOS[home] ? '<img src="'+TEAM_LOGOS[home]+'" style="width:36px;height:36px;object-fit:contain;vertical-align:middle;margin-left:8px;" />' : '';
+  document.getElementById('printHeader').innerHTML = awayLogo + away + ' vs ' + home + homeLogo;
+  window.print();
+}
+
+function resetGame(){ if(!confirm('Reset the entire game? All data will be cleared.')) return;
+  HISTORY = [];
+  hitWithErr = false;
+  clearStorage();
+  var undoBtn = document.getElementById('undoBtn'); if(undoBtn) undoBtn.disabled=true;
+  var hitErrBtn = document.getElementById('hitErrToggle'); if(hitErrBtn) hitErrBtn.className='hit-err-toggle';
+  var hitErrHint = document.getElementById('hitErrHint'); if(hitErrHint) hitErrHint.textContent=''; G={inning:1,half:'top',outs:0,balls:0,strikes:0,fouls:0,bases:[false,false,false],totalInnings:9,scores:{home:Array(9).fill(null),away:Array(9).fill(null)},rhe:{home:[0,0,0],away:[0,0,0]},homeBatter:0,awayBatter:0,lineup:{home:Array(9).fill(null).map(mkSlot),away:Array(9).fill(null).map(mkSlot)},pitchers:{home:[{name:'',pitches:0,k:0,bb:0,r:0,active:true}],away:[{name:'',pitches:0,k:0,bb:0,r:0,active:true}]},log:[]}; outState.type=null; outState.fielder=null; outState.throwTo=null; ROSTERS={home:[],away:[]}; ROSTER_LOADING={home:false,away:false};
+  document.getElementById('outTypeFly').className='out-type-btn otf';
+  document.getElementById('outTypeGround').className='out-type-btn otg';
+  document.getElementById('outTypeError').className='out-type-btn ote';
+  init(); }
+
+var MLB_TEAMS = [
+  '— Select Team —',
+  // AL East
+  'Baltimore Orioles','Boston Red Sox','New York Yankees','Tampa Bay Rays','Toronto Blue Jays',
+  // AL Central
+  'Chicago White Sox','Cleveland Guardians','Detroit Tigers','Kansas City Royals','Minnesota Twins',
+  // AL West
+  'Houston Astros','Los Angeles Angels','Oakland Athletics','Seattle Mariners','Texas Rangers',
+  // NL East
+  'Atlanta Braves','Miami Marlins','New York Mets','Philadelphia Phillies','Washington Nationals',
+  // NL Central
+  'Chicago Cubs','Cincinnati Reds','Milwaukee Brewers','Pittsburgh Pirates','St. Louis Cardinals',
+  // NL West
+  'Arizona Diamondbacks','Colorado Rockies','Los Angeles Dodgers','San Diego Padres','San Francisco Giants'
+];
+
+function buildTeamOptions(selectedVal) {
+  return MLB_TEAMS.map(function(t){
+    return '<option value="'+t+'"'+(t===selectedVal?' selected':'')+'>'+t+'</option>';
+  }).join('');
+}
+
+function populateTeamDropdowns() {
+  var awayEl = document.getElementById('teamAway');
+  var homeEl = document.getElementById('teamHome');
+  awayEl.innerHTML = buildTeamOptions('— Select Team —');
+  homeEl.innerHTML = buildTeamOptions('— Select Team —');
+}
+
+var TEAM_LOGOS = {
+  'Arizona Diamondbacks':   'https://www.mlbstatic.com/team-logos/109.svg',
+  'Atlanta Braves':         'https://www.mlbstatic.com/team-logos/144.svg',
+  'Baltimore Orioles':      'https://www.mlbstatic.com/team-logos/110.svg',
+  'Boston Red Sox':         'https://www.mlbstatic.com/team-logos/111.svg',
+  'Chicago Cubs':           'https://www.mlbstatic.com/team-logos/112.svg',
+  'Chicago White Sox':      'https://www.mlbstatic.com/team-logos/145.svg',
+  'Cincinnati Reds':        'https://www.mlbstatic.com/team-logos/113.svg',
+  'Cleveland Guardians':    'https://www.mlbstatic.com/team-logos/114.svg',
+  'Colorado Rockies':       'https://www.mlbstatic.com/team-logos/115.svg',
+  'Detroit Tigers':         'https://www.mlbstatic.com/team-logos/116.svg',
+  'Houston Astros':         'https://www.mlbstatic.com/team-logos/117.svg',
+  'Kansas City Royals':     'https://www.mlbstatic.com/team-logos/118.svg',
+  'Los Angeles Angels':     'https://www.mlbstatic.com/team-logos/108.svg',
+  'Los Angeles Dodgers':    'https://www.mlbstatic.com/team-logos/119.svg',
+  'Miami Marlins':          'https://www.mlbstatic.com/team-logos/146.svg',
+  'Milwaukee Brewers':      'https://www.mlbstatic.com/team-logos/158.svg',
+  'Minnesota Twins':        'https://www.mlbstatic.com/team-logos/142.svg',
+  'New York Mets':          'https://www.mlbstatic.com/team-logos/121.svg',
+  'New York Yankees':       'https://www.mlbstatic.com/team-logos/147.svg',
+  'Oakland Athletics':      'https://www.mlbstatic.com/team-logos/133.svg',
+  'Philadelphia Phillies':  'https://www.mlbstatic.com/team-logos/143.svg',
+  'Pittsburgh Pirates':     'https://www.mlbstatic.com/team-logos/134.svg',
+  'San Diego Padres':       'https://www.mlbstatic.com/team-logos/135.svg',
+  'San Francisco Giants':   'https://www.mlbstatic.com/team-logos/137.svg',
+  'Seattle Mariners':       'https://www.mlbstatic.com/team-logos/136.svg',
+  'St. Louis Cardinals':    'https://www.mlbstatic.com/team-logos/138.svg',
+  'Tampa Bay Rays':         'https://www.mlbstatic.com/team-logos/139.svg',
+  'Texas Rangers':          'https://www.mlbstatic.com/team-logos/140.svg',
+  'Toronto Blue Jays':      'https://www.mlbstatic.com/team-logos/141.svg',
+  'Washington Nationals':   'https://www.mlbstatic.com/team-logos/120.svg'
+};
+
+function updateLogo(side) {
+  var val = document.getElementById('team'+side.charAt(0).toUpperCase()+side.slice(1)).value;
+  var imgId = 'logo'+side.charAt(0).toUpperCase()+side.slice(1);
+  var img = document.getElementById(imgId);
+  if(!img) return;
+  var url = TEAM_LOGOS[val];
+  if(url) { img.src=url; img.alt=val; img.className='team-logo visible'; }
+  else { img.src=''; img.alt=''; img.className='team-logo'; }
+}
+
+// ── Stadium outlines ──
+// Each stadium: name, lf, lcf, cf, rcf, rf (distances in feet)
+// Wall path defined as SVG polygon points in a 120x100 coordinate space
+// origin = home plate at bottom-center (60,95); field scales up/left/right
+var STADIUMS = {
+  'Arizona Diamondbacks':  {name:'Chase Field',          lf:328,lcf:374,cf:407,rcf:374,rf:335},
+  'Atlanta Braves':        {name:'Truist Park',           lf:335,lcf:385,cf:400,rcf:385,rf:325},
+  'Baltimore Orioles':     {name:'Oriole Park',           lf:333,lcf:364,cf:410,rcf:373,rf:318},
+  'Boston Red Sox':        {name:'Fenway Park',           lf:310,lcf:379,cf:420,rcf:380,rf:302},
+  'Chicago Cubs':          {name:'Wrigley Field',         lf:355,lcf:368,cf:400,rcf:368,rf:353},
+  'Chicago White Sox':     {name:'Guaranteed Rate Field', lf:330,lcf:375,cf:400,rcf:375,rf:335},
+  'Cincinnati Reds':       {name:'Great American',        lf:328,lcf:370,cf:404,rcf:370,rf:325},
+  'Cleveland Guardians':   {name:'Progressive Field',     lf:325,lcf:370,cf:405,rcf:375,rf:325},
+  'Colorado Rockies':      {name:'Coors Field',           lf:347,lcf:390,cf:415,rcf:375,rf:350},
+  'Detroit Tigers':        {name:'Comerica Park',         lf:345,lcf:370,cf:420,rcf:365,rf:330},
+  'Houston Astros':        {name:'Minute Maid Park',      lf:315,lcf:362,cf:409,rcf:373,rf:326},
+  'Kansas City Royals':    {name:'Kauffman Stadium',      lf:330,lcf:375,cf:410,rcf:375,rf:330},
+  'Los Angeles Angels':    {name:'Angel Stadium',         lf:333,lcf:390,cf:396,rcf:370,rf:330},
+  'Los Angeles Dodgers':   {name:'Dodger Stadium',        lf:330,lcf:375,cf:395,rcf:375,rf:330},
+  'Miami Marlins':         {name:'LoanDepot Park',        lf:344,lcf:386,cf:407,rcf:392,rf:335},
+  'Milwaukee Brewers':     {name:'American Family Field', lf:344,lcf:371,cf:400,rcf:374,rf:345},
+  'Minnesota Twins':       {name:'Target Field',          lf:339,lcf:377,cf:411,rcf:373,rf:328},
+  'New York Mets':         {name:'Citi Field',            lf:335,lcf:379,cf:408,rcf:383,rf:330},
+  'New York Yankees':      {name:'Yankee Stadium',        lf:318,lcf:399,cf:408,rcf:385,rf:314},
+  'Oakland Athletics':     {name:'Sutter Health Park',   lf:330,lcf:375,cf:400,rcf:375,rf:330},
+  'Philadelphia Phillies': {name:'Citizens Bank Park',   lf:329,lcf:374,cf:401,rcf:369,rf:330},
+  'Pittsburgh Pirates':    {name:'PNC Park',              lf:325,lcf:383,cf:399,rcf:375,rf:320},
+  'San Diego Padres':      {name:'Petco Park',            lf:334,lcf:367,cf:396,rcf:382,rf:322},
+  'San Francisco Giants':  {name:'Oracle Park',           lf:339,lcf:364,cf:399,rcf:421,rf:309},
+  'Seattle Mariners':      {name:'T-Mobile Park',         lf:331,lcf:378,cf:405,rcf:381,rf:326},
+  'St. Louis Cardinals':   {name:'Busch Stadium',         lf:336,lcf:375,cf:400,rcf:375,rf:335},
+  'Tampa Bay Rays':        {name:'Tropicana Field',       lf:315,lcf:370,cf:404,rcf:370,rf:322},
+  'Texas Rangers':         {name:'Globe Life Field',      lf:329,lcf:372,cf:407,rcf:374,rf:326},
+  'Toronto Blue Jays':     {name:'Rogers Centre',         lf:328,lcf:375,cf:400,rcf:375,rf:328},
+  'Washington Nationals':  {name:'Nationals Park',        lf:336,lcf:377,cf:402,rcf:370,rf:335}
+};
+
+function renderStadium(teamName) {
+  var wrap = document.getElementById('stadiumWrap');
+  if(!wrap) return;
+  var sd = STADIUMS[teamName];
+  if(!sd){ wrap.innerHTML=''; return; }
+
+  // Scale distances to SVG coords. Home plate at cx=60, cy=88 in 120x100 space.
+  // Max distance ~420ft maps to ~55 units radius
+  var cx=60, cy=88, scale=55/420;
+  function polar(angleDeg, dist) {
+    var rad = (angleDeg - 90) * Math.PI / 180;
+    var r = dist * scale;
+    return [cx + r*Math.cos(rad), cy + r*Math.sin(rad)];
+  }
+  // Foul lines at 45° from center; wall points at measured distances
+  // LF pole = -45°, LCF=-22.5°, CF=0°, RCF=22.5°, RF=45° (relative to 2B direction)
+  // Angle 0 = straight up (toward CF from home)
+  var lf  = polar(-45, sd.lf);
+  var lcf = polar(-22.5, sd.lcf);
+  var cf  = polar(0, sd.cf);
+  var rcf = polar(22.5, sd.rcf);
+  var rf  = polar(45, sd.rf);
+
+  // Foul lines extend to corners
+  var lfLine = polar(-45, sd.lf+12);
+  var rfLine = polar(45,  sd.rf+12);
+
+  function pt(p){ return p[0].toFixed(1)+','+p[1].toFixed(1); }
+
+  // Wall path
+  var wallPath = 'M '+pt(lfLine)+' L '+pt(lf)+' L '+pt(lcf)+' L '+pt(cf)+' L '+pt(rcf)+' L '+pt(rf)+' L '+pt(rfLine);
+
+  // Infield diamond: bases 90ft apart. 90ft ~ 90*scale = ~11.8 units
+  var bscale = 90*scale;
+  var hb = [cx, cy];
+  var first  = [cx+bscale*Math.sin(Math.PI/4), cy-bscale*Math.cos(Math.PI/4)];
+  var second = [cx, cy - bscale*Math.sqrt(2)];
+  var third  = [cx-bscale*Math.sin(Math.PI/4), cy-bscale*Math.cos(Math.PI/4)];
+
+  // Pitcher's mound center (60.5ft)
+  var mound = [cx, cy - 60.5*scale];
+
+  var isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  var grassColor  = isDark ? '#1a3020' : '#c8e6b0';
+  var dirtColor   = isDark ? '#3a2a1a' : '#d4a56a';
+  var wallColor   = isDark ? '#4a5568' : '#718096';
+  var lineColor   = isDark ? '#a0aec0' : '#4a5568';
+  var textColor   = isDark ? '#a0aec0' : '#4a5568';
+  var markerColor = isDark ? '#e2e8f0' : '#2d3748';
+
+  var svg = '<svg viewBox="0 0 120 100" width="100%" style="display:block;max-height:120px;">'
+    // Grass fill
+    +'<polygon points="'+pt(hb)+' '+pt(lfLine)+' '+pt(lf)+' '+pt(lcf)+' '+pt(cf)+' '+pt(rcf)+' '+pt(rf)+' '+pt(rfLine)+'" fill="'+grassColor+'" stroke="none"/>'
+    // Dirt infield circle (r~13 units)
+    +'<circle cx="'+cx+'" cy="'+(cy-13)+'" r="15" fill="'+dirtColor+'" stroke="none"/>'
+    // Warning track (2ft thick = ~0.26 units, shown as slightly wider wall outline)
+    +'<path d="'+wallPath+'" fill="none" stroke="'+wallColor+'" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>'
+    // Foul lines
+    +'<line x1="'+cx+'" y1="'+cy+'" x2="'+lfLine[0]+'" y2="'+lfLine[1]+'" stroke="'+lineColor+'" stroke-width="0.4" stroke-dasharray="1.5,1"/>'
+    +'<line x1="'+cx+'" y1="'+cy+'" x2="'+rfLine[0]+'" y2="'+rfLine[1]+'" stroke="'+lineColor+'" stroke-width="0.4" stroke-dasharray="1.5,1"/>'
+    // Basepaths
+    +'<polygon points="'+pt(hb)+' '+pt(first)+' '+pt(second)+' '+pt(third)+'" fill="none" stroke="'+lineColor+'" stroke-width="0.6"/>'
+    // Bases
+    +'<rect x="'+(hb[0]-1.2)+'" y="'+(hb[1]-1.2)+'" width="2.4" height="2.4" rx="0.4" fill="white" stroke="'+lineColor+'" stroke-width="0.3"/>'
+    +'<rect x="'+(first[0]-1.2)+'" y="'+(first[1]-1.2)+'" width="2.4" height="2.4" rx="0.4" fill="white" stroke="'+lineColor+'" stroke-width="0.3"/>'
+    +'<rect x="'+(second[0]-1.2)+'" y="'+(second[1]-1.2)+'" width="2.4" height="2.4" rx="0.4" fill="white" stroke="'+lineColor+'" stroke-width="0.3"/>'
+    +'<rect x="'+(third[0]-1.2)+'" y="'+(third[1]-1.2)+'" width="2.4" height="2.4" rx="0.4" fill="white" stroke="'+lineColor+'" stroke-width="0.3"/>'
+    // Mound
+    +'<circle cx="'+mound[0].toFixed(1)+'" cy="'+mound[1].toFixed(1)+'" r="1.4" fill="'+dirtColor+'" stroke="'+lineColor+'" stroke-width="0.3"/>'
+    // Distance markers
+    +'<text x="'+(lf[0]-2)+'" y="'+(lf[1]-1)+'" font-size="4.5" fill="'+markerColor+'" text-anchor="middle" font-family="sans-serif" font-weight="600">'+sd.lf+'</text>'
+    +'<text x="'+cf[0]+'" y="'+(cf[1]-1.5)+'" font-size="4.5" fill="'+markerColor+'" text-anchor="middle" font-family="sans-serif" font-weight="600">'+sd.cf+'</text>'
+    +'<text x="'+(rf[0]+2)+'" y="'+(rf[1]-1)+'" font-size="4.5" fill="'+markerColor+'" text-anchor="middle" font-family="sans-serif" font-weight="600">'+sd.rf+'</text>'
+    // Stadium name
+    +'<text x="'+cx+'" y="97.5" font-size="4" fill="'+textColor+'" text-anchor="middle" font-family="sans-serif">'+sd.name+'</text>'
+    +'</svg>';
+
+  wrap.innerHTML = svg;
+}
+
+// ── Local storage persistence ──
+var STORAGE_KEY = 'baseball_scorecard_v1';
+
+function saveToStorage(){
+  try {
+    var payload = {
+      G: G,
+      teamAway: document.getElementById('teamAway').value,
+      teamHome: document.getElementById('teamHome').value
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+  } catch(e){}
+}
+
+function loadFromStorage(){
+  try {
+    var raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw) return false;
+    var payload = JSON.parse(raw);
+    if(!payload || !payload.G) return false;
+    G = payload.G;
+    // Restore team dropdowns
+    if(payload.teamAway) document.getElementById('teamAway').value = payload.teamAway;
+    if(payload.teamHome) document.getElementById('teamHome').value = payload.teamHome;
+    return true;
+  } catch(e){ return false; }
+}
+
+function clearStorage(){
+  try { localStorage.removeItem(STORAGE_KEY); } catch(e){}
+}
+
+function onTeamChange() {
+  var away = document.getElementById('teamAway').value;
+  var home = document.getElementById('teamHome').value;
+  var awayLabel = away==='— Select Team —' ? 'Away' : away;
+  var homeLabel = home==='— Select Team —' ? 'Home' : home;
+  var awayLogo = TEAM_LOGOS[away] ? '<img src="'+TEAM_LOGOS[away]+'" style="width:20px;height:20px;object-fit:contain;vertical-align:middle;margin-right:6px;" alt="" />' : '';
+  var homeLogo = TEAM_LOGOS[home] ? '<img src="'+TEAM_LOGOS[home]+'" style="width:20px;height:20px;object-fit:contain;vertical-align:middle;margin-right:6px;" alt="" />' : '';
+  document.getElementById('awayLineupTitle').innerHTML = awayLogo + awayLabel;
+  document.getElementById('homeLineupTitle').innerHTML = homeLogo + homeLabel;
+  updateLogo('away'); updateLogo('home');
+  renderPitchers('home'); renderPitchers('away'); renderScore();
+  renderStadium(home === '— Select Team —' ? null : home);
+  // Fetch rosters when valid teams are selected
+  if(away && away !== '— Select Team —') fetchRoster('away', away);
+  else { ROSTERS['away']=[]; renderLineup('away'); }
+  if(home && home !== '— Select Team —') fetchRoster('home', home);
+  else { ROSTERS['home']=[]; renderLineup('home'); }
+  saveToStorage();
+}
+
+document.getElementById('teamHome').addEventListener('input',function(){ document.getElementById('homeLineupTitle').textContent=this.value||'Home'; renderPitchers('home');renderPitchers('away');renderScore(); saveToStorage(); });
+document.getElementById('teamAway').addEventListener('input',function(){ document.getElementById('awayLineupTitle').textContent=this.value||'Away'; renderPitchers('home');renderPitchers('away');renderScore(); saveToStorage(); });
+
+function init(){
+  populateTeamDropdowns();
+  var restored = loadFromStorage();
+  if(restored){
+    // Re-fire team change to reload logos, rosters, stadium
+    var away = document.getElementById('teamAway').value;
+    var home = document.getElementById('teamHome').value;
+    if(away && away !== '— Select Team —'){ updateLogo('away'); fetchRoster('away', away); }
+    if(home && home !== '— Select Team —'){ updateLogo('home'); fetchRoster('home', home); renderStadium(home); }
+    onTeamChange();
+  }
+  renderScore(); renderInn(); renderCount(); renderOuts(); renderBases();
+  renderLineup('home'); renderLineup('away');
+  renderPitchers('home'); renderPitchers('away');
+  renderLog(); buildFielderGrid(); updateOutBtn();
+}
+init();
+</script>
+</body>
+</html>
