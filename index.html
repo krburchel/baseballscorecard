@@ -155,11 +155,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .base-3b { top:30px; left:4px; }
 .base-1b { top:30px; left:56px; }
 .base-home { bottom:4px; left:30px; background:var(--header-bg); }
+.runner-labels { margin-top:2px; font-size:10px; color:var(--muted); line-height:1.4; text-align:center; }
+.runner-labels span { display:inline-block; margin:0 3px; }
+.runner-labels .rlabel-on { color:var(--amber); font-weight:600; }
 
 /* action row */
 .action-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px; }
 @media(max-width:480px){ .action-row{ grid-template-columns:1fr; } }
-.hit-btns { display:grid; grid-template-columns:repeat(5,1fr); gap:6px; margin-top:6px; }
+.hit-btns { display:grid; grid-template-columns:repeat(6,1fr); gap:6px; margin-top:6px; }
 .hit-btn { padding:8px 4px; font-size:13px; font-weight:600; border-radius:8px; cursor:pointer; text-align:center; border:1.5px solid; }
 .hit-btn:active { opacity:.75; }
 .h1b { background:var(--gl); color:var(--teal); border-color:var(--gc); }
@@ -167,6 +170,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .h3b { background:var(--pl); color:var(--purple); border-color:#CECBF6; }
 .hhr { background:var(--rl); color:var(--red); border-color:#F7C1C1; }
 .hhbp { background:#FAEEDA; color:#BA7517; border-color:#FAC775; }
+.hibb { background:var(--gl); color:var(--teal); border-color:var(--gc); }
 .hlabel { font-size:10px; font-weight:400; display:block; color:inherit; opacity:.75; margin-top:1px; }
 .hit-err-toggle { font-size:12px; padding:3px 10px; border:1.5px solid var(--border); border-radius:6px; background:transparent; cursor:pointer; color:var(--muted); font-weight:600; }
 .hit-err-toggle.on { border-color:#BA7517; color:#BA7517; background:#FAEEDA; }
@@ -180,12 +184,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 
 /* ── Out recording ── */
 .out-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:10px 12px; margin-bottom:10px; }
-.out-type-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-top:6px; }
+.out-type-row { display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:8px; margin-top:6px; }
 .out-type-btn { padding:9px 6px; font-size:13px; font-weight:600; border-radius:8px; cursor:pointer; text-align:center; border:1.5px solid; transition:box-shadow .1s; }
 .out-type-btn:active { opacity:.75; }
 .otf { background:var(--flyout-bg); color:var(--flyout-text); border-color:var(--flyout-border); }
 .otg { background:var(--groundout-bg); color:var(--groundout-text); border-color:var(--groundout-border); }
 .ote { background:#FAEEDA; color:#BA7517; border-color:#FAC775; }
+.otfc { background:var(--pl); color:var(--purple); border-color:#CECBF6; }
 .out-type-btn.sel { box-shadow:inset 0 0 0 2px currentColor; }
 .fielder-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:5px; margin-top:8px; }
 .fld-btn { padding:5px 2px; font-size:11px; border:1px solid var(--border); border-radius:6px; background:transparent; cursor:pointer; text-align:center; color:var(--muted); line-height:1.3; }
@@ -273,6 +278,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .hberr { background:#FAEEDA; color:#BA7517; }
 .hbhbp { background:#FAEEDA; color:#BA7517; }
 .hbbb  { background:#E1F5EE; color:#0F6E56; }
+.hbfc  { background:#EEEDFE; color:#534AB7; }
+.hbibb { background:#E1F5EE; color:#0F6E56; }
+.hbwp  { background:#FAECE7; color:#993C1D; }
 
 /* pitchers */
 .prow { display:flex; align-items:center; gap:8px; padding:7px 12px; border-bottom:1px solid var(--border); cursor:pointer; }
@@ -326,6 +334,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .t-hbp { background:#FAEEDA; color:#BA7517; }
 .t-sf { background:#E6F1FB; color:#185FA5; }
 .t-sac { background:#EEEDFE; color:#534AB7; }
+.t-fc { background:#EEEDFE; color:#534AB7; }
+.t-ibb { background:#E1F5EE; color:#0F6E56; }
+.t-wp { background:#FAECE7; color:#993C1D; }
 .empty-log { font-size:13px; color:var(--muted); padding:16px 12px; text-align:center; }
 
 /* ═══════════════════════════════════════════════
@@ -506,11 +517,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         <button class="btn" onclick="addRun()">+ Run</button>
         <button class="btn" onclick="clearBases()">Clear</button>
       </div>
+      <div class="runner-labels" id="runnerLabels"></div>
       <div style="border-top:1px solid var(--border);margin-top:8px;padding-top:8px">
-        <div class="label" style="margin-bottom:5px">Stolen bases / passed ball</div>
+        <div class="label" style="margin-bottom:5px">Stolen bases / wild pitch / passed ball</div>
         <div class="btns">
           <button class="btn" style="border-color:#185FA5;color:#185FA5" onclick="recordSB()">SB</button>
           <button class="btn" style="border-color:#BA7517;color:#BA7517" onclick="recordCS()">CS</button>
+          <button class="btn" style="border-color:#993C1D;color:#993C1D" onclick="recordWP()">WP</button>
           <button class="btn" style="border-color:#993C1D;color:#993C1D" onclick="recordPB()">PB</button>
         </div>
       </div>
@@ -527,6 +540,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         <button class="hit-btn h3b" onclick="recordHit(3)">3B<span class="hlabel">Triple</span></button>
         <button class="hit-btn hhr" onclick="recordHit(4)">HR<span class="hlabel">Home Run</span></button>
         <button class="hit-btn hhbp" onclick="recordHBP()">HBP<span class="hlabel">Hit by pitch</span></button>
+        <button class="hit-btn hibb" onclick="recordIBB()">IBB<span class="hlabel">Intent. walk</span></button>
       </div>
       <div style="margin-top:7px;display:flex;align-items:center;gap:8px;">
         <button class="hit-err-toggle" id="hitErrToggle" onclick="toggleHitErr()">+ E on play</button>
@@ -555,6 +569,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       </button>
       <button class="out-type-btn ote" id="outTypeError" onclick="selectOutType('error')">
         E<span style="font-size:10px;font-weight:400;display:block;opacity:.75;margin-top:1px">Error</span>
+      </button>
+      <button class="out-type-btn otfc" id="outTypeFC" onclick="selectOutType('fc')">
+        FC<span style="font-size:10px;font-weight:400;display:block;opacity:.75;margin-top:1px">Fielder's ch.</span>
       </button>
     </div>
     <div style="margin-top:8px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
@@ -608,7 +625,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 
 <script>
 var POSITIONS = ['—','P','C','1B','2B','3B','SS','LF','CF','RF','DH','PH','PR','IF','OF'];
-function mkHits(){ return {s:0,d:0,t:0,hr:0,kl:0,ks:0,fo:0,go:0,sb:0,cs:0,err:0,hbp:0,bb:0,sf:0,sac:0}; }
+function mkHits(){ return {s:0,d:0,t:0,hr:0,kl:0,ks:0,fo:0,go:0,sb:0,cs:0,err:0,hbp:0,bb:0,sf:0,sac:0,fc:0,ibb:0,wp:0}; }
 function mkSlot(){ return {name:'',pos:'—',hits:mkHits(),subs:[],pending:false}; }
 function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
 function posOpts(sel){ return POSITIONS.map(function(p){ return '<option value="'+p+'"'+(p===sel?' selected':'')+'>'+p+'</option>'; }).join(''); }
@@ -625,7 +642,7 @@ function activeHits(side, idx){
 
 var G = {
   inning:1, half:'top', outs:0, balls:0, strikes:0, fouls:0,
-  bases:[false,false,false],
+  bases:[null,null,null],
   totalInnings: 9,
   scores:{home:Array(9).fill(null), away:Array(9).fill(null)},
   rhe:{home:[0,0,0], away:[0,0,0]},
@@ -639,6 +656,11 @@ var G = {
 // ── Undo history ──
 var HISTORY = [];
 var MAX_HISTORY = 30;
+
+// Helper: is a base occupied? Works with both old boolean and new name-string format
+function baseOcc(i){ return !!G.bases[i]; }
+// Helper: short name for runner labels (first initial + last name)
+function shortName(n){ if(!n) return '?'; var parts=n.trim().split(/\s+/); if(parts.length===1) return parts[0]; return parts[0][0]+'. '+parts[parts.length-1]; }
 
 function saveState(){
   HISTORY.push(JSON.stringify({
@@ -691,6 +713,7 @@ function renderAll(){
   document.getElementById('outTypeFly').className = 'out-type-btn otf' + (outState.type === 'fly' ? ' sel' : '');
   document.getElementById('outTypeGround').className = 'out-type-btn otg' + (outState.type === 'ground' ? ' sel' : '');
   document.getElementById('outTypeError').className = 'out-type-btn ote' + (outState.type === 'error' ? ' sel' : '');
+  document.getElementById('outTypeFC').className = 'out-type-btn otfc' + (outState.type === 'fc' ? ' sel' : '');
 
   var dpBtn = document.getElementById('dpBtn');
   if(dpBtn) dpBtn.className = 'multi-out-btn' + (outState.multiOut === 'dp' ? ' sel' : '');
@@ -703,7 +726,7 @@ function renderAll(){
   if(lbl) lbl.textContent = outState.type === 'error' ? 'Fielder who made the error:' : 'Fielder who fielded the ball:';
 
   var wrap = document.getElementById('throwToWrap');
-  if(wrap) wrap.style.display = outState.type === 'ground' ? '' : 'none';
+  if(wrap) wrap.style.display = (outState.type === 'ground' || outState.type === 'fc') ? '' : 'none';
 
   updateSacBtns();
   buildFielderGrid();
@@ -805,7 +828,10 @@ function badges(h){
     { key:'cs',  cls:'hbcs',  label:'CS'      },
     { key:'err', cls:'hberr', label:'E'       },
     { key:'sf',  cls:'hbsf',  label:'SF'      },
-    { key:'sac', cls:'hbsac', label:'SAC'     }
+    { key:'sac', cls:'hbsac', label:'SAC'     },
+    { key:'fc',  cls:'hbfc',  label:'FC'      },
+    { key:'ibb', cls:'hbibb', label:'IBB'     },
+    { key:'wp',  cls:'hbwp',  label:'WP'      }
   ];
   items.forEach(function(it){
     if(h[it.key] > 0){
@@ -844,6 +870,17 @@ function recordPB(){
   addLog('Passed ball — E charged to '+team(fSide)+' C','PB','t-pb');
 }
 
+function recordWP(){
+  saveState();
+  var fSide = fielding();
+  var bside = batting();
+  var bidx = abIdx(bside);
+  activeHits(bside, bidx).wp++;
+  addPitch(fSide);
+  addLog('Wild pitch — charged to '+team(fSide)+' pitcher','WP','t-wp');
+  renderLineup(bside);
+}
+
 function recordHBP(){
   saveState();
   var side = batting();
@@ -855,7 +892,36 @@ function recordHBP(){
   logBatter(side, idx, 'HBP');
 
   // Force-advance runners and place batter on 1B (same as walk)
-  var runs = forceAdvance(side);
+  var runs = forceAdvance(side, nm);
+  if(runs > 0){
+    addLog(runs + ' run' + (runs > 1 ? 's' : '') + ' score', 'Run', 't-run');
+  }
+  renderBases();
+  renderScore();
+
+  G.balls = 0;
+  G.strikes = 0;
+  G.fouls = 0;
+  renderCount();
+  renderLineup(side);
+  if(!checkWalkoff()){
+    nextBatter(side);
+  }
+}
+
+function recordIBB(){
+  saveState();
+  var side = batting();
+  var idx = abIdx(side);
+  var nm = curName(side, idx);
+  activeHits(side, idx).ibb++;
+  // IBB doesn't count as a pitch in the traditional sense, but we track it
+  addLog(nm + ' — intentional walk', 'IBB', 't-ibb');
+  logBatter(side, idx, 'IBB');
+  addPitcherStat(fielding(), 'bb');
+
+  // Force-advance runners and place batter on 1B (same as walk)
+  var runs = forceAdvance(side, nm);
   if(runs > 0){
     addLog(runs + ' run' + (runs > 1 ? 's' : '') + ' score', 'Run', 't-run');
   }
@@ -928,9 +994,9 @@ function buildFielderGrid(){
       +'<span class="fld-pos-name">'+f.pos+'</span>'
       +'</button>';
   }).join('');
-  // Show/hide throw-to grid for groundouts
+  // Show/hide throw-to grid for groundouts and FC
   var wrap = document.getElementById('throwToWrap');
-  if(wrap) wrap.style.display = outState.type==='ground' ? '' : 'none';
+  if(wrap) wrap.style.display = (outState.type==='ground' || outState.type==='fc') ? '' : 'none';
   buildThrowToGrid();
 }
 
@@ -966,13 +1032,14 @@ function selectThrowTo(num){
 
 function selectOutType(type){
   outState.type = outState.type===type ? null : type;
-  // Clear throwTo when switching away from groundout
-  if(outState.type !== 'ground') outState.throwTo = null;
+  // Clear throwTo when switching away from groundout/fc
+  if(outState.type !== 'ground' && outState.type !== 'fc') outState.throwTo = null;
   document.getElementById('outTypeFly').className    = 'out-type-btn otf' + (outState.type==='fly'   ?' sel':'');
   document.getElementById('outTypeGround').className = 'out-type-btn otg' + (outState.type==='ground'?' sel':'');
   document.getElementById('outTypeError').className  = 'out-type-btn ote' + (outState.type==='error' ?' sel':'');
+  document.getElementById('outTypeFC').className     = 'out-type-btn otfc' + (outState.type==='fc'   ?' sel':'');
   var lbl = document.getElementById('fielderLabel');
-  if(lbl) lbl.textContent = outState.type==='error' ? 'Fielder who made the error:' : 'Fielder who fielded the ball:';
+  if(lbl) lbl.textContent = outState.type==='error' ? 'Fielder who made the error:' : outState.type==='fc' ? 'Fielder who made the play:' : 'Fielder who fielded the ball:';
   buildFielderGrid();
   updateOutBtn();
 }
@@ -983,11 +1050,12 @@ function updateOutBtn(){
   if(!btn) return;
   var isErr = outState.type === 'error';
   var isGround = outState.type === 'ground';
+  var isFC = outState.type === 'fc';
   var sacLabel = outState.sacType === 'sf' ? 'Sac Fly — ' : outState.sacType === 'sac' ? 'Sac Bunt — ' : '';
   btn.className = 'rec-out-btn' + (isErr ? ' rec-err-btn' : '');
 
   if(outState.type && outState.fielder){
-    var tLabel = outState.type === 'fly' ? 'Flyout' : outState.type === 'ground' ? 'Groundout' : 'Error';
+    var tLabel = outState.type === 'fly' ? 'Flyout' : outState.type === 'ground' ? 'Groundout' : outState.type === 'fc' ? "Fielder's Choice" : 'Error';
     var fInfo = FIELDERS.filter(function(f){ return f.num === outState.fielder; })[0];
     var ttInfo = outState.throwTo ? FIELDERS.filter(function(f){ return f.num === outState.throwTo; })[0] : null;
 
@@ -995,6 +1063,14 @@ function updateOutBtn(){
       btn.disabled = false;
       btn.textContent = 'Record Error — E' + outState.fielder + ' (' + fInfo.pos + ')';
       hint.textContent = 'Does NOT record an out. Increments E column.';
+    } else if(isFC){
+      btn.disabled = false;
+      if(ttInfo){
+        btn.textContent = "Record FC — " + outState.fielder + '-' + outState.throwTo + ' (' + fInfo.pos + ' to ' + ttInfo.pos + ')';
+      } else {
+        btn.textContent = "Record FC — " + outState.fielder + ' (' + fInfo.pos + ')';
+      }
+      hint.textContent = 'Batter reaches; out recorded on another runner.';
     } else if(isGround && ttInfo){
       var dpTag = outState.multiOut === 'dp' ? ' — Double play' : outState.multiOut === 'tp' ? ' — Triple play' : '';
       btn.disabled = false;
@@ -1018,7 +1094,7 @@ function updateOutBtn(){
     hint.textContent = '';
   } else if(!outState.type && outState.fielder){
     btn.disabled = true;
-    btn.textContent = 'Select flyout, groundout, or error';
+    btn.textContent = 'Select out type (F / G / E / FC)';
     hint.textContent = '';
   } else {
     btn.disabled = true;
@@ -1048,6 +1124,37 @@ function recordOut(){
     logBatter(side, idx, 'E' + outState.fielder);
     renderLineup(side);
     nextBatter(side);
+  } else if(outState.type === 'fc'){
+    // Fielder's choice: batter reaches 1B, out recorded on another runner
+    h.fc++;
+    var fcTag = ttInfo ? 'FC' + outState.fielder + '-' + outState.throwTo : 'FC' + outState.fielder;
+    if(ttInfo){
+      addLog(nm + " — fielder's choice " + outState.fielder + '-' + outState.throwTo + ' (' + fInfo.pos + ' to ' + ttInfo.pos + ')', fcTag, 't-fc');
+    } else {
+      addLog(nm + " — fielder's choice " + outState.fielder + ' (' + fInfo.pos + ')', fcTag, 't-fc');
+    }
+    logBatter(side, idx, fcTag);
+    addPitch(fielding());
+
+    // Record out on a runner (remove lead runner if present)
+    var walkoff = checkWalkoff();
+    var innOver = addOut();
+
+    // Place batter on 1B; remove the most advanced occupied base (runner retired)
+    // Work from 3B down to find a runner to remove
+    var removedRunner = false;
+    for(var bi = 2; bi >= 0; bi--){
+      if(baseOcc(bi)){
+        G.bases[bi] = null;
+        removedRunner = true;
+        break;
+      }
+    }
+    G.bases[0] = nm; // batter to 1B
+
+    renderBases();
+    renderLineup(side);
+    if(!innOver && !walkoff) nextBatter(side);
   } else {
     var dpSuffix = outState.multiOut === 'dp' ? ' (DP)' : outState.multiOut === 'tp' ? ' (TP)' : '';
     var sacPrefix = isSacFly ? 'SF — ' : isSacBunt ? 'SAC — ' : '';
@@ -1080,12 +1187,13 @@ function recordOut(){
     }
 
     // Sac fly: score runner from 3B if occupied
-    if(isSacFly && G.bases[2]){
-      G.bases[2] = false;
+    if(isSacFly && baseOcc(2)){
+      var scoredRunner = G.bases[2];
+      G.bases[2] = null;
       G.rhe[side][0]++;
       G.scores[side][G.inning - 1] = (G.scores[side][G.inning - 1] || 0) + 1;
       addPitcherStat(fielding(), 'r');
-      addLog('Runner scores on sac fly', 'Run', 't-run');
+      addLog((scoredRunner || 'Runner') + ' scores on sac fly', 'Run', 't-run');
       renderBases();
       renderScore();
     }
@@ -1121,6 +1229,7 @@ function recordOut(){
   document.getElementById('outTypeFly').className = 'out-type-btn otf';
   document.getElementById('outTypeGround').className = 'out-type-btn otg';
   document.getElementById('outTypeError').className = 'out-type-btn ote';
+  document.getElementById('outTypeFC').className = 'out-type-btn otfc';
   document.getElementById('dpBtn').className = 'multi-out-btn';
   document.getElementById('tpBtn').className = 'multi-out-btn';
   var moHint = document.getElementById('multiOutHint');
@@ -1375,7 +1484,7 @@ function resetGameSilent(){
   G = {
     inning: 1, half: 'top', outs: 0,
     balls: 0, strikes: 0, fouls: 0,
-    bases: [false, false, false],
+    bases: [null, null, null],
     totalInnings: 9,
     scores: { home: Array(9).fill(null), away: Array(9).fill(null) },
     rhe: { home: [0, 0, 0], away: [0, 0, 0] },
@@ -1451,8 +1560,9 @@ function onPlayerSelect(side, slotIdx, val) {
 
 function startSub(side,i){ G.lineup[side][i].pending=true; renderLineup(side); var el=document.getElementById(side+'_si_'+i)||document.getElementById(side+'_ss_'+i); if(el) el.focus(); }
 function cancelSub(side,i){ G.lineup[side][i].pending=false; renderLineup(side); }
-function confirmSub(side,i){
+function confirmSub(side,i,subType){
   saveState();
+  var st = subType || 'ph'; // default to pinch hitter
   // support both roster dropdown and free-text input
   var selEl = document.getElementById(side+'_ss_'+i);
   var inpEl = document.getElementById(side+'_si_'+i);
@@ -1464,10 +1574,25 @@ function confirmSub(side,i){
     var match=ROSTERS[side].filter(function(p){return p.name===nm;})[0];
     if(match) pos=match.pos;
   }
+  // For pinch runners, set position to PR
+  if(st==='pr') pos='PR';
   var prev=curName(side,i);
-  G.lineup[side][i].subs.push({name:nm,pos:pos,inning:G.inning,half:G.half,hits:mkHits()});
+  G.lineup[side][i].subs.push({name:nm,pos:pos,inning:G.inning,half:G.half,hits:mkHits(),subType:st});
   G.lineup[side][i].pending=false;
-  addLog(nm+' replaces '+prev+' (spot '+(i+1)+')','Sub','t-sub');
+  var label = st==='pr' ? 'PR' : 'PH';
+  addLog(nm+' ('+label+') replaces '+prev+' (spot '+(i+1)+')','Sub','t-sub');
+
+  // If pinch runner, update the base they're on (replace the old runner name)
+  if(st==='pr'){
+    for(var bi=0;bi<3;bi++){
+      if(G.bases[bi] && G.bases[bi] === prev){
+        G.bases[bi] = nm;
+        break;
+      }
+    }
+    renderBases();
+  }
+
   renderLineup(side);
 }
 
@@ -1515,7 +1640,8 @@ function renderLineup(side){
       } else {
         html+='<input class="sub-form-inp" id="'+side+'_si_'+i+'" placeholder="New player name" />';
       }
-      html+='<button class="sub-ok" onclick="confirmSub(\''+side+'\','+i+')">Confirm</button>';
+      html+='<button class="sub-ok" onclick="confirmSub(\''+side+'\','+i+',\'ph\')" title="Pinch Hitter">PH</button>';
+      html+='<button class="sub-ok" style="border-color:var(--teal);color:var(--teal)" onclick="confirmSub(\''+side+'\','+i+',\'pr\')" title="Pinch Runner">PR</button>';
       html+='<button class="sub-cancel" onclick="cancelSub(\''+side+'\','+i+')">Cancel</button>';
       html+='</div>';
     }
@@ -1634,15 +1760,14 @@ function toggleHitErr(){
 function advanceRunners(side, bases){
   var runs = 0;
   // Work from 3B → 1B so we don't overwrite
-  // newBases starts empty
-  var newBases = [false, false, false];
+  var newBases = [null, null, null];
   for(var i = 2; i >= 0; i--){
-    if(G.bases[i]){
+    if(baseOcc(i)){
       var newPos = i + bases; // 0-indexed: 0=1B, 1=2B, 2=3B, 3+=scores
       if(newPos >= 3){
         runs++;
       } else {
-        newBases[newPos] = true;
+        newBases[newPos] = G.bases[i]; // carry runner name
       }
     }
   }
@@ -1659,28 +1784,25 @@ function advanceRunners(side, bases){
   return runs;
 }
 
-// forceAdvance: for walks/HBP — only advance runners who are forced.
+// forceAdvance: for walks/HBP/IBB — only advance runners who are forced.
 // Batter goes to 1B; runners on consecutive bases from 1B are pushed forward.
 // Returns the number of runs scored.
-function forceAdvance(side){
+function forceAdvance(side, batterName){
   var runs = 0;
   // Check how far the force chain goes
-  // 1B occupied → runner forced to 2B
-  // 1B+2B occupied → both forced, 2B→3B, 1B→2B
-  // 1B+2B+3B → all forced, 3B scores
-  if(G.bases[0]){ // 1B occupied — force chain starts
-    if(G.bases[1]){ // 2B also occupied
-      if(G.bases[2]){ // bases loaded — 3B scores
+  if(baseOcc(0)){ // 1B occupied — force chain starts
+    if(baseOcc(1)){ // 2B also occupied
+      if(baseOcc(2)){ // bases loaded — 3B scores
         runs++;
         G.rhe[side][0]++;
         G.scores[side][G.inning - 1] = (G.scores[side][G.inning - 1] || 0) + 1;
         addPitcherStat(fielding(), 'r');
       }
-      G.bases[2] = true; // 2B → 3B
+      G.bases[2] = G.bases[1]; // 2B → 3B (carry name)
     }
-    G.bases[1] = true; // 1B → 2B
+    G.bases[1] = G.bases[0]; // 1B → 2B (carry name)
   }
-  G.bases[0] = true; // batter → 1B
+  G.bases[0] = batterName || true; // batter → 1B
   return runs;
 }
 
@@ -1718,7 +1840,7 @@ function recordHit(b){
 
   if(b === 4){
     // Home run: all runners + batter score
-    var runnersOn = G.bases.filter(Boolean).length;
+    var runnersOn = G.bases.filter(function(v){ return !!v; }).length;
     var runsScored = runnersOn + 1;
     G.rhe[side][0] += runsScored;
     G.scores[side][G.inning - 1] = (G.scores[side][G.inning - 1] || 0) + runsScored;
@@ -1726,12 +1848,12 @@ function recordHit(b){
       addPitcherStat(fielding(), 'r');
     }
     addLog(runsScored + ' run' + (runsScored > 1 ? 's' : '') + ' score', 'Run', 't-run');
-    G.bases = [false, false, false];
+    G.bases = [null, null, null];
   } else {
     // Single / Double / Triple: advance existing runners, place batter
     var runs = advanceRunners(side, b);
     // Place the batter on the appropriate base (0-indexed: 1B=0, 2B=1, 3B=2)
-    G.bases[b - 1] = true;
+    G.bases[b - 1] = nm;
     if(runs > 0){
       addLog(runs + ' run' + (runs > 1 ? 's' : '') + ' score', 'Run', 't-run');
     }
@@ -1904,7 +2026,7 @@ function toggleHalf(){
   G.balls = 0;
   G.strikes = 0;
   G.fouls = 0;
-  G.bases = [false, false, false];
+  G.bases = [null, null, null];
   renderInn();
   renderScore();
   renderCount();
@@ -1939,7 +2061,8 @@ function addBall(){
     addPitcherStat(fielding(), 'bb');
 
     // Force-advance runners and place batter on 1B
-    var runs = forceAdvance(bside);
+    var bnm = curName(bside, bidx);
+    var runs = forceAdvance(bside, bnm);
     if(runs > 0){
       addLog(runs + ' run' + (runs > 1 ? 's' : '') + ' score', 'Run', 't-run');
     }
@@ -2056,7 +2179,7 @@ function addOut(){
       G.balls = 0;
       G.strikes = 0;
       G.fouls = 0;
-      G.bases = [false, false, false];
+      G.bases = [null, null, null];
       renderCount();
       renderOuts();
       renderBases();
@@ -2081,7 +2204,7 @@ function addOut(){
     G.balls = 0;
     G.strikes = 0;
     G.fouls = 0;
-    G.bases = [false, false, false];
+    G.bases = [null, null, null];
     renderInn();
     renderScore();
     renderCount();
@@ -2116,13 +2239,13 @@ function renderOuts(){
 
 function toggleBase(b){
   saveState();
-  G.bases[b - 1] = !G.bases[b - 1];
+  G.bases[b - 1] = baseOcc(b - 1) ? null : '?';
   renderBases();
 }
 
 function clearBases(){
   saveState();
-  G.bases = [false, false, false];
+  G.bases = [null, null, null];
   renderBases();
 }
 
@@ -2139,8 +2262,21 @@ function addRun(){
 
 function renderBases(){
   [1, 2, 3].forEach(function(b){
-    document.getElementById('base' + b).className = 'base base-' + b + 'b' + (G.bases[b - 1] ? ' on' : '');
+    document.getElementById('base' + b).className = 'base base-' + b + 'b' + (baseOcc(b - 1) ? ' on' : '');
   });
+  // Update runner name labels
+  var rl = document.getElementById('runnerLabels');
+  if(rl){
+    var parts = [];
+    var labels = ['1B','2B','3B'];
+    for(var i = 0; i < 3; i++){
+      if(baseOcc(i)){
+        var rn = typeof G.bases[i] === 'string' && G.bases[i] !== '?' ? shortName(G.bases[i]) : '';
+        if(rn) parts.push('<span class="rlabel-on">' + labels[i] + ': ' + esc(rn) + '</span>');
+      }
+    }
+    rl.innerHTML = parts.join('');
+  }
 }
 
 function setActivePitcher(side, idx){
@@ -2234,7 +2370,7 @@ function resetGame(){
   G = {
     inning: 1, half: 'top', outs: 0,
     balls: 0, strikes: 0, fouls: 0,
-    bases: [false, false, false],
+    bases: [null, null, null],
     totalInnings: 9,
     scores: { home: Array(9).fill(null), away: Array(9).fill(null) },
     rhe: { home: [0, 0, 0], away: [0, 0, 0] },
@@ -2263,6 +2399,7 @@ function resetGame(){
   document.getElementById('outTypeFly').className = 'out-type-btn otf';
   document.getElementById('outTypeGround').className = 'out-type-btn otg';
   document.getElementById('outTypeError').className = 'out-type-btn ote';
+  document.getElementById('outTypeFC').className = 'out-type-btn otfc';
 
   var dpR = document.getElementById('dpBtn');
   if(dpR) dpR.className = 'multi-out-btn';
@@ -2346,40 +2483,132 @@ function updateLogo(side) {
 }
 
 // ── Stadium outlines ──
-// Each stadium: name, lf, lcf, cf, rcf, rf (distances in feet)
-// Wall path defined as SVG polygon points in a 120x100 coordinate space
-// origin = home plate at bottom-center (60,95); field scales up/left/right
+// Each stadium has a detailed wall contour defined as an array of [angle, distance] pairs.
+// Angles in degrees: -45 = LF foul line, 0 = dead center, +45 = RF foul line.
+// Distances in feet from home plate.
+// These capture the real asymmetric shapes: notches, corners, pockets, short porches, etc.
 var STADIUMS = {
-  'Arizona Diamondbacks':  {name:'Chase Field',          lf:328,lcf:374,cf:407,rcf:374,rf:335},
-  'Atlanta Braves':        {name:'Truist Park',           lf:335,lcf:385,cf:400,rcf:385,rf:325},
-  'Baltimore Orioles':     {name:'Oriole Park',           lf:333,lcf:364,cf:410,rcf:373,rf:318},
-  'Boston Red Sox':        {name:'Fenway Park',           lf:310,lcf:379,cf:420,rcf:380,rf:302},
-  'Chicago Cubs':          {name:'Wrigley Field',         lf:355,lcf:368,cf:400,rcf:368,rf:353},
-  'Chicago White Sox':     {name:'Guaranteed Rate Field', lf:330,lcf:375,cf:400,rcf:375,rf:335},
-  'Cincinnati Reds':       {name:'Great American',        lf:328,lcf:370,cf:404,rcf:370,rf:325},
-  'Cleveland Guardians':   {name:'Progressive Field',     lf:325,lcf:370,cf:405,rcf:375,rf:325},
-  'Colorado Rockies':      {name:'Coors Field',           lf:347,lcf:390,cf:415,rcf:375,rf:350},
-  'Detroit Tigers':        {name:'Comerica Park',         lf:345,lcf:370,cf:420,rcf:365,rf:330},
-  'Houston Astros':        {name:'Minute Maid Park',      lf:315,lcf:362,cf:409,rcf:373,rf:326},
-  'Kansas City Royals':    {name:'Kauffman Stadium',      lf:330,lcf:375,cf:410,rcf:375,rf:330},
-  'Los Angeles Angels':    {name:'Angel Stadium',         lf:333,lcf:390,cf:396,rcf:370,rf:330},
-  'Los Angeles Dodgers':   {name:'Dodger Stadium',        lf:330,lcf:375,cf:395,rcf:375,rf:330},
-  'Miami Marlins':         {name:'LoanDepot Park',        lf:344,lcf:386,cf:407,rcf:392,rf:335},
-  'Milwaukee Brewers':     {name:'American Family Field', lf:344,lcf:371,cf:400,rcf:374,rf:345},
-  'Minnesota Twins':       {name:'Target Field',          lf:339,lcf:377,cf:411,rcf:373,rf:328},
-  'New York Mets':         {name:'Citi Field',            lf:335,lcf:379,cf:408,rcf:383,rf:330},
-  'New York Yankees':      {name:'Yankee Stadium',        lf:318,lcf:399,cf:408,rcf:385,rf:314},
-  'Oakland Athletics':     {name:'Sutter Health Park',   lf:330,lcf:375,cf:400,rcf:375,rf:330},
-  'Philadelphia Phillies': {name:'Citizens Bank Park',   lf:329,lcf:374,cf:401,rcf:369,rf:330},
-  'Pittsburgh Pirates':    {name:'PNC Park',              lf:325,lcf:383,cf:399,rcf:375,rf:320},
-  'San Diego Padres':      {name:'Petco Park',            lf:334,lcf:367,cf:396,rcf:382,rf:322},
-  'San Francisco Giants':  {name:'Oracle Park',           lf:339,lcf:364,cf:399,rcf:421,rf:309},
-  'Seattle Mariners':      {name:'T-Mobile Park',         lf:331,lcf:378,cf:405,rcf:381,rf:326},
-  'St. Louis Cardinals':   {name:'Busch Stadium',         lf:336,lcf:375,cf:400,rcf:375,rf:335},
-  'Tampa Bay Rays':        {name:'Tropicana Field',       lf:315,lcf:370,cf:404,rcf:370,rf:322},
-  'Texas Rangers':         {name:'Globe Life Field',      lf:329,lcf:372,cf:407,rcf:374,rf:326},
-  'Toronto Blue Jays':     {name:'Rogers Centre',         lf:328,lcf:375,cf:400,rcf:375,rf:328},
-  'Washington Nationals':  {name:'Nationals Park',        lf:336,lcf:377,cf:402,rcf:370,rf:335}
+  'Arizona Diamondbacks': { name:'Chase Field', wall:[
+    [-45,328],[-40,332],[-35,345],[-30,360],[-25,374],[-22,376],[-18,385],[-15,394],[-10,402],[-5,406],[0,407],
+    [5,406],[10,401],[12,396],[15,390],[18,383],[22,374],[25,370],[30,358],[35,348],[40,340],[45,335]
+  ]},
+  'Atlanta Braves': { name:'Truist Park', wall:[
+    [-45,335],[-40,340],[-35,355],[-30,370],[-25,380],[-22,385],[-18,390],[-15,394],[-10,398],[-5,400],[0,400],
+    [5,400],[10,398],[15,393],[18,388],[22,385],[25,378],[30,365],[35,350],[40,335],[45,325]
+  ]},
+  'Baltimore Orioles': { name:'Oriole Park', wall:[
+    [-45,333],[-42,336],[-38,348],[-35,356],[-30,364],[-25,373],[-22,380],[-18,392],[-15,400],[-10,406],[-5,409],[0,410],
+    [5,408],[10,400],[12,393],[15,385],[18,380],[22,373],[25,368],[28,360],[30,355],[33,348],[35,342],[38,333],[40,326],[45,318]
+  ]},
+  'Boston Red Sox': { name:'Fenway Park', wall:[
+    [-45,310],[-44,310],[-42,312],[-40,315],[-38,320],[-37,325],[-36,340],[-35,355],[-34,365],[-33,370],[-30,379],
+    [-25,388],[-20,400],[-15,410],[-10,418],[-5,420],[0,420],
+    [5,415],[10,405],[15,390],[18,383],[22,380],[25,370],[28,355],[30,345],[33,330],[35,320],[38,312],[40,308],[42,304],[45,302]
+  ]},
+  'Chicago Cubs': { name:'Wrigley Field', wall:[
+    [-45,355],[-40,356],[-35,360],[-30,365],[-25,368],[-22,370],[-18,378],[-15,385],[-10,393],[-5,398],[0,400],
+    [5,398],[10,392],[15,384],[18,377],[22,370],[25,368],[30,364],[35,360],[40,356],[45,353]
+  ]},
+  'Chicago White Sox': { name:'Guaranteed Rate', wall:[
+    [-45,330],[-40,338],[-35,352],[-30,365],[-25,375],[-22,378],[-18,386],[-15,392],[-10,397],[-5,400],[0,400],
+    [5,400],[10,397],[15,392],[18,386],[22,378],[25,375],[30,365],[35,352],[40,340],[45,335]
+  ]},
+  'Cincinnati Reds': { name:'Great American', wall:[
+    [-45,328],[-40,335],[-35,348],[-30,360],[-25,370],[-22,375],[-18,384],[-15,392],[-10,399],[-5,403],[0,404],
+    [5,403],[10,398],[15,390],[18,382],[22,370],[25,362],[30,350],[35,340],[40,332],[45,325]
+  ]},
+  'Cleveland Guardians': { name:'Progressive Field', wall:[
+    [-45,325],[-40,332],[-35,348],[-30,360],[-25,370],[-22,374],[-18,384],[-15,392],[-10,400],[-5,404],[0,405],
+    [5,404],[10,400],[15,393],[18,386],[22,375],[25,370],[30,358],[35,345],[40,334],[45,325]
+  ]},
+  'Colorado Rockies': { name:'Coors Field', wall:[
+    [-45,347],[-40,352],[-35,365],[-30,378],[-25,390],[-22,395],[-18,402],[-15,408],[-10,413],[-5,415],[0,415],
+    [5,412],[10,405],[15,395],[18,386],[22,375],[25,370],[30,365],[35,360],[40,355],[45,350]
+  ]},
+  'Detroit Tigers': { name:'Comerica Park', wall:[
+    [-45,345],[-40,348],[-35,355],[-30,362],[-25,370],[-22,374],[-18,385],[-15,398],[-10,412],[-7,418],[-5,420],[0,420],
+    [5,415],[10,400],[15,385],[18,375],[22,365],[25,358],[30,348],[35,340],[40,335],[45,330]
+  ]},
+  'Houston Astros': { name:'Minute Maid Park', wall:[
+    [-45,315],[-42,318],[-40,325],[-38,335],[-35,348],[-30,362],[-25,374],[-22,380],[-18,392],[-15,400],[-10,406],[-5,409],[0,409],
+    [5,407],[10,400],[15,390],[18,383],[22,373],[25,365],[28,355],[30,348],[33,340],[35,335],[38,330],[42,327],[45,326]
+  ]},
+  'Kansas City Royals': { name:'Kauffman Stadium', wall:[
+    [-45,330],[-40,340],[-35,355],[-30,368],[-25,375],[-22,380],[-18,390],[-15,398],[-10,405],[-5,408],[0,410],
+    [5,408],[10,405],[15,398],[18,390],[22,380],[25,375],[30,368],[35,355],[40,340],[45,330]
+  ]},
+  'Los Angeles Angels': { name:'Angel Stadium', wall:[
+    [-45,333],[-40,345],[-35,360],[-30,375],[-25,387],[-22,390],[-18,393],[-15,395],[-10,396],[-5,396],[0,396],
+    [5,395],[10,392],[15,386],[18,378],[22,370],[25,362],[30,352],[35,342],[40,335],[45,330]
+  ]},
+  'Los Angeles Dodgers': { name:'Dodger Stadium', wall:[
+    [-45,330],[-40,338],[-35,352],[-30,365],[-25,375],[-22,378],[-18,385],[-15,390],[-10,394],[-5,395],[0,395],
+    [5,395],[10,394],[15,390],[18,385],[22,378],[25,375],[30,365],[35,352],[40,338],[45,330]
+  ]},
+  'Miami Marlins': { name:'LoanDepot Park', wall:[
+    [-45,344],[-40,350],[-35,362],[-30,374],[-25,386],[-22,390],[-18,397],[-15,402],[-10,406],[-5,407],[0,407],
+    [5,406],[10,404],[12,400],[15,396],[18,392],[22,388],[25,382],[30,370],[35,355],[40,344],[45,335]
+  ]},
+  'Milwaukee Brewers': { name:'American Family', wall:[
+    [-45,344],[-40,348],[-35,356],[-30,364],[-25,371],[-22,374],[-18,382],[-15,390],[-10,396],[-5,399],[0,400],
+    [5,399],[10,396],[15,390],[18,384],[22,374],[25,370],[30,362],[35,356],[40,350],[45,345]
+  ]},
+  'Minnesota Twins': { name:'Target Field', wall:[
+    [-45,339],[-40,344],[-35,356],[-30,368],[-25,377],[-22,380],[-18,392],[-15,400],[-10,407],[-5,410],[0,411],
+    [5,408],[10,400],[15,390],[18,380],[22,373],[25,365],[30,352],[35,340],[40,333],[45,328]
+  ]},
+  'New York Mets': { name:'Citi Field', wall:[
+    [-45,335],[-40,342],[-35,356],[-30,368],[-25,379],[-22,383],[-18,393],[-15,400],[-10,405],[-5,408],[0,408],
+    [5,406],[10,402],[15,396],[18,390],[22,383],[25,376],[30,363],[35,350],[40,340],[45,330]
+  ]},
+  'New York Yankees': { name:'Yankee Stadium', wall:[
+    [-45,318],[-42,322],[-40,330],[-38,342],[-35,358],[-33,370],[-30,382],[-27,392],[-25,399],[-22,403],[-18,406],[-15,408],[-10,408],[-5,408],[0,408],
+    [5,406],[10,400],[15,392],[18,385],[22,378],[25,370],[28,358],[30,348],[33,338],[35,330],[38,322],[40,318],[42,316],[45,314]
+  ]},
+  'Oakland Athletics': { name:'Sutter Health Park', wall:[
+    [-45,330],[-40,340],[-35,355],[-30,367],[-25,375],[-22,378],[-18,386],[-15,392],[-10,397],[-5,400],[0,400],
+    [5,400],[10,397],[15,392],[18,386],[22,378],[25,375],[30,367],[35,355],[40,340],[45,330]
+  ]},
+  'Philadelphia Phillies': { name:'Citizens Bank Park', wall:[
+    [-45,329],[-40,336],[-35,350],[-30,362],[-25,374],[-22,378],[-18,387],[-15,394],[-10,399],[-5,401],[0,401],
+    [5,399],[10,394],[15,385],[18,378],[22,369],[25,360],[30,350],[35,342],[40,336],[45,330]
+  ]},
+  'Pittsburgh Pirates': { name:'PNC Park', wall:[
+    [-45,325],[-42,330],[-40,338],[-35,356],[-30,370],[-25,383],[-22,387],[-18,393],[-15,397],[-10,399],[-5,399],[0,399],
+    [5,398],[10,395],[15,390],[18,383],[22,375],[25,368],[30,355],[33,345],[35,338],[38,330],[40,325],[45,320]
+  ]},
+  'San Diego Padres': { name:'Petco Park', wall:[
+    [-45,334],[-40,340],[-35,350],[-30,360],[-25,367],[-22,370],[-18,380],[-15,388],[-10,393],[-5,396],[0,396],
+    [5,395],[10,394],[12,392],[15,388],[18,385],[22,382],[25,375],[28,362],[30,352],[33,342],[35,335],[38,328],[40,325],[45,322]
+  ]},
+  'San Francisco Giants': { name:'Oracle Park', wall:[
+    [-45,339],[-40,342],[-35,350],[-30,358],[-25,364],[-22,367],[-18,376],[-15,385],[-10,393],[-5,397],[0,399],
+    [3,400],[5,402],[8,408],[10,412],[12,416],[14,420],[16,421],[18,420],[20,416],[22,410],[25,400],[28,380],[30,362],[33,342],[35,328],[38,318],[40,312],[45,309]
+  ]},
+  'Seattle Mariners': { name:'T-Mobile Park', wall:[
+    [-45,331],[-40,340],[-35,355],[-30,368],[-25,378],[-22,382],[-18,392],[-15,398],[-10,403],[-5,405],[0,405],
+    [5,404],[10,400],[15,393],[18,386],[22,381],[25,374],[30,360],[35,346],[40,336],[45,326]
+  ]},
+  'St. Louis Cardinals': { name:'Busch Stadium', wall:[
+    [-45,336],[-40,342],[-35,355],[-30,366],[-25,375],[-22,378],[-18,386],[-15,393],[-10,398],[-5,400],[0,400],
+    [5,400],[10,398],[15,393],[18,386],[22,378],[25,375],[30,366],[35,355],[40,342],[45,335]
+  ]},
+  'Tampa Bay Rays': { name:'Tropicana Field', wall:[
+    [-45,315],[-40,325],[-35,342],[-30,358],[-25,370],[-22,375],[-18,386],[-15,394],[-10,400],[-5,403],[0,404],
+    [5,403],[10,398],[15,390],[18,382],[22,370],[25,360],[30,348],[35,338],[40,330],[45,322]
+  ]},
+  'Texas Rangers': { name:'Globe Life Field', wall:[
+    [-45,329],[-40,336],[-35,350],[-30,362],[-25,372],[-22,376],[-18,386],[-15,396],[-10,403],[-5,406],[0,407],
+    [5,406],[10,402],[15,393],[18,384],[22,374],[25,366],[30,354],[35,342],[40,334],[45,326]
+  ]},
+  'Toronto Blue Jays': { name:'Rogers Centre', wall:[
+    [-45,328],[-40,338],[-35,355],[-30,367],[-25,375],[-22,378],[-18,386],[-15,393],[-10,398],[-5,400],[0,400],
+    [5,400],[10,398],[15,393],[18,386],[22,378],[25,375],[30,367],[35,355],[40,338],[45,328]
+  ]},
+  'Washington Nationals': { name:'Nationals Park', wall:[
+    [-45,336],[-40,342],[-35,354],[-30,366],[-25,377],[-22,380],[-18,389],[-15,396],[-10,400],[-5,402],[0,402],
+    [5,400],[10,395],[15,386],[18,378],[22,370],[25,362],[30,352],[35,344],[40,340],[45,335]
+  ]}
 };
 
 function renderStadium(teamName) {
@@ -2388,41 +2617,49 @@ function renderStadium(teamName) {
   var sd = STADIUMS[teamName];
   if(!sd){ wrap.innerHTML=''; return; }
 
-  // Scale distances to SVG coords. Home plate at cx=60, cy=88 in 120x100 space.
-  // Max distance ~420ft maps to ~55 units radius
+  // SVG coordinate space: 120×100, home plate at (60, 88)
   var cx=60, cy=88, scale=55/420;
+
   function polar(angleDeg, dist) {
     var rad = (angleDeg - 90) * Math.PI / 180;
     var r = dist * scale;
     return [cx + r*Math.cos(rad), cy + r*Math.sin(rad)];
   }
-  // Foul lines at 45° from center; wall points at measured distances
-  // LF pole = -45°, LCF=-22.5°, CF=0°, RCF=22.5°, RF=45° (relative to 2B direction)
-  // Angle 0 = straight up (toward CF from home)
-  var lf  = polar(-45, sd.lf);
-  var lcf = polar(-22.5, sd.lcf);
-  var cf  = polar(0, sd.cf);
-  var rcf = polar(22.5, sd.rcf);
-  var rf  = polar(45, sd.rf);
-
-  // Foul lines extend to corners
-  var lfLine = polar(-45, sd.lf+12);
-  var rfLine = polar(45,  sd.rf+12);
-
   function pt(p){ return p[0].toFixed(1)+','+p[1].toFixed(1); }
 
-  // Wall path
-  var wallPath = 'M '+pt(lfLine)+' L '+pt(lf)+' L '+pt(lcf)+' L '+pt(cf)+' L '+pt(rcf)+' L '+pt(rf)+' L '+pt(rfLine);
+  var wall = sd.wall;
+  // Build wall points
+  var wallPts = wall.map(function(w){ return polar(w[0], w[1]); });
 
-  // Infield diamond: bases 90ft apart. 90ft ~ 90*scale = ~11.8 units
+  // Extend foul lines slightly past the poles
+  var lfLine = polar(wall[0][0], wall[0][1] + 12);
+  var rfLine = polar(wall[wall.length-1][0], wall[wall.length-1][1] + 12);
+
+  // Wall SVG path as smooth curve
+  var wallPath = 'M ' + pt(lfLine);
+  wallPts.forEach(function(p){ wallPath += ' L ' + pt(p); });
+  wallPath += ' L ' + pt(rfLine);
+
+  // Grass fill polygon: home → foul line ext → wall points → foul line ext
+  var grassPts = pt([cx,cy]) + ' ' + pt(lfLine);
+  wallPts.forEach(function(p){ grassPts += ' ' + pt(p); });
+  grassPts += ' ' + pt(rfLine);
+
+  // Infield geometry
   var bscale = 90*scale;
   var hb = [cx, cy];
   var first  = [cx+bscale*Math.sin(Math.PI/4), cy-bscale*Math.cos(Math.PI/4)];
   var second = [cx, cy - bscale*Math.sqrt(2)];
   var third  = [cx-bscale*Math.sin(Math.PI/4), cy-bscale*Math.cos(Math.PI/4)];
-
-  // Pitcher's mound center (60.5ft)
   var mound = [cx, cy - 60.5*scale];
+
+  // Distance labels: LF pole, CF, RF pole
+  var lfPt = wallPts[0];
+  var rfPt = wallPts[wallPts.length - 1];
+  // Find CF point (angle closest to 0)
+  var cfIdx = 0, cfMinAngle = 999;
+  wall.forEach(function(w, i){ if(Math.abs(w[0]) < cfMinAngle){ cfMinAngle = Math.abs(w[0]); cfIdx = i; }});
+  var cfPt = wallPts[cfIdx];
 
   var isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
   var grassColor  = isDark ? '#1a3020' : '#c8e6b0';
@@ -2433,29 +2670,20 @@ function renderStadium(teamName) {
   var markerColor = isDark ? '#e2e8f0' : '#2d3748';
 
   var svg = '<svg viewBox="0 0 120 100" width="100%" style="display:block;max-height:120px;">'
-    // Grass fill
-    +'<polygon points="'+pt(hb)+' '+pt(lfLine)+' '+pt(lf)+' '+pt(lcf)+' '+pt(cf)+' '+pt(rcf)+' '+pt(rf)+' '+pt(rfLine)+'" fill="'+grassColor+'" stroke="none"/>'
-    // Dirt infield circle (r~13 units)
+    +'<polygon points="'+grassPts+'" fill="'+grassColor+'" stroke="none"/>'
     +'<circle cx="'+cx+'" cy="'+(cy-13)+'" r="15" fill="'+dirtColor+'" stroke="none"/>'
-    // Warning track (2ft thick = ~0.26 units, shown as slightly wider wall outline)
     +'<path d="'+wallPath+'" fill="none" stroke="'+wallColor+'" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>'
-    // Foul lines
     +'<line x1="'+cx+'" y1="'+cy+'" x2="'+lfLine[0]+'" y2="'+lfLine[1]+'" stroke="'+lineColor+'" stroke-width="0.4" stroke-dasharray="1.5,1"/>'
     +'<line x1="'+cx+'" y1="'+cy+'" x2="'+rfLine[0]+'" y2="'+rfLine[1]+'" stroke="'+lineColor+'" stroke-width="0.4" stroke-dasharray="1.5,1"/>'
-    // Basepaths
     +'<polygon points="'+pt(hb)+' '+pt(first)+' '+pt(second)+' '+pt(third)+'" fill="none" stroke="'+lineColor+'" stroke-width="0.6"/>'
-    // Bases
     +'<rect x="'+(hb[0]-1.2)+'" y="'+(hb[1]-1.2)+'" width="2.4" height="2.4" rx="0.4" fill="white" stroke="'+lineColor+'" stroke-width="0.3"/>'
     +'<rect x="'+(first[0]-1.2)+'" y="'+(first[1]-1.2)+'" width="2.4" height="2.4" rx="0.4" fill="white" stroke="'+lineColor+'" stroke-width="0.3"/>'
     +'<rect x="'+(second[0]-1.2)+'" y="'+(second[1]-1.2)+'" width="2.4" height="2.4" rx="0.4" fill="white" stroke="'+lineColor+'" stroke-width="0.3"/>'
     +'<rect x="'+(third[0]-1.2)+'" y="'+(third[1]-1.2)+'" width="2.4" height="2.4" rx="0.4" fill="white" stroke="'+lineColor+'" stroke-width="0.3"/>'
-    // Mound
     +'<circle cx="'+mound[0].toFixed(1)+'" cy="'+mound[1].toFixed(1)+'" r="1.4" fill="'+dirtColor+'" stroke="'+lineColor+'" stroke-width="0.3"/>'
-    // Distance markers
-    +'<text x="'+(lf[0]-2)+'" y="'+(lf[1]-1)+'" font-size="4.5" fill="'+markerColor+'" text-anchor="middle" font-family="sans-serif" font-weight="600">'+sd.lf+'</text>'
-    +'<text x="'+cf[0]+'" y="'+(cf[1]-1.5)+'" font-size="4.5" fill="'+markerColor+'" text-anchor="middle" font-family="sans-serif" font-weight="600">'+sd.cf+'</text>'
-    +'<text x="'+(rf[0]+2)+'" y="'+(rf[1]-1)+'" font-size="4.5" fill="'+markerColor+'" text-anchor="middle" font-family="sans-serif" font-weight="600">'+sd.rf+'</text>'
-    // Stadium name
+    +'<text x="'+(lfPt[0]-2)+'" y="'+(lfPt[1]-1)+'" font-size="4.5" fill="'+markerColor+'" text-anchor="middle" font-family="sans-serif" font-weight="600">'+wall[0][1]+'</text>'
+    +'<text x="'+cfPt[0]+'" y="'+(cfPt[1]-1.5)+'" font-size="4.5" fill="'+markerColor+'" text-anchor="middle" font-family="sans-serif" font-weight="600">'+wall[cfIdx][1]+'</text>'
+    +'<text x="'+(rfPt[0]+2)+'" y="'+(rfPt[1]-1)+'" font-size="4.5" fill="'+markerColor+'" text-anchor="middle" font-family="sans-serif" font-weight="600">'+wall[wall.length-1][1]+'</text>'
     +'<text x="'+cx+'" y="97.5" font-size="4" fill="'+textColor+'" text-anchor="middle" font-family="sans-serif">'+sd.name+'</text>'
     +'</svg>';
 
@@ -2492,14 +2720,27 @@ function loadFromStorage(){
       G.lineup[side].forEach(function(sl){
         if(sl.hits.sf === undefined) sl.hits.sf = 0;
         if(sl.hits.sac === undefined) sl.hits.sac = 0;
+        if(sl.hits.fc === undefined) sl.hits.fc = 0;
+        if(sl.hits.ibb === undefined) sl.hits.ibb = 0;
+        if(sl.hits.wp === undefined) sl.hits.wp = 0;
         // Ensure each sub has its own hits object
         sl.subs.forEach(function(sub){
           if(!sub.hits) sub.hits = mkHits();
           if(sub.hits.sf === undefined) sub.hits.sf = 0;
           if(sub.hits.sac === undefined) sub.hits.sac = 0;
+          if(sub.hits.fc === undefined) sub.hits.fc = 0;
+          if(sub.hits.ibb === undefined) sub.hits.ibb = 0;
+          if(sub.hits.wp === undefined) sub.hits.wp = 0;
         });
       });
     });
+    // Migrate old boolean bases to new null/string format
+    if(G.bases){
+      for(var bi=0;bi<3;bi++){
+        if(G.bases[bi] === true) G.bases[bi] = '?';
+        else if(G.bases[bi] === false) G.bases[bi] = null;
+      }
+    }
     // Restore outState
     if(payload.outState){
       outState.type = payload.outState.type || null;
