@@ -339,6 +339,52 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .t-wp { background:#FAECE7; color:#993C1D; }
 .empty-log { font-size:13px; color:var(--muted); padding:16px 12px; text-align:center; }
 
+/* ── Game info / notes panel ── */
+.game-info { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); margin-bottom:10px; overflow:hidden; }
+.game-info-toggle { display:flex; align-items:center; justify-content:space-between; padding:8px 12px; cursor:pointer; user-select:none; }
+.game-info-toggle:hover { background:var(--header-bg); }
+.game-info-title { font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); font-weight:600; }
+.game-info-arrow { font-size:13px; color:var(--muted); transition:transform .2s; }
+.game-info-arrow.open { transform:rotate(180deg); }
+.game-info-body { padding:0 12px 12px; display:none; }
+.game-info-body.open { display:block; }
+.gi-row { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+.gi-row:last-child { margin-bottom:0; }
+.gi-label { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; font-weight:600; min-width:70px; flex-shrink:0; }
+.gi-input { flex:1; font-size:13px; padding:5px 8px; border:1px solid var(--border); border-radius:6px; background:var(--surface); color:var(--text); font-family:inherit; outline:none; }
+.gi-input:focus { border-color:var(--blue); }
+.gi-input::placeholder { color:var(--muted); opacity:.7; }
+.gi-weather-row { display:flex; gap:4px; flex-wrap:wrap; align-items:center; }
+.gi-weather-btn { width:32px; height:32px; border:1.5px solid var(--border); border-radius:6px; background:transparent; cursor:pointer; font-size:17px; display:flex; align-items:center; justify-content:center; transition:border-color .1s, background .1s; line-height:1; }
+.gi-weather-btn:hover { background:var(--header-bg); }
+.gi-weather-btn.sel { border-color:var(--blue); background:var(--bl); }
+.gi-temp { width:60px; font-size:13px; padding:5px 6px; border:1px solid var(--border); border-radius:6px; background:var(--surface); color:var(--text); font-family:inherit; text-align:center; outline:none; }
+.gi-temp:focus { border-color:var(--blue); }
+.gi-wind-row { display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+.gi-wind-dir { width:60px; font-size:12px; padding:4px 4px; border:1px solid var(--border); border-radius:6px; background:var(--surface); color:var(--text); font-family:inherit; text-align:center; cursor:pointer; }
+.gi-wind-speed { width:50px; font-size:13px; padding:5px 4px; border:1px solid var(--border); border-radius:6px; background:var(--surface); color:var(--text); font-family:inherit; text-align:center; outline:none; }
+.gi-wind-speed:focus { border-color:var(--blue); }
+.gi-wind-unit { font-size:11px; color:var(--muted); }
+.gi-textarea { flex:1; font-size:13px; padding:5px 8px; border:1px solid var(--border); border-radius:6px; background:var(--surface); color:var(--text); font-family:inherit; outline:none; resize:vertical; min-height:48px; }
+.gi-textarea:focus { border-color:var(--blue); }
+.gi-first-pitch-row { display:flex; gap:6px; align-items:center; }
+
+/* ── Keyboard shortcuts overlay ── */
+.kb-overlay { position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:300; display:flex; align-items:center; justify-content:center; padding:16px; }
+.kb-modal { background:var(--surface); border:1px solid var(--border); border-radius:12px; max-width:520px; width:100%; max-height:80vh; overflow-y:auto; box-shadow:0 8px 32px rgba(0,0,0,.2); padding:0; }
+.kb-modal-hdr { padding:14px 16px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+.kb-modal-hdr h3 { font-size:15px; font-weight:700; margin:0; }
+.kb-modal-close { border:none; background:none; font-size:20px; cursor:pointer; color:var(--muted); line-height:1; padding:0 4px; }
+.kb-modal-body { padding:12px 16px; }
+.kb-section { margin-bottom:14px; }
+.kb-section-title { font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); font-weight:600; margin-bottom:6px; }
+.kb-row { display:flex; align-items:center; justify-content:space-between; padding:3px 0; font-size:13px; color:var(--text); }
+.kb-key { display:inline-flex; align-items:center; justify-content:center; min-width:24px; padding:2px 7px; font-size:12px; font-weight:600; font-family:inherit; background:var(--header-bg); border:1px solid var(--border); border-radius:4px; color:var(--text); line-height:1.4; }
+.kb-key + .kb-key { margin-left:3px; }
+/* flash feedback toast */
+.kb-flash { position:fixed; top:12px; left:50%; transform:translateX(-50%); z-index:400; padding:6px 16px; border-radius:8px; font-size:13px; font-weight:600; color:#fff; background:var(--blue); box-shadow:0 4px 12px rgba(0,0,0,.2); pointer-events:none; opacity:0; transition:opacity .15s; }
+.kb-flash.show { opacity:1; }
+
 /* ═══════════════════════════════════════════════
    PRINT / PDF STYLES
 ═══════════════════════════════════════════════ */
@@ -349,7 +395,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   /* hide interactive controls */
   .hdr-btns, .half-tog, .btns, .action-row, .add-p, .padj,
   .set-btn, .sub-btn, .sub-form, .log-panel, .sec-title-log,
-  .pdf-btn, .reset-btn, .out-card { display:none!important; }
+  .pdf-btn, .reset-btn, .out-card, #kbHelpBtn { display:none!important; }
   /* score strip */
   .score-strip { border:1.5px solid #333; border-radius:0; }
   .score-table th, .score-table td { font-size:10px; padding:4px 6px; border-right:1px solid #ccc; }
@@ -397,6 +443,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   .half-bot { background:var(--al)!important; color:var(--amber)!important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
   /* section titles on print */
   .sec-title { font-size:10px; margin-bottom:4px; margin-top:8px; }
+  /* game info on print */
+  .game-info { border:1px solid #ccc; border-radius:0; page-break-inside:avoid; }
+  .game-info-toggle { display:none!important; }
+  .game-info-body { display:block!important; padding:6px 8px!important; }
+  .gi-input, .gi-temp, .gi-wind-speed, .gi-wind-dir, .gi-textarea { border-color:#ccc!important; background:#fff!important; color:#333!important; font-size:11px; }
+  .gi-weather-btn { display:none!important; }
+  .gi-weather-btn.sel { display:flex!important; border:none!important; background:none!important; font-size:14px; }
   /* print header */
   .print-header { display:block!important; }
   .header { margin-bottom:8px; }
@@ -417,7 +470,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 <body>
 <div class="app">
 
-  <div class="print-header" id="printHeader">⚾ Official Game Scorecard</div>
+  <div class="kb-flash" id="kbFlash"></div>
+
+<div class="print-header" id="printHeader">⚾ Official Game Scorecard</div>
 
   <div class="header">
     <div class="team-names">
@@ -435,6 +490,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       <button class="today-btn" id="todayBtn" onclick="showTodaysGames()">📅 Today</button>
       <button class="reset-btn" id="undoBtn" onclick="undoAction()" disabled>↩ Undo</button>
       <button class="reset-btn" onclick="resetGame()">Reset</button>
+      <button class="reset-btn" id="kbHelpBtn" onclick="toggleKBHelp()" title="Keyboard shortcuts (?)">⌨</button>
       <button class="pdf-btn" onclick="exportPDF()">⬇ Export PDF</button>
     </div>
   </div>
@@ -444,6 +500,89 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <table class="score-table" id="scoreTable"></table>
     <div style="text-align:center;padding:4px 0 6px;">
       <button class="extra-inn-btn" onclick="addExtraInning()">+ Extra inning</button>
+    </div>
+  </div>
+
+  <!-- Game info / notes -->
+  <div class="game-info" id="gameInfoPanel">
+    <div class="game-info-toggle" onclick="toggleGameInfo()">
+      <span class="game-info-title">📋 Game Info &amp; Notes</span>
+      <span class="game-info-arrow" id="giArrow">▼</span>
+    </div>
+    <div class="game-info-body" id="giBody">
+      <div class="gi-row">
+        <span class="gi-label">Date</span>
+        <input class="gi-input" id="giDate" type="date" onchange="saveNotes()" />
+      </div>
+      <div class="gi-row">
+        <span class="gi-label">First pitch</span>
+        <div class="gi-first-pitch-row">
+          <input class="gi-input" id="giFirstPitch" type="time" onchange="saveNotes()" style="flex:none;width:120px" />
+        </div>
+      </div>
+      <div class="gi-row">
+        <span class="gi-label">Venue</span>
+        <input class="gi-input" id="giVenue" placeholder="Stadium name" onchange="saveNotes()" />
+      </div>
+      <div class="gi-row">
+        <span class="gi-label">Attendance</span>
+        <input class="gi-input" id="giAttendance" type="text" inputmode="numeric" placeholder="e.g. 38,421" onchange="saveNotes()" />
+      </div>
+      <div class="gi-row">
+        <span class="gi-label">Weather</span>
+        <div class="gi-weather-row">
+          <button class="gi-weather-btn" data-weather="sunny" onclick="selectWeather('sunny')" title="Sunny">☀️</button>
+          <button class="gi-weather-btn" data-weather="partly" onclick="selectWeather('partly')" title="Partly cloudy">⛅</button>
+          <button class="gi-weather-btn" data-weather="cloudy" onclick="selectWeather('cloudy')" title="Cloudy">☁️</button>
+          <button class="gi-weather-btn" data-weather="rain" onclick="selectWeather('rain')" title="Rain">🌧️</button>
+          <button class="gi-weather-btn" data-weather="snow" onclick="selectWeather('snow')" title="Snow">🌨️</button>
+          <button class="gi-weather-btn" data-weather="dome" onclick="selectWeather('dome')" title="Dome / retractable roof">🏟️</button>
+          <button class="gi-weather-btn" data-weather="night" onclick="selectWeather('night')" title="Night game">🌙</button>
+          <input class="gi-temp" id="giTemp" type="text" placeholder="72°F" onchange="saveNotes()" />
+        </div>
+      </div>
+      <div class="gi-row">
+        <span class="gi-label">Wind</span>
+        <div class="gi-wind-row">
+          <input class="gi-wind-speed" id="giWindSpeed" type="text" inputmode="numeric" placeholder="12" onchange="saveNotes()" />
+          <span class="gi-wind-unit">mph</span>
+          <select class="gi-wind-dir" id="giWindDir" onchange="saveNotes()">
+            <option value="">—</option>
+            <option value="out">→ Out to CF</option>
+            <option value="in">← In from CF</option>
+            <option value="ltor">→ L to R</option>
+            <option value="rtol">← R to L</option>
+            <option value="calm">Calm</option>
+          </select>
+        </div>
+      </div>
+      <div class="gi-row">
+        <span class="gi-label">Umpires</span>
+        <input class="gi-input" id="giUmpHP" placeholder="HP" onchange="saveNotes()" style="flex:1" />
+        <input class="gi-input" id="giUmp1B" placeholder="1B" onchange="saveNotes()" style="flex:1" />
+        <input class="gi-input" id="giUmp2B" placeholder="2B" onchange="saveNotes()" style="flex:1" />
+        <input class="gi-input" id="giUmp3B" placeholder="3B" onchange="saveNotes()" style="flex:1" />
+      </div>
+      <div class="gi-row">
+        <span class="gi-label">Game type</span>
+        <select class="gi-input" id="giGameType" onchange="saveNotes()" style="flex:none;width:160px">
+          <option value="">—</option>
+          <option value="regular">Regular season</option>
+          <option value="spring">Spring training</option>
+          <option value="asg">All-Star Game</option>
+          <option value="wild">Wild Card</option>
+          <option value="alds">ALDS</option>
+          <option value="alcs">ALCS</option>
+          <option value="nlds">NLDS</option>
+          <option value="nlcs">NLCS</option>
+          <option value="ws">World Series</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="gi-row" style="align-items:flex-start">
+        <span class="gi-label" style="margin-top:6px">Notes</span>
+        <textarea class="gi-textarea" id="giNotes" placeholder="Notable plays, ejections, delays, milestones…" onchange="saveNotes()"></textarea>
+      </div>
     </div>
   </div>
 
@@ -650,7 +789,8 @@ var G = {
   lineup:{home:Array(9).fill(null).map(mkSlot), away:Array(9).fill(null).map(mkSlot)},
   pitchers:{home:[{name:'',pitches:0,k:0,bb:0,r:0,active:true}], away:[{name:'',pitches:0,k:0,bb:0,r:0,active:true}]},
   log:[],
-  batterLog:{home:{}, away:{}}
+  batterLog:{home:{}, away:{}},
+  notes:{date:'',firstPitch:'',venue:'',attendance:'',weather:'',temp:'',windSpeed:'',windDir:'',umpHP:'',ump1B:'',ump2B:'',ump3B:'',gameType:'',text:''}
 };
 
 // ── Undo history ──
@@ -731,6 +871,7 @@ function renderAll(){
   updateSacBtns();
   buildFielderGrid();
   updateOutBtn();
+  restoreNotes();
 }
 
 function team(s){
@@ -1421,6 +1562,39 @@ function loadTodaysGame(gameIdx){
     renderPitchers('home');
   }
 
+  // Auto-populate game notes from API data
+  try {
+    // Date
+    if(game.gameDate){
+      var gd = new Date(game.gameDate);
+      var yyyy = gd.getFullYear();
+      var mm = String(gd.getMonth()+1).padStart(2,'0');
+      var dd = String(gd.getDate()).padStart(2,'0');
+      G.notes.date = yyyy+'-'+mm+'-'+dd;
+      // First pitch time
+      var hh = gd.getHours();
+      var mi = gd.getMinutes();
+      G.notes.firstPitch = String(hh).padStart(2,'0')+':'+String(mi).padStart(2,'0');
+    }
+    // Venue
+    if(game.venue && game.venue.name){
+      G.notes.venue = game.venue.name;
+    }
+    // Game type from seriesDescription or gameType
+    if(game.gameType){
+      var gtMap = {R:'regular',S:'spring',A:'asg',F:'wild',D:'alds',L:'alcs',W:'ws'};
+      var mapped = gtMap[game.gameType];
+      if(mapped) G.notes.gameType = mapped;
+      // NLDS/NLCS share D/L codes with ALDS/ALCS — we can't distinguish without more data
+    }
+    // Dome detection from venue
+    var domeVenues = ['Tropicana Field','Chase Field','T-Mobile Park','Globe Life Field','LoanDepot Park','Minute Maid Park','Rogers Centre','American Family Field'];
+    if(G.notes.venue && domeVenues.indexOf(G.notes.venue) >= 0){
+      G.notes.weather = 'dome';
+    }
+    restoreNotes();
+  } catch(e){}
+
   closeTodaysGames();
   saveToStorage();
   addLog('Loaded: ' + awayName + ' @ ' + homeName, 'Game', 't-info');
@@ -1498,7 +1672,8 @@ function resetGameSilent(){
       away: [{ name: '', pitches: 0, k: 0, bb: 0, r: 0, active: true }]
     },
     log: [],
-    batterLog: { home: {}, away: {} }
+    batterLog: { home: {}, away: {} },
+    notes:{date:'',firstPitch:'',venue:'',attendance:'',weather:'',temp:'',windSpeed:'',windDir:'',umpHP:'',ump1B:'',ump2B:'',ump3B:'',gameType:'',text:''}
   };
   outState.type = null;
   outState.fielder = null;
@@ -2384,7 +2559,8 @@ function resetGame(){
       away: [{ name: '', pitches: 0, k: 0, bb: 0, r: 0, active: true }]
     },
     log: [],
-    batterLog: { home: {}, away: {} }
+    batterLog: { home: {}, away: {} },
+    notes:{date:'',firstPitch:'',venue:'',attendance:'',weather:'',temp:'',windSpeed:'',windDir:'',umpHP:'',ump1B:'',ump2B:'',ump3B:'',gameType:'',text:''}
   };
 
   outState.type = null;
@@ -2741,6 +2917,8 @@ function loadFromStorage(){
         else if(G.bases[bi] === false) G.bases[bi] = null;
       }
     }
+    // Ensure notes object exists (backward compat)
+    if(!G.notes) G.notes = {date:'',firstPitch:'',venue:'',attendance:'',weather:'',temp:'',windSpeed:'',windDir:'',umpHP:'',ump1B:'',ump2B:'',ump3B:'',gameType:'',text:''};
     // Restore outState
     if(payload.outState){
       outState.type = payload.outState.type || null;
@@ -2778,6 +2956,8 @@ function onTeamChange() {
   updateLogo('away'); updateLogo('home');
   renderPitchers('home'); renderPitchers('away'); renderScore();
   renderStadium(home === '— Select Team —' ? null : home);
+  // Auto-fill venue from home team stadium
+  if(home && home !== '— Select Team —') autoFillVenue(home);
   // Fetch rosters when valid teams are selected
   if(away && away !== '— Select Team —') fetchRoster('away', away);
   else { ROSTERS['away']=[]; renderLineup('away'); }
@@ -2788,6 +2968,225 @@ function onTeamChange() {
 
 document.getElementById('teamHome').addEventListener('input',function(){ document.getElementById('homeLineupTitle').textContent=this.value||'Home'; renderPitchers('home');renderPitchers('away');renderScore(); saveToStorage(); });
 document.getElementById('teamAway').addEventListener('input',function(){ document.getElementById('awayLineupTitle').textContent=this.value||'Away'; renderPitchers('home');renderPitchers('away');renderScore(); saveToStorage(); });
+
+// ── Game info / notes ──
+var giOpen = false;
+
+function toggleGameInfo(){
+  giOpen = !giOpen;
+  var body = document.getElementById('giBody');
+  var arrow = document.getElementById('giArrow');
+  if(body) body.className = 'game-info-body' + (giOpen ? ' open' : '');
+  if(arrow) arrow.className = 'game-info-arrow' + (giOpen ? ' open' : '');
+}
+
+function selectWeather(type){
+  // Toggle: if already selected, deselect
+  if(G.notes.weather === type) G.notes.weather = '';
+  else G.notes.weather = type;
+  renderWeatherBtns();
+  saveNotes();
+}
+
+function renderWeatherBtns(){
+  var btns = document.querySelectorAll('.gi-weather-btn');
+  btns.forEach(function(btn){
+    var w = btn.getAttribute('data-weather');
+    btn.className = 'gi-weather-btn' + (w === G.notes.weather ? ' sel' : '');
+  });
+}
+
+function saveNotes(){
+  if(!G.notes) G.notes = {};
+  G.notes.date = (document.getElementById('giDate') || {}).value || '';
+  G.notes.firstPitch = (document.getElementById('giFirstPitch') || {}).value || '';
+  G.notes.venue = (document.getElementById('giVenue') || {}).value || '';
+  G.notes.attendance = (document.getElementById('giAttendance') || {}).value || '';
+  G.notes.temp = (document.getElementById('giTemp') || {}).value || '';
+  G.notes.windSpeed = (document.getElementById('giWindSpeed') || {}).value || '';
+  G.notes.windDir = (document.getElementById('giWindDir') || {}).value || '';
+  G.notes.umpHP = (document.getElementById('giUmpHP') || {}).value || '';
+  G.notes.ump1B = (document.getElementById('giUmp1B') || {}).value || '';
+  G.notes.ump2B = (document.getElementById('giUmp2B') || {}).value || '';
+  G.notes.ump3B = (document.getElementById('giUmp3B') || {}).value || '';
+  G.notes.gameType = (document.getElementById('giGameType') || {}).value || '';
+  G.notes.text = (document.getElementById('giNotes') || {}).value || '';
+  saveToStorage();
+}
+
+function restoreNotes(){
+  if(!G.notes) G.notes = {date:'',firstPitch:'',venue:'',attendance:'',weather:'',temp:'',windSpeed:'',windDir:'',umpHP:'',ump1B:'',ump2B:'',ump3B:'',gameType:'',text:''};
+  var n = G.notes;
+  var el;
+  el = document.getElementById('giDate'); if(el) el.value = n.date || '';
+  el = document.getElementById('giFirstPitch'); if(el) el.value = n.firstPitch || '';
+  el = document.getElementById('giVenue'); if(el) el.value = n.venue || '';
+  el = document.getElementById('giAttendance'); if(el) el.value = n.attendance || '';
+  el = document.getElementById('giTemp'); if(el) el.value = n.temp || '';
+  el = document.getElementById('giWindSpeed'); if(el) el.value = n.windSpeed || '';
+  el = document.getElementById('giWindDir'); if(el) el.value = n.windDir || '';
+  el = document.getElementById('giUmpHP'); if(el) el.value = n.umpHP || '';
+  el = document.getElementById('giUmp1B'); if(el) el.value = n.ump1B || '';
+  el = document.getElementById('giUmp2B'); if(el) el.value = n.ump2B || '';
+  el = document.getElementById('giUmp3B'); if(el) el.value = n.ump3B || '';
+  el = document.getElementById('giGameType'); if(el) el.value = n.gameType || '';
+  el = document.getElementById('giNotes'); if(el) el.value = n.text || '';
+  renderWeatherBtns();
+  // Auto-open if any notes have been filled in
+  var hasData = n.date || n.venue || n.attendance || n.weather || n.temp || n.windSpeed || n.umpHP || n.gameType || n.text || n.firstPitch;
+  if(hasData && !giOpen) toggleGameInfo();
+}
+
+// Auto-fill venue when home team changes
+function autoFillVenue(teamName){
+  var venueEl = document.getElementById('giVenue');
+  if(!venueEl) return;
+  // Only auto-fill if the venue field is empty or matches a known stadium
+  var cur = venueEl.value.trim();
+  var allVenues = {};
+  Object.keys(STADIUMS).forEach(function(t){ allVenues[STADIUMS[t].name] = true; });
+  if(cur === '' || allVenues[cur]){
+    var sd = STADIUMS[teamName];
+    if(sd){
+      venueEl.value = sd.name;
+      G.notes.venue = sd.name;
+      saveToStorage();
+    }
+  }
+}
+
+// Auto-fill today's date if date field is empty
+function autoFillDate(){
+  var el = document.getElementById('giDate');
+  if(!el || el.value) return;
+  var d = new Date();
+  var yyyy = d.getFullYear();
+  var mm = String(d.getMonth()+1).padStart(2,'0');
+  var dd = String(d.getDate()).padStart(2,'0');
+  el.value = yyyy+'-'+mm+'-'+dd;
+  G.notes.date = el.value;
+}
+
+// ── Keyboard shortcuts ──
+var kbFlashTimer = null;
+function kbFlash(msg, color){
+  var el = document.getElementById('kbFlash');
+  if(!el) return;
+  el.textContent = msg;
+  if(color) el.style.background = color;
+  else el.style.background = '';
+  el.classList.add('show');
+  clearTimeout(kbFlashTimer);
+  kbFlashTimer = setTimeout(function(){ el.classList.remove('show'); }, 900);
+}
+
+function isEditing(){
+  var ae = document.activeElement;
+  if(!ae) return false;
+  var tag = ae.tagName;
+  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || ae.isContentEditable;
+}
+
+document.addEventListener('keydown', function(e){
+  // Don't intercept when typing in inputs/selects
+  if(isEditing()) return;
+  // Don't intercept if a modal is open
+  if(document.getElementById('gamesOverlay')) return;
+  if(document.getElementById('kbOverlay')) return;
+
+  var key = e.key.toLowerCase();
+  var shift = e.shiftKey;
+
+  // ── Count ──
+  if(key === 'b' && !shift){ e.preventDefault(); addBall(); kbFlash('Ball ' + G.balls, '#1D9E75'); return; }
+  if(key === 's' && !shift){ e.preventDefault(); addStrike(); kbFlash('Strike', '#E24B4A'); return; }
+  if(key === 'f' && !shift){ e.preventDefault(); addFoul(); kbFlash('Foul', '#534AB7'); return; }
+
+  // ── Hits ──
+  if(key === '1' && !shift){ e.preventDefault(); recordHit(1); kbFlash('Single', '#0F6E56'); return; }
+  if(key === '2' && !shift){ e.preventDefault(); recordHit(2); kbFlash('Double', '#185FA5'); return; }
+  if(key === '3' && !shift){ e.preventDefault(); recordHit(3); kbFlash('Triple', '#534AB7'); return; }
+  if(key === '4' && !shift){ e.preventDefault(); recordHit(4); kbFlash('Home Run!', '#E24B4A'); return; }
+
+  // ── Strikeouts ──
+  if(key === 'k' && !shift){ e.preventDefault(); recordKO('swinging'); kbFlash('K Swinging', '#E24B4A'); return; }
+  if(key === 'k' && shift){ e.preventDefault(); recordKO('looking'); kbFlash('ꓘ Looking', '#993C1D'); return; }
+
+  // ── Outs / special ──
+  if(key === 'o' && !shift){ e.preventDefault(); saveState(); addOut(); kbFlash('Out ' + G.outs); return; }
+  if(key === 'w' && !shift){ e.preventDefault(); recordHBP(); kbFlash('HBP', '#BA7517'); return; }
+  if(key === 'w' && shift){ e.preventDefault(); recordIBB(); kbFlash('IBB', '#0F6E56'); return; }
+
+  // ── Baserunning ──
+  if(key === 'r' && !shift){ e.preventDefault(); addRun(); kbFlash('Run +1', '#185FA5'); return; }
+
+  // ── Undo ──
+  if(key === 'z' && (e.ctrlKey || e.metaKey)){ e.preventDefault(); undoAction(); kbFlash('Undo'); return; }
+  if(key === 'u' && !shift){ e.preventDefault(); undoAction(); kbFlash('Undo'); return; }
+
+  // ── Inning navigation ──
+  if(key === 'arrowleft'){ e.preventDefault(); changeInning(-1); kbFlash('← Inn ' + G.inning); return; }
+  if(key === 'arrowright'){ e.preventDefault(); changeInning(1); kbFlash('→ Inn ' + G.inning); return; }
+  if(key === 'h' && !shift){ e.preventDefault(); toggleHalf(); var hLabel = G.half==='top'?'Top':'Bot'; kbFlash(hLabel + ' ' + G.inning); return; }
+
+  // ── Help ──
+  if(key === '?' || (key === '/' && shift)){ e.preventDefault(); toggleKBHelp(); return; }
+  if(key === 'escape'){ closeKBHelp(); return; }
+});
+
+function toggleKBHelp(){
+  if(document.getElementById('kbOverlay')) { closeKBHelp(); return; }
+  var overlay = document.createElement('div');
+  overlay.className = 'kb-overlay';
+  overlay.id = 'kbOverlay';
+  overlay.onclick = function(e){ if(e.target === overlay) closeKBHelp(); };
+
+  var html = '<div class="kb-modal">'
+    + '<div class="kb-modal-hdr"><h3>⌨ Keyboard Shortcuts</h3><button class="kb-modal-close" onclick="closeKBHelp()">&times;</button></div>'
+    + '<div class="kb-modal-body">';
+
+  html += '<div class="kb-section"><div class="kb-section-title">Pitch Count</div>'
+    + '<div class="kb-row"><span>Ball</span><span class="kb-key">B</span></div>'
+    + '<div class="kb-row"><span>Strike</span><span class="kb-key">S</span></div>'
+    + '<div class="kb-row"><span>Foul</span><span class="kb-key">F</span></div>'
+    + '</div>';
+
+  html += '<div class="kb-section"><div class="kb-section-title">Hits</div>'
+    + '<div class="kb-row"><span>Single</span><span class="kb-key">1</span></div>'
+    + '<div class="kb-row"><span>Double</span><span class="kb-key">2</span></div>'
+    + '<div class="kb-row"><span>Triple</span><span class="kb-key">3</span></div>'
+    + '<div class="kb-row"><span>Home Run</span><span class="kb-key">4</span></div>'
+    + '</div>';
+
+  html += '<div class="kb-section"><div class="kb-section-title">Strikeouts</div>'
+    + '<div class="kb-row"><span>Strikeout swinging</span><span class="kb-key">K</span></div>'
+    + '<div class="kb-row"><span>Strikeout looking</span><span><span class="kb-key">Shift</span><span class="kb-key">K</span></span></div>'
+    + '</div>';
+
+  html += '<div class="kb-section"><div class="kb-section-title">Outs &amp; Baserunning</div>'
+    + '<div class="kb-row"><span>Record out</span><span class="kb-key">O</span></div>'
+    + '<div class="kb-row"><span>Add run</span><span class="kb-key">R</span></div>'
+    + '<div class="kb-row"><span>Hit by pitch</span><span class="kb-key">W</span></div>'
+    + '<div class="kb-row"><span>Intentional walk</span><span><span class="kb-key">Shift</span><span class="kb-key">W</span></span></div>'
+    + '</div>';
+
+  html += '<div class="kb-section"><div class="kb-section-title">Navigation</div>'
+    + '<div class="kb-row"><span>Previous inning</span><span class="kb-key">←</span></div>'
+    + '<div class="kb-row"><span>Next inning</span><span class="kb-key">→</span></div>'
+    + '<div class="kb-row"><span>Switch half</span><span class="kb-key">H</span></div>'
+    + '<div class="kb-row"><span>Undo</span><span><span class="kb-key">U</span> or <span class="kb-key">Ctrl</span><span class="kb-key">Z</span></span></div>'
+    + '<div class="kb-row"><span>This help</span><span class="kb-key">?</span></div>'
+    + '</div>';
+
+  html += '</div></div>';
+  overlay.innerHTML = html;
+  document.body.appendChild(overlay);
+}
+
+function closeKBHelp(){
+  var el = document.getElementById('kbOverlay');
+  if(el) el.remove();
+}
 
 function init(){
   populateTeamDropdowns();
@@ -2801,6 +3200,8 @@ function init(){
     onTeamChange();
   }
   renderAll();
+  autoFillDate();
+  restoreNotes();
 }
 init();
 </script>
