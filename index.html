@@ -74,6 +74,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .today-btn:hover { background:var(--gl); }
 .today-btn:disabled { border-color:var(--disabled); color:var(--muted); cursor:wait; }
 
+/* save/load dropdown menu */
+.save-menu-wrap { position:relative; }
+.save-menu { display:none; position:absolute; top:100%; right:0; margin-top:4px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); box-shadow:0 4px 16px rgba(0,0,0,.12); min-width:180px; z-index:50; overflow:hidden; }
+.save-menu.open { display:block; }
+.save-menu-item { display:block; width:100%; padding:9px 14px; font-size:13px; border:none; background:transparent; color:var(--text); cursor:pointer; text-align:left; font-family:inherit; }
+.save-menu-item:hover { background:var(--header-bg); }
+.save-menu-item + .save-menu-item { border-top:1px solid var(--border); }
+
 /* games modal */
 .games-overlay { position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:200; display:flex; align-items:center; justify-content:center; padding:16px; }
 .games-modal { background:var(--surface); border:1px solid var(--border); border-radius:12px; max-width:480px; width:100%; max-height:80vh; overflow-y:auto; box-shadow:0 8px 32px rgba(0,0,0,.2); }
@@ -529,7 +537,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       <button class="reset-btn" id="undoBtn" onclick="undoAction()" disabled>↩ Undo</button>
       <button class="reset-btn" onclick="resetGame()">Reset</button>
       <button class="reset-btn" id="kbHelpBtn" onclick="toggleKBHelp()" title="Keyboard shortcuts (?)">⌨</button>
-      <button class="pdf-btn" onclick="exportPDF()">⬇ Export PDF</button>
+      <div class="save-menu-wrap">
+        <button class="pdf-btn" onclick="toggleSaveMenu()" id="saveMenuBtn">💾 Save ▾</button>
+        <div class="save-menu" id="saveMenu">
+          <button class="save-menu-item" onclick="exportPDF(); closeSaveMenu()">🖨 Export PDF</button>
+          <button class="save-menu-item" onclick="exportJSON(); closeSaveMenu()">📁 Save game file</button>
+          <button class="save-menu-item" onclick="triggerImport(); closeSaveMenu()">📂 Load game file</button>
+        </div>
+      </div>
+      <input type="file" id="jsonFileInput" accept=".json,.scorecard" style="display:none" onchange="importJSON(event)" />
     </div>
   </div>
 
@@ -2352,6 +2368,12 @@ function addOut(){
   if(G.outs===3){
     addLog('3 outs — inning over','Inn','t-info');
 
+    // If no runs scored this half-inning, set the score cell to 0
+    var battingSide = batting();
+    if(G.scores[battingSide][G.inning - 1] === null){
+      G.scores[battingSide][G.inning - 1] = 0;
+    }
+
     // Check if game is over before advancing
     if(isGameOver()){
       var homeR = G.rhe.home[0];
@@ -3141,6 +3163,164 @@ function autoFillDate(){
   var dd = String(d.getDate()).padStart(2,'0');
   el.value = yyyy+'-'+mm+'-'+dd;
   G.notes.date = el.value;
+}
+
+// ── Save / Load menu ──
+function toggleSaveMenu(){
+  var menu = document.getElementById('saveMenu');
+  if(!menu) return;
+  var isOpen = menu.classList.contains('open');
+  menu.classList.toggle('open', !isOpen);
+  if(!isOpen){
+    // Close on outside click
+    setTimeout(function(){
+      document.addEventListener('click', closeSaveMenuOutside);
+    }, 10);
+  }
+}
+function closeSaveMenu(){
+  var menu = document.getElementById('saveMenu');
+  if(menu) menu.classList.remove('open');
+  document.removeEventListener('click', closeSaveMenuOutside);
+}
+function closeSaveMenuOutside(e){
+  var wrap = document.querySelector('.save-menu-wrap');
+  if(wrap && !wrap.contains(e.target)) closeSaveMenu();
+}
+
+// ── JSON export ──
+function exportJSON(){
+  var away = document.getElementById('teamAway').value || 'Away';
+  var home = document.getElementById('teamHome').value || 'Home';
+
+  var payload = {
+    version: 2,
+    exportedAt: new Date().toISOString(),
+    teamAway: away,
+    teamHome: home,
+    G: G,
+    outState: outState,
+    hitWithErr: hitWithErr
+  };
+
+  var json = JSON.stringify(payload, null, 2);
+  var blob = new Blob([json], {type: 'application/json'});
+  var url = URL.createObjectURL(blob);
+
+  // Build descriptive filename
+  var parts = [];
+  if(away !== '— Select Team —') parts.push(away.replace(/\s+/g, '_'));
+  if(home !== '— Select Team —') parts.push(home.replace(/\s+/g, '_'));
+  var datePart = '';
+  if(G.notes && G.notes.date){
+    datePart = G.notes.date;
+  } else {
+    var d = new Date();
+    datePart = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  }
+  var filename = (parts.length ? parts.join('_vs_') : 'scorecard') + '_' + datePart + '.json';
+
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+
+  kbFlash('Game saved', '#1D9E75');
+}
+
+// ── JSON import ──
+function triggerImport(){
+  var inp = document.getElementById('jsonFileInput');
+  if(inp){ inp.value = ''; inp.click(); }
+}
+
+function importJSON(evt){
+  var file = evt.target.files && evt.target.files[0];
+  if(!file) return;
+
+  var reader = new FileReader();
+  reader.onload = function(e){
+    try {
+      var payload = JSON.parse(e.target.result);
+
+      // Validate basic structure
+      if(!payload || !payload.G){
+        alert('Invalid scorecard file — missing game data.');
+        return;
+      }
+      if(!payload.G.lineup || !payload.G.scores){
+        alert('Invalid scorecard file — incomplete game state.');
+        return;
+      }
+
+      // Confirm if there's existing game data
+      if(G.log.length > 0){
+        if(!confirm('Load this game file? Your current scorecard will be replaced.')) return;
+      }
+
+      // Load the game state
+      G = payload.G;
+
+      // Run the same backward compat migrations as loadFromStorage
+      if(!G.batterLog) G.batterLog = { home: {}, away: {} };
+      if(!G.notes) G.notes = mkNotes();
+      var defaultHitKeys = Object.keys(mkHits());
+      ['home','away'].forEach(function(side){
+        G.lineup[side].forEach(function(sl){
+          defaultHitKeys.forEach(function(k){ if(sl.hits[k] === undefined) sl.hits[k] = 0; });
+          sl.subs.forEach(function(sub){
+            if(!sub.hits) sub.hits = mkHits();
+            defaultHitKeys.forEach(function(k){ if(sub.hits[k] === undefined) sub.hits[k] = 0; });
+          });
+        });
+      });
+      if(G.bases){
+        for(var bi=0;bi<3;bi++){
+          if(G.bases[bi] === true) G.bases[bi] = '?';
+          else if(G.bases[bi] === false) G.bases[bi] = null;
+        }
+      }
+
+      // Restore outState
+      if(payload.outState){
+        Object.assign(outState, payload.outState);
+        if(outState.sacType === undefined) outState.sacType = null;
+      } else {
+        resetOutState();
+      }
+
+      // Restore hitWithErr
+      hitWithErr = !!(payload.hitWithErr);
+
+      // Clear undo history (doesn't make sense to carry over from file)
+      HISTORY = [];
+      var undoBtn = document.getElementById('undoBtn');
+      if(undoBtn) undoBtn.disabled = true;
+
+      // Set team dropdowns
+      if(payload.teamAway){
+        document.getElementById('teamAway').value = payload.teamAway;
+      }
+      if(payload.teamHome){
+        document.getElementById('teamHome').value = payload.teamHome;
+      }
+      onTeamChange();
+      renderAll();
+      saveToStorage();
+
+      var awayLabel = payload.teamAway || 'Away';
+      var homeLabel = payload.teamHome || 'Home';
+      addLog('Loaded from file: ' + awayLabel + ' vs ' + homeLabel, 'Game', 't-info');
+      kbFlash('Game loaded', '#185FA5');
+
+    } catch(err){
+      alert('Could not read scorecard file.\n\n' + (err.message || 'Unknown error'));
+    }
+  };
+  reader.readAsText(file);
 }
 
 // ── Keyboard shortcuts ──
