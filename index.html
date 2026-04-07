@@ -82,6 +82,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .save-menu-item:hover { background:var(--header-bg); }
 .save-menu-item + .save-menu-item { border-top:1px solid var(--border); }
 
+/* baserunner action picker */
+.br-picker-inner { margin-top:6px; padding:6px 0; }
+.br-picker-title { font-size:11px; color:var(--muted); font-weight:600; margin-bottom:4px; }
+.br-picker-btns { display:flex; gap:5px; flex-wrap:wrap; }
+.br-pick { padding:5px 10px; font-size:12px; font-weight:600; border:1.5px solid var(--border); border-radius:6px; background:transparent; cursor:pointer; color:var(--text); }
+.br-pick:hover { background:var(--header-bg); }
+.br-pick-cancel { padding:5px 10px; font-size:12px; border:1px solid var(--border); border-radius:6px; background:transparent; cursor:pointer; color:var(--muted); }
+
 /* games modal */
 .games-overlay { position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:200; display:flex; align-items:center; justify-content:center; padding:16px; }
 .games-modal { background:var(--surface); border:1px solid var(--border); border-radius:12px; max-width:480px; width:100%; max-height:80vh; overflow-y:auto; box-shadow:0 8px 32px rgba(0,0,0,.2); }
@@ -713,12 +721,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       <div class="runner-labels" id="runnerLabels"></div>
       <div style="border-top:1px solid var(--border);margin-top:8px;padding-top:8px">
         <div class="label" style="margin-bottom:5px">Stolen bases / wild pitch / passed ball</div>
-        <div class="btns">
-          <button class="btn" style="border-color:#185FA5;color:#185FA5" onclick="recordSB()">SB</button>
-          <button class="btn" style="border-color:#BA7517;color:#BA7517" onclick="recordCS()">CS</button>
-          <button class="btn" style="border-color:#993C1D;color:#993C1D" onclick="recordWP()">WP</button>
-          <button class="btn" style="border-color:#993C1D;color:#993C1D" onclick="recordPB()">PB</button>
+        <div class="btns" id="brBtns">
+          <button class="btn" style="border-color:#185FA5;color:#185FA5" onclick="startBRAction('sb')">SB</button>
+          <button class="btn" style="border-color:#BA7517;color:#BA7517" onclick="startBRAction('cs')">CS</button>
+          <button class="btn" style="border-color:#993C1D;color:#993C1D" onclick="startBRAction('wp')">WP</button>
+          <button class="btn" style="border-color:#993C1D;color:#993C1D" onclick="startBRAction('pb')">PB</button>
         </div>
+        <div id="brPicker" style="display:none"></div>
       </div>
     </div>
   </div>
@@ -1022,42 +1031,173 @@ function badges(h){
   return b;
 }
 
-function recordSB(){
-  saveState(); var side=batting(); var idx=abIdx(side); var nm=curName(side,idx);
-  activeHits(side, idx).sb++;
-  addLog(nm+' — stolen base','SB','t-sb');
-  renderLineup(side);
+// ── Baserunner action picker ──
+// For SB/WP/PB: pick which runner advances 1 base (or scores from 3B).
+// For CS: pick which runner is out (removed from base).
+// If only one runner on base, auto-act without showing picker.
+
+function startBRAction(type){
+  // Find occupied bases
+  var runners = [];
+  for(var i = 0; i < 3; i++){
+    if(baseOcc(i)) runners.push(i);
+  }
+
+  if(runners.length === 0){
+    // No runners — for WP/PB we can still record the event (ball gets away but nobody to advance)
+    if(type === 'wp' || type === 'pb'){
+      executeBRAction(type, -1);
+    }
+    return;
+  }
+
+  if(runners.length === 1){
+    // Only one runner — auto-pick
+    executeBRAction(type, runners[0]);
+    return;
+  }
+
+  // Multiple runners — show picker
+  var labels = ['1B','2B','3B'];
+  var picker = document.getElementById('brPicker');
+  if(!picker) return;
+
+  var title = type === 'sb' ? 'Which runner steals?' :
+              type === 'cs' ? 'Which runner caught stealing?' :
+              'Which runner advances?';
+
+  // For SB/WP/PB: show all runners (they advance forward).
+  // For CS: show all runners (one gets out).
+  var html = '<div class="br-picker-inner">';
+  html += '<div class="br-picker-title">' + title + '</div>';
+  html += '<div class="br-picker-btns">';
+  // For advance actions, offer "All runners" when it makes sense (WP/PB)
+  if((type === 'wp' || type === 'pb') && runners.length > 1){
+    html += '<button class="br-pick" style="border-color:var(--blue);color:var(--blue)" onclick="executeBRAction(\''+type+'\',-2)">All runners</button>';
+  }
+  runners.forEach(function(bi){
+    var rName = typeof G.bases[bi] === 'string' && G.bases[bi] !== '?' ? shortName(G.bases[bi]) : '';
+    var label = labels[bi] + (rName ? ' · ' + esc(rName) : '');
+    html += '<button class="br-pick" onclick="executeBRAction(\''+type+'\','+bi+')">' + label + '</button>';
+  });
+  html += '<button class="br-pick-cancel" onclick="cancelBRPicker()">Cancel</button>';
+  html += '</div></div>';
+  picker.innerHTML = html;
+  picker.style.display = '';
 }
-function recordCS(){
+
+function cancelBRPicker(){
+  var picker = document.getElementById('brPicker');
+  if(picker){ picker.innerHTML = ''; picker.style.display = 'none'; }
+}
+
+// baseIdx: 0=1B, 1=2B, 2=3B, -1=no runner (WP/PB only), -2=all runners (WP/PB)
+function executeBRAction(type, baseIdx){
+  cancelBRPicker();
   saveState();
   var side = batting();
   var idx = abIdx(side);
   var nm = curName(side, idx);
-  // CS retires the runner, not the batter — track it but don't advance the lineup
-  activeHits(side, idx).cs++;
-  addLog(nm + ' — caught stealing', 'CS', 't-cs');
-  addOut(); // addOut handles inning flip on 3rd out automatically
-  // Don't call nextBatter — the current batter's at-bat continues
-  renderLineup(side);
-}
+  var labels = ['1B','2B','3B'];
 
-function recordPB(){
-  saveState();
-  var fSide = fielding();
-  G.rhe[fSide][2]++;
-  renderScore();
-  addLog('Passed ball — E charged to '+team(fSide)+' C','PB','t-pb');
-}
+  if(type === 'sb'){
+    // Stolen base: runner on baseIdx advances 1 base
+    activeHits(side, idx).sb++;
+    var runnerName = G.bases[baseIdx] || '?';
+    var fromBase = labels[baseIdx];
+    if(baseIdx === 2){
+      // Steal home — runner scores
+      G.rhe[side][0]++;
+      G.scores[side][G.inning - 1] = (G.scores[side][G.inning - 1] || 0) + 1;
+      addPitcherStat(fielding(), 'r');
+      G.bases[2] = null;
+      addLog((typeof runnerName === 'string' && runnerName !== '?' ? runnerName : nm) + ' — steals home!', 'SB', 't-sb');
+      renderScore();
+    } else {
+      // Advance 1 base
+      G.bases[baseIdx + 1] = G.bases[baseIdx]; // carry name
+      G.bases[baseIdx] = null;
+      addLog((typeof runnerName === 'string' && runnerName !== '?' ? runnerName : nm) + ' — stolen base (' + fromBase + ' → ' + labels[baseIdx+1] + ')', 'SB', 't-sb');
+    }
+    renderBases();
+    renderLineup(side);
 
-function recordWP(){
-  saveState();
-  var fSide = fielding();
-  var bside = batting();
-  var bidx = abIdx(bside);
-  activeHits(bside, bidx).wp++;
-  addPitch(fSide);
-  addLog('Wild pitch — charged to '+team(fSide)+' pitcher','WP','t-wp');
-  renderLineup(bside);
+  } else if(type === 'cs'){
+    // Caught stealing: runner on baseIdx is out, removed from base
+    activeHits(side, idx).cs++;
+    var csRunner = G.bases[baseIdx] || '?';
+    var csFrom = labels[baseIdx];
+    G.bases[baseIdx] = null;
+    addLog((typeof csRunner === 'string' && csRunner !== '?' ? csRunner : nm) + ' — caught stealing (' + csFrom + ')', 'CS', 't-cs');
+    addOut();
+    renderBases();
+    renderLineup(side);
+
+  } else if(type === 'wp'){
+    // Wild pitch: advance runner(s). Counts as a pitch.
+    activeHits(side, idx).wp++;
+    addPitch(fielding());
+    if(baseIdx === -1){
+      // No runners, just the event
+      addLog('Wild pitch — charged to ' + team(fielding()) + ' pitcher', 'WP', 't-wp');
+    } else if(baseIdx === -2){
+      // All runners advance 1 base
+      var wpRuns = advanceRunners(side, 1);
+      addLog('Wild pitch — all runners advance', 'WP', 't-wp');
+      if(wpRuns > 0){
+        addLog(wpRuns + ' run' + (wpRuns > 1 ? 's' : '') + ' score on wild pitch', 'Run', 't-run');
+        renderScore();
+      }
+    } else {
+      // Single runner advances
+      var wpRunner = G.bases[baseIdx] || '?';
+      if(baseIdx === 2){
+        G.rhe[side][0]++;
+        G.scores[side][G.inning - 1] = (G.scores[side][G.inning - 1] || 0) + 1;
+        addPitcherStat(fielding(), 'r');
+        G.bases[2] = null;
+        addLog('Wild pitch — runner scores from 3B', 'WP', 't-wp');
+        renderScore();
+      } else {
+        G.bases[baseIdx + 1] = G.bases[baseIdx];
+        G.bases[baseIdx] = null;
+        addLog('Wild pitch — runner advances (' + labels[baseIdx] + ' → ' + labels[baseIdx+1] + ')', 'WP', 't-wp');
+      }
+    }
+    renderBases();
+    renderLineup(side);
+
+  } else if(type === 'pb'){
+    // Passed ball: advance runner(s). Charges error to catcher.
+    var fSide = fielding();
+    G.rhe[fSide][2]++;
+    if(baseIdx === -1){
+      addLog('Passed ball — E charged to ' + team(fSide) + ' C', 'PB', 't-pb');
+    } else if(baseIdx === -2){
+      var pbRuns = advanceRunners(side, 1);
+      addLog('Passed ball — all runners advance', 'PB', 't-pb');
+      if(pbRuns > 0){
+        addLog(pbRuns + ' run' + (pbRuns > 1 ? 's' : '') + ' score on passed ball', 'Run', 't-run');
+      }
+    } else {
+      var pbRunner = G.bases[baseIdx] || '?';
+      if(baseIdx === 2){
+        G.rhe[side][0]++;
+        G.scores[side][G.inning - 1] = (G.scores[side][G.inning - 1] || 0) + 1;
+        addPitcherStat(fielding(), 'r');
+        G.bases[2] = null;
+        addLog('Passed ball — runner scores from 3B', 'PB', 't-pb');
+      } else {
+        G.bases[baseIdx + 1] = G.bases[baseIdx];
+        G.bases[baseIdx] = null;
+        addLog('Passed ball — runner advances (' + labels[baseIdx] + ' → ' + labels[baseIdx+1] + ')', 'PB', 't-pb');
+      }
+    }
+    renderBases();
+    renderScore();
+  }
+
+  checkWalkoff();
 }
 
 function recordHBP(){
@@ -2410,11 +2550,19 @@ function addOut(){
     G.strikes = 0;
     G.fouls = 0;
     G.bases = [null, null, null];
+
+    // Log the leadoff batter for the new half-inning
+    var newSide = batting();
+    var newIdx = abIdx(newSide);
+    addLog(curName(newSide, newIdx) + ' up to bat', 'AB', 't-info');
+
     renderInn();
     renderScore();
     renderCount();
     renderOuts();
     renderBases();
+    renderLineup('home');
+    renderLineup('away');
     return true; // signals inning flipped
   }
   G.balls = 0;
