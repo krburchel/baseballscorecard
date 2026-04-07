@@ -90,6 +90,31 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .br-pick:hover { background:var(--header-bg); }
 .br-pick-cancel { padding:5px 10px; font-size:12px; border:1px solid var(--border); border-radius:6px; background:transparent; cursor:pointer; color:var(--muted); }
 
+/* ── Runner placement picker (post-hit) ── */
+.rp-overlay { position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:200; display:flex; align-items:center; justify-content:center; padding:16px; }
+.rp-modal { background:var(--surface); border:1px solid var(--border); border-radius:12px; max-width:400px; width:100%; box-shadow:0 8px 32px rgba(0,0,0,.2); overflow:hidden; }
+.rp-hdr { padding:12px 16px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+.rp-hdr h3 { font-size:14px; font-weight:700; color:var(--text); margin:0; }
+.rp-hdr-sub { font-size:11px; color:var(--muted); font-weight:400; }
+.rp-body { padding:10px 16px 14px; }
+.rp-runner { margin-bottom:10px; padding:8px 10px; border:1px solid var(--border); border-radius:8px; background:var(--header-bg); }
+.rp-runner:last-child { margin-bottom:0; }
+.rp-runner-name { font-size:12px; font-weight:600; color:var(--text); margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+.rp-runner-from { font-size:11px; color:var(--muted); font-weight:400; }
+.rp-opts { display:flex; gap:5px; flex-wrap:wrap; }
+.rp-opt { padding:6px 12px; font-size:12px; font-weight:600; border:1.5px solid var(--border); border-radius:6px; background:var(--surface); cursor:pointer; color:var(--text); transition:border-color .1s, background .1s; }
+.rp-opt:hover { background:var(--header-bg); }
+.rp-opt.sel { border-color:var(--blue); background:var(--bl); color:var(--blue); }
+.rp-opt.sel-score { border-color:var(--green); background:var(--gl); color:var(--green); }
+.rp-opt.sel-out { border-color:var(--red); background:var(--rl); color:var(--red); }
+.rp-batter { margin-top:10px; padding:8px 10px; border:1px solid var(--border); border-radius:8px; background:var(--bl); font-size:12px; color:var(--blue); font-weight:600; }
+.rp-confirm { width:100%; margin-top:12px; padding:9px; font-size:13px; font-weight:600; border:none; border-radius:8px; background:var(--blue); color:#fff; cursor:pointer; }
+.rp-confirm:hover { background:#1150a0; }
+.rp-confirm:disabled { background:var(--disabled); cursor:not-allowed; }
+.rp-skip { width:100%; margin-top:6px; padding:7px; font-size:12px; font-weight:500; border:1px solid var(--border); border-radius:8px; background:transparent; color:var(--muted); cursor:pointer; }
+.rp-skip:hover { background:var(--header-bg); }
+.rp-diamond-wrap { display:flex; justify-content:center; margin:8px 0 4px; }
+
 /* games modal */
 .games-overlay { position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:200; display:flex; align-items:center; justify-content:center; padding:16px; }
 .games-modal { background:var(--surface); border:1px solid var(--border); border-radius:12px; max-width:480px; width:100%; max-height:80vh; overflow-y:auto; box-shadow:0 8px 32px rgba(0,0,0,.2); }
@@ -355,6 +380,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .t-wp { background:#FAECE7; color:#993C1D; }
 .empty-log { font-size:13px; color:var(--muted); padding:16px 12px; text-align:center; }
 
+/* log filter bar */
+.log-filters { display:flex; align-items:center; gap:5px; padding:6px 10px; border-bottom:1px solid var(--border); flex-wrap:wrap; }
+.log-filter-label { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; font-weight:600; flex-shrink:0; }
+.log-filter-inn { font-size:11px; padding:2px 6px; border:1px solid var(--border); border-radius:5px; background:var(--surface); color:var(--text); font-family:inherit; cursor:pointer; }
+.log-fpill { font-size:10px; padding:2px 7px; border:1px solid var(--border); border-radius:10px; background:transparent; cursor:pointer; color:var(--muted); font-weight:600; }
+.log-fpill:hover { background:var(--header-bg); }
+.log-fpill.active { background:var(--bl); border-color:var(--blue); color:var(--blue); }
+
 /* ── Game info / notes panel ── */
 .game-info { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); margin-bottom:10px; overflow:hidden; }
 .game-info-toggle { display:flex; align-items:center; justify-content:space-between; padding:8px 12px; cursor:pointer; user-select:none; }
@@ -412,7 +445,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   .hdr-btns, .half-tog, .btns, .action-row, .add-p, .padj,
   .set-btn, .sub-btn, .sub-form,
   .pdf-btn, .reset-btn, .out-card, #kbHelpBtn,
-  .kb-flash, .extra-inn-btn, .runner-labels { display:none!important; }
+  .kb-flash, .extra-inn-btn, .runner-labels, .rp-overlay { display:none!important; }
   /* score strip */
   .score-strip { border:1.5px solid #333; border-radius:0; margin-bottom:6px; }
   .score-table th, .score-table td { font-size:10px; padding:4px 6px; border-right:1px solid #ccc; }
@@ -477,6 +510,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   .sec-title-log { display:block!important; font-size:10px; margin-bottom:4px; margin-top:8px; }
   .log-panel { border:1.5px solid #333; border-radius:0; page-break-inside:avoid; }
   .log-toggle { display:none!important; }
+  .log-filters { display:none!important; }
   .log-inner { max-height:none!important; overflow:visible!important; column-count:2; column-gap:8px; }
   .log-inner.expanded { max-height:none!important; }
   .log-row { font-size:9px; padding:2px 6px; border-bottom:1px solid #eee; break-inside:avoid; }
@@ -748,6 +782,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         <button class="hit-err-toggle" id="hitErrToggle" onclick="toggleHitErr()">+ E on play</button>
         <span class="hit-err-hint" id="hitErrHint"></span>
       </div>
+      <div id="rpPickerAnchor"></div>
     </div>
     <div class="card">
       <div class="label">Strikeout — active batter</div>
@@ -819,6 +854,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   <!-- Log -->
   <div class="sec-title sec-title-log">Play log</div>
   <div class="log-panel">
+    <div class="log-filters" id="logFilters" style="display:none">
+      <span class="log-filter-label">Filter:</span>
+      <select class="log-filter-inn" id="logFilterInn"><option value="">All innings</option></select>
+      <button class="log-fpill" data-filter="hits">Hits</button>
+      <button class="log-fpill" data-filter="outs">Outs</button>
+      <button class="log-fpill" data-filter="runs">Runs</button>
+      <button class="log-fpill" data-filter="pitches">Pitches</button>
+      <button class="log-fpill" data-filter="">All</button>
+    </div>
     <div class="log-inner" id="logInner"><div class="empty-log">No plays logged yet</div></div>
     <div class="log-toggle" id="logToggle" onclick="toggleLog()" style="display:none">▼ Show full log</div>
   </div>
@@ -886,6 +930,7 @@ function saveState(){
 
 function undoAction(){
   if(!HISTORY.length) return;
+  closeRunnerPicker(); // dismiss picker if open mid-hit
   var snapshot = JSON.parse(HISTORY.pop());
   G = snapshot.G;
   // Restore outState if it was saved, otherwise reset it
@@ -961,24 +1006,67 @@ function addPitcherStat(side, stat){
 
 function addLog(text, tag, cls){
   var inn = (G.half === 'top' ? 'T' : 'B') + G.inning;
-  G.log.unshift({ text: inn + ' — ' + text, tag: tag, cls: cls });
+  // Categorize for filtering
+  var cat = 'info';
+  if(cls === 't-hit' || cls === 't-hr' || cls === 't-hbp' || cls === 't-sb') cat = 'hits';
+  else if(cls === 't-fo' || cls === 't-go' || cls === 't-out' || cls === 't-kl' || cls === 't-ks' || cls === 't-fc' || cls === 't-cs') cat = 'outs';
+  else if(cls === 't-run') cat = 'runs';
+  else if(cls === 't-ball' || cls === 't-k' || cls === 't-foul' || cls === 't-wp' || cls === 't-pb' || cls === 't-ibb') cat = 'pitches';
+  G.log.unshift({ text: inn + ' — ' + text, tag: tag, cls: cls, inn: inn, cat: cat });
   if(G.log.length > 80) G.log.pop();
   renderLog();
+  haptic();
 }
+
+var logFilter = { inn: '', cat: '' };
+
 function renderLog(){
   var el = document.getElementById('logInner');
   var toggle = document.getElementById('logToggle');
+  var filtersEl = document.getElementById('logFilters');
   if(!G.log.length){
     el.innerHTML = '<div class="empty-log">No plays logged yet</div>';
     if(toggle) toggle.style.display = 'none';
+    if(filtersEl) filtersEl.style.display = 'none';
     return;
   }
-  el.innerHTML = G.log.map(function(e){
-    return '<div class="log-row">'
-      + '<span>' + e.text + '</span>'
-      + '<span class="ltag ' + e.cls + '">' + e.tag + '</span>'
-      + '</div>';
-  }).join('');
+
+  // Show filter bar
+  if(filtersEl) filtersEl.style.display = '';
+
+  // Update inning dropdown options
+  var innSelect = document.getElementById('logFilterInn');
+  if(innSelect){
+    var innings = {};
+    G.log.forEach(function(e){ if(e.inn) innings[e.inn] = true; });
+    var innKeys = Object.keys(innings).sort(function(a, b){
+      var na = parseInt(a.substring(1)), nb = parseInt(b.substring(1));
+      if(na !== nb) return na - nb;
+      return a < b ? -1 : 1; // T before B
+    });
+    var curVal = innSelect.value;
+    innSelect.innerHTML = '<option value="">All innings</option>' + innKeys.map(function(k){
+      return '<option value="'+k+'"'+(k===curVal?' selected':'')+'>'+k+'</option>';
+    }).join('');
+  }
+
+  // Filter entries
+  var filtered = G.log.filter(function(e){
+    if(logFilter.inn && e.inn !== logFilter.inn) return false;
+    if(logFilter.cat && e.cat !== logFilter.cat) return false;
+    return true;
+  });
+
+  if(filtered.length === 0){
+    el.innerHTML = '<div class="empty-log">No matching plays</div>';
+  } else {
+    el.innerHTML = filtered.map(function(e){
+      return '<div class="log-row">'
+        + '<span>' + e.text + '</span>'
+        + '<span class="ltag ' + e.cls + '">' + e.tag + '</span>'
+        + '</div>';
+    }).join('');
+  }
   // Show toggle when log has enough entries to overflow
   if(toggle){
     toggle.style.display = G.log.length > 5 ? '' : 'none';
@@ -997,6 +1085,34 @@ function toggleLog(){
     el.classList.remove('expanded');
     if(toggle) toggle.textContent = '▼ Show full log';
   }
+}
+
+// Log filter event delegation
+(function(){
+  // Inning dropdown
+  document.addEventListener('change', function(e){
+    if(e.target.id === 'logFilterInn'){
+      logFilter.inn = e.target.value;
+      renderLog();
+    }
+  });
+  // Category pill buttons
+  document.addEventListener('click', function(e){
+    if(e.target.classList && e.target.classList.contains('log-fpill')){
+      var cat = e.target.dataset.filter;
+      // Toggle: if already active, clear; otherwise set
+      logFilter.cat = (logFilter.cat === cat) ? '' : cat;
+      // Update pill active states
+      var pills = document.querySelectorAll('.log-fpill');
+      pills.forEach(function(p){ p.classList.toggle('active', p.dataset.filter === logFilter.cat); });
+      renderLog();
+    }
+  });
+})();
+
+// ── Haptic feedback ──
+function haptic(ms){
+  try { if(navigator.vibrate) navigator.vibrate(ms || 10); } catch(e){}
 }
 
 function badges(h){
@@ -1343,7 +1459,7 @@ function buildFielderGrid(){
   var isErr = outState.type === 'error';
   g.innerHTML = FIELDERS.map(function(f){
     var selClass = outState.fielder===f.num ? (isErr ? ' sel-err' : ' sel') : '';
-    return '<button class="fld-btn'+selClass+'" onclick="selectFielder('+f.num+')">'
+    return '<button class="fld-btn'+selClass+'" data-action="sel-fielder" data-num="'+f.num+'">'
       +'<span class="fld-num">'+f.num+'</span>'
       +'<span class="fld-pos-name">'+f.pos+'</span>'
       +'</button>';
@@ -1357,11 +1473,10 @@ function buildFielderGrid(){
 function buildThrowToGrid(){
   var g = document.getElementById('throwToGrid'); if(!g) return;
   g.innerHTML = FIELDERS.map(function(f){
-    // Dim the fielder already selected as the primary
     var isSelected = outState.throwTo===f.num;
     var isPrimary  = outState.fielder===f.num;
     var selClass   = isSelected ? ' sel' : '';
-    return '<button class="fld-btn'+selClass+'" onclick="selectThrowTo('+f.num+')" '+(isPrimary?'style="opacity:.4"':'')+' title="'+f.pos+'">'
+    return '<button class="fld-btn'+selClass+'" data-action="sel-throwto" data-num="'+f.num+'" '+(isPrimary?'style="opacity:.4"':'')+' title="'+f.pos+'">'
       +'<span class="fld-num">'+f.num+'</span>'
       +'<span class="fld-pos-name">'+f.pos+'</span>'
       +'</button>';
@@ -1947,27 +2062,27 @@ function renderLineup(side){
     html+='<div class="lineup-row'+(hasSubs?' dimmed':'')+'">';
     html+='<span class="bnum">'+(i+1)+'</span>';
     html+='<span class="ab-dot'+(isActive&&!hasSubs?'':' hidden')+'"></span>';
-    html+='<select class="pos-sel"'+(hasSubs?' disabled':'')+' onchange="G.lineup.'+side+'['+i+'].pos=this.value">'+posOpts(sl.pos)+'</select>';
+    html+='<select class="pos-sel" data-action="set-pos" data-side="'+side+'" data-idx="'+i+'"'+(hasSubs?' disabled':'')+'>'+posOpts(sl.pos)+'</select>';
     if(hasRoster && !hasSubs){
-      html+='<select class="bname roster-sel" id="'+side+'_rs_'+i+'" onchange="onPlayerSelect(\''+side+'\','+i+',this.value)">'
+      html+='<select class="bname roster-sel" id="'+side+'_rs_'+i+'" data-action="select-player" data-side="'+side+'" data-idx="'+i+'">'
         +'<option value="">— Select player —</option>'
         +playerOpts(side, sl.name, false)
         +'</select>';
     } else if(isLoading && !hasSubs){
       html+='<input class="bname" value="'+esc(sl.name)+'" placeholder="Loading roster…" disabled />';
     } else {
-      html+='<input class="bname" id="'+side+'_n_'+i+'" value="'+esc(sl.name)+'" placeholder="Player '+(i+1)+'"'+(hasSubs?' disabled':'')+' onchange="G.lineup.'+side+'['+i+'].name=this.value" />';
+      html+='<input class="bname" id="'+side+'_n_'+i+'" value="'+esc(sl.name)+'" placeholder="Player '+(i+1)+'"'+(hasSubs?' disabled':'')+' data-action="set-name" data-side="'+side+'" data-idx="'+i+'" />';
     }
     var hb=badges(sl.hits); if(hb) html+='<div class="hits">'+hb+'</div>';
-    if(!hasSubs&&!sl.pending){ html+='<button class="set-btn" onclick="setAtBat(\''+side+'\','+i+')">At bat</button><button class="sub-btn" onclick="startSub(\''+side+'\','+i+')">Sub</button>'; }
+    if(!hasSubs&&!sl.pending){ html+='<button class="set-btn" data-action="at-bat" data-side="'+side+'" data-idx="'+i+'">At bat</button><button class="sub-btn" data-action="start-sub" data-side="'+side+'" data-idx="'+i+'">Sub</button>'; }
     html+='</div>';
     for(var s=0;s<sl.subs.length;s++){
       var sub=sl.subs[s]; var isLast=(s===sl.subs.length-1); var inn=(sub.half==='top'?'T':'B')+sub.inning;
       html+='<div class="sub-row"><span class="sub-arrow">&#8627;</span><span class="sub-inn">'+inn+'</span>';
-      html+='<select class="sub-pos" onchange="G.lineup.'+side+'['+i+'].subs['+s+'].pos=this.value">'+posOpts(sub.pos)+'</select>';
-      html+='<input class="sub-name-el" value="'+esc(sub.name)+'" onchange="G.lineup.'+side+'['+i+'].subs['+s+'].name=this.value" />';
+      html+='<select class="sub-pos" data-action="set-sub-pos" data-side="'+side+'" data-idx="'+i+'" data-sub="'+s+'">'+posOpts(sub.pos)+'</select>';
+      html+='<input class="sub-name-el" value="'+esc(sub.name)+'" data-action="set-sub-name" data-side="'+side+'" data-idx="'+i+'" data-sub="'+s+'" />';
       var subBadges = sub.hits ? badges(sub.hits) : '';
-      if(isLast){ if(subBadges) html+='<div class="hits">'+subBadges+'</div>'; html+='<span class="ab-dot'+(isActive&&isLast?'':' hidden')+'" style="margin-left:2px"></span>'; if(!sl.pending){ html+='<button class="set-btn" onclick="setAtBat(\''+side+'\','+i+')">At bat</button><button class="sub-btn" onclick="startSub(\''+side+'\','+i+')">Sub</button>'; } }
+      if(isLast){ if(subBadges) html+='<div class="hits">'+subBadges+'</div>'; html+='<span class="ab-dot'+(isActive&&isLast?'':' hidden')+'" style="margin-left:2px"></span>'; if(!sl.pending){ html+='<button class="set-btn" data-action="at-bat" data-side="'+side+'" data-idx="'+i+'">At bat</button><button class="sub-btn" data-action="start-sub" data-side="'+side+'" data-idx="'+i+'">Sub</button>'; } }
       else { if(subBadges) html+='<div class="hits">'+subBadges+'</div>'; }
       html+='</div>';
     }
@@ -1979,9 +2094,9 @@ function renderLineup(side){
       } else {
         html+='<input class="sub-form-inp" id="'+side+'_si_'+i+'" placeholder="New player name" />';
       }
-      html+='<button class="sub-ok" onclick="confirmSub(\''+side+'\','+i+',\'ph\')" title="Pinch Hitter">PH</button>';
-      html+='<button class="sub-ok" style="border-color:var(--teal);color:var(--teal)" onclick="confirmSub(\''+side+'\','+i+',\'pr\')" title="Pinch Runner">PR</button>';
-      html+='<button class="sub-cancel" onclick="cancelSub(\''+side+'\','+i+')">Cancel</button>';
+      html+='<button class="sub-ok" data-action="confirm-sub" data-side="'+side+'" data-idx="'+i+'" data-subtype="ph" title="Pinch Hitter">PH</button>';
+      html+='<button class="sub-ok" style="border-color:var(--teal);color:var(--teal)" data-action="confirm-sub" data-side="'+side+'" data-idx="'+i+'" data-subtype="pr" title="Pinch Runner">PR</button>';
+      html+='<button class="sub-cancel" data-action="cancel-sub" data-side="'+side+'" data-idx="'+i+'">Cancel</button>';
       html+='</div>';
     }
     html+='</div>';
@@ -2178,7 +2293,7 @@ function recordHit(b){
   logBatter(side, idx, logTag);
 
   if(b === 4){
-    // Home run: all runners + batter score
+    // Home run: all runners + batter score — no picker needed
     var runnersOn = G.bases.filter(function(v){ return !!v; }).length;
     var runsScored = runnersOn + 1;
     G.rhe[side][0] += runsScored;
@@ -2188,16 +2303,23 @@ function recordHit(b){
     }
     addLog(runsScored + ' run' + (runsScored > 1 ? 's' : '') + ' score', 'Run', 't-run');
     G.bases = [null, null, null];
+    finishHit(side, nm, b);
   } else {
-    // Single / Double / Triple: advance existing runners, place batter
-    var runs = advanceRunners(side, b);
-    // Place the batter on the appropriate base (0-indexed: 1B=0, 2B=1, 3B=2)
-    G.bases[b - 1] = nm;
-    if(runs > 0){
-      addLog(runs + ' run' + (runs > 1 ? 's' : '') + ' score', 'Run', 't-run');
+    // Single / Double / Triple — check if runners are on base
+    var hasRunners = G.bases.some(function(v){ return !!v; });
+    if(hasRunners){
+      // Show runner placement picker
+      showRunnerPicker(side, nm, b);
+    } else {
+      // No runners — just place batter
+      G.bases[b - 1] = nm;
+      finishHit(side, nm, b);
     }
   }
+}
 
+// Finishes a hit: resets count, renders, checks walkoff, advances batter
+function finishHit(side, nm, b){
   G.balls = 0;
   G.strikes = 0;
   G.fouls = 0;
@@ -2206,7 +2328,6 @@ function recordHit(b){
   renderScore();
   renderLineup(side);
 
-  // Check for walk-off before advancing batter
   if(!checkWalkoff()){
     nextBatter(side);
   }
@@ -2219,6 +2340,190 @@ function recordHit(b){
     if(btn2) btn2.className = 'hit-err-toggle';
     if(hint2) hint2.textContent = '';
   }
+}
+
+// ── Runner Placement Picker ──
+// Shows a modal after 1B/2B/3B with runners on base.
+// Each runner gets destination options based on the hit type.
+// The batter's destination is fixed (shown but not editable).
+
+var _rpState = null; // { side, batterName, hitBases, runners: [{baseIdx, name, dest}] }
+
+function showRunnerPicker(side, batterName, hitBases){
+  var baseLabels = ['1B','2B','3B'];
+
+  // Collect runners from 3B → 1B (display order: lead runner first)
+  var runners = [];
+  for(var i = 2; i >= 0; i--){
+    if(baseOcc(i)){
+      runners.push({
+        baseIdx: i,
+        name: typeof G.bases[i] === 'string' && G.bases[i] !== '?' ? G.bases[i] : 'Runner',
+        dest: null // null = not yet chosen
+      });
+    }
+  }
+
+  _rpState = {
+    side: side,
+    batterName: batterName,
+    hitBases: hitBases,
+    runners: runners
+  };
+
+  renderRunnerPicker();
+}
+
+function renderRunnerPicker(){
+  if(!_rpState) return;
+  var rp = _rpState;
+  var baseLabels = ['1B','2B','3B','Home'];
+
+  var overlay = document.getElementById('rpOverlay');
+  if(!overlay){
+    overlay = document.createElement('div');
+    overlay.className = 'rp-overlay';
+    overlay.id = 'rpOverlay';
+    document.body.appendChild(overlay);
+  }
+
+  var hitLabel = rp.hitBases === 1 ? 'Single' : rp.hitBases === 2 ? 'Double' : 'Triple';
+  var batterDest = baseLabels[rp.hitBases - 1]; // 1B for single, 2B for double, 3B for triple
+
+  var html = '<div class="rp-modal">';
+  html += '<div class="rp-hdr"><h3>Place runners <span class="rp-hdr-sub">— ' + hitLabel + '</span></h3></div>';
+  html += '<div class="rp-body">';
+
+  // Show each runner (lead runner first)
+  rp.runners.forEach(function(r, ri){
+    var fromLabel = baseLabels[r.baseIdx];
+    var dispName = shortName(r.name);
+    html += '<div class="rp-runner">';
+    html += '<div class="rp-runner-name">' + esc(dispName) + ' <span class="rp-runner-from">from ' + fromLabel + '</span></div>';
+    html += '<div class="rp-opts">';
+
+    // Possible destinations: each base ahead of current, plus Home (score)
+    // For a single: runner on 1B can go to 2B, 3B, or Home
+    // For a double: runner on 1B can go to 3B or Home
+    // etc. — show all bases ahead of current position
+    var minDest = r.baseIdx + 1; // at least 1 base ahead
+    // But realistically a runner can end up anywhere ahead, even hold
+    // Let's offer: stay (same base — unusual but possible on certain plays),
+    // each base from current+1 up to 3B, and Home (score).
+    // "Hold" only makes sense if the batter's destination doesn't conflict.
+    // For simplicity: offer bases from (current+1) through 3 (Home=score).
+    // Also offer "Out" for fielder's-choice-like situations on hits? 
+    // Keep it clean: just forward destinations + score.
+
+    for(var d = r.baseIdx + 1; d <= 2; d++){
+      var selCls = r.dest === d ? ' sel' : '';
+      html += '<button class="rp-opt' + selCls + '" onclick="rpSetDest(' + ri + ',' + d + ')">' + baseLabels[d] + '</button>';
+    }
+    // Home (score)
+    var scoreCls = r.dest === 3 ? ' sel-score' : '';
+    html += '<button class="rp-opt' + scoreCls + '" onclick="rpSetDest(' + ri + ',3)">🏠 Scores</button>';
+
+    // Out on bases option (runner thrown out advancing)
+    var outCls = r.dest === -1 ? ' sel-out' : '';
+    html += '<button class="rp-opt' + outCls + '" onclick="rpSetDest(' + ri + ',-1)">✕ Out</button>';
+
+    html += '</div></div>';
+  });
+
+  // Show batter placement (fixed)
+  html += '<div class="rp-batter">🏏 ' + esc(shortName(rp.batterName)) + ' → ' + batterDest + '</div>';
+
+  // Confirm button
+  var allChosen = rp.runners.every(function(r){ return r.dest !== null; });
+  html += '<button class="rp-confirm" id="rpConfirmBtn" onclick="rpConfirm()"' + (allChosen ? '' : ' disabled') + '>' + (allChosen ? 'Confirm placement' : 'Choose destination for each runner') + '</button>';
+  html += '<button class="rp-skip" onclick="rpAutoAdvance()">Auto-advance (default)</button>';
+
+  html += '</div></div>';
+  overlay.innerHTML = html;
+}
+
+function rpSetDest(runnerIdx, dest){
+  if(!_rpState) return;
+  _rpState.runners[runnerIdx].dest = dest;
+  renderRunnerPicker();
+  haptic();
+}
+
+function rpConfirm(){
+  if(!_rpState) return;
+  var rp = _rpState;
+  var side = rp.side;
+
+  // Clear all bases first
+  var newBases = [null, null, null];
+  var runs = 0;
+  var outsOnBases = 0;
+
+  // Place each runner at their chosen destination
+  rp.runners.forEach(function(r){
+    if(r.dest === 3){
+      // Scores
+      runs++;
+    } else if(r.dest === -1){
+      // Out on bases
+      outsOnBases++;
+    } else if(r.dest >= 0 && r.dest <= 2){
+      // On a base
+      newBases[r.dest] = r.name;
+    }
+  });
+
+  // Place batter on the hit base
+  newBases[rp.hitBases - 1] = rp.batterName;
+
+  G.bases = newBases;
+
+  // Score the runs
+  if(runs > 0){
+    G.rhe[side][0] += runs;
+    G.scores[side][G.inning - 1] = (G.scores[side][G.inning - 1] || 0) + runs;
+    for(var r2 = 0; r2 < runs; r2++){
+      addPitcherStat(fielding(), 'r');
+    }
+    addLog(runs + ' run' + (runs > 1 ? 's' : '') + ' score', 'Run', 't-run');
+  }
+
+  // Handle outs on bases
+  if(outsOnBases > 0){
+    for(var oi = 0; oi < outsOnBases; oi++){
+      addLog('Runner out on basepaths', 'Out', 't-out');
+      // Don't call addOut() here — just increment. addOut() would flip innings.
+      G.outs = Math.min(3, G.outs + 1);
+    }
+    renderOuts();
+    // If 3 outs reached, the inning-flip logic will be handled by addOut flow.
+    // But since we're mid-hit, let's just render and let finishHit proceed.
+  }
+
+  closeRunnerPicker();
+  finishHit(side, rp.batterName, rp.hitBases);
+}
+
+// Auto-advance: use the old uniform advancement logic as a fallback
+function rpAutoAdvance(){
+  if(!_rpState) return;
+  var rp = _rpState;
+  var side = rp.side;
+
+  var runs = advanceRunners(side, rp.hitBases);
+  G.bases[rp.hitBases - 1] = rp.batterName;
+  if(runs > 0){
+    addLog(runs + ' run' + (runs > 1 ? 's' : '') + ' score', 'Run', 't-run');
+  }
+
+  closeRunnerPicker();
+  finishHit(side, rp.batterName, rp.hitBases);
+}
+
+function closeRunnerPicker(){
+  _rpState = null;
+  var overlay = document.getElementById('rpOverlay');
+  if(overlay) overlay.remove();
 }
 function recordKO(type){
   saveState();
@@ -2529,6 +2834,7 @@ function addOut(){
       renderOuts();
       renderBases();
       renderScore();
+      kbFlash('FINAL — ' + winner + ' wins!', '#E24B4A');
       return true; // signals inning ended (game over, no advance)
     }
 
@@ -2555,6 +2861,10 @@ function addOut(){
     var newSide = batting();
     var newIdx = abIdx(newSide);
     addLog(curName(newSide, newIdx) + ' up to bat', 'AB', 't-info');
+
+    // Flash inning change toast
+    var halfLabel = G.half === 'top' ? '▲ Top' : '▼ Bot';
+    kbFlash(halfLabel + ' ' + G.inning, '#185FA5');
 
     renderInn();
     renderScore();
@@ -2662,27 +2972,24 @@ function renderPitchers(side){
   pp.forEach(function(p,i){
     var a=p.active;
     var opts = pitcherOpts(side, p.name);
-    html+='<div class="prow'+(a?' active-p':'')+'" onclick="setActivePitcher(\''+side+'\','+i+')">';
+    html+='<div class="prow'+(a?' active-p':'')+'" data-action="set-active-p" data-side="'+side+'" data-pidx="'+i+'">';
     html+='<span class="p-dot'+(a?'':' hidden')+'"></span>';
     if(opts !== null){
-      // Roster loaded — show dropdown
-      html+='<select class="p-name-sel" onclick="event.stopPropagation()" onchange="G.pitchers.'+side+'['+i+'].name=this.value;renderPitchers(\''+side+'\')">'+opts+'</select>';
+      html+='<select class="p-name-sel" data-action="set-p-name" data-side="'+side+'" data-pidx="'+i+'">'+opts+'</select>';
     } else {
-      // No roster — show text input
-      html+='<input class="p-name" value="'+esc(p.name)+'" placeholder="Pitcher '+(i+1)+'" onclick="event.stopPropagation()" onchange="G.pitchers.'+side+'['+i+'].name=this.value;renderPitchers(\''+side+'\')" />';
+      html+='<input class="p-name" value="'+esc(p.name)+'" placeholder="Pitcher '+(i+1)+'" data-action="set-p-name" data-side="'+side+'" data-pidx="'+i+'" />';
     }
     html+='<span class="pc" id="'+side+'pc'+i+'">'+p.pitches+'</span>';
-    // Stat badges
     var stats='<div class="p-stats">';
     if(p.k>0)  stats+='<span class="pstat pstat-k">'+p.k+'K</span>';
     if(p.bb>0) stats+='<span class="pstat pstat-bb">'+p.bb+'BB</span>';
     if(p.r>0)  stats+='<span class="pstat pstat-r">'+p.r+'R</span>';
     stats+='</div>';
     html+=stats;
-    html+='<div class="padj" onclick="event.stopPropagation()"><button class="pb" onclick="adj(\''+side+'\','+i+',-1)">−</button><button class="pb" onclick="adj(\''+side+'\','+i+',1)">+</button></div>';
+    html+='<div class="padj"><button class="pb" data-action="adj-p" data-side="'+side+'" data-pidx="'+i+'" data-dir="-1">−</button><button class="pb" data-action="adj-p" data-side="'+side+'" data-pidx="'+i+'" data-dir="1">+</button></div>';
     html+='</div>';
   });
-  html+='<div class="add-p" onclick="addPitcher(\''+side+'\')"><span style="font-size:16px;margin-right:4px">+</span>Add pitcher</div>';
+  html+='<div class="add-p" data-action="add-p" data-side="'+side+'"><span style="font-size:16px;margin-right:4px">+</span>Add pitcher</div>';
   panel.innerHTML=html;
 }
 function adj(side, i, d){
@@ -3497,6 +3804,11 @@ document.addEventListener('keydown', function(e){
   // Don't intercept if a modal is open
   if(document.getElementById('gamesOverlay')) return;
   if(document.getElementById('kbOverlay')) return;
+  // If runner placement picker is open, only allow Escape (auto-advance)
+  if(document.getElementById('rpOverlay')){
+    if(e.key === 'Escape'){ rpAutoAdvance(); }
+    return;
+  }
 
   var key = e.key.toLowerCase();
   var shift = e.shiftKey;
@@ -3535,7 +3847,7 @@ document.addEventListener('keydown', function(e){
 
   // ── Help ──
   if(key === '?' || (key === '/' && shift)){ e.preventDefault(); toggleKBHelp(); return; }
-  if(key === 'escape'){ closeKBHelp(); return; }
+  if(key === 'escape'){ closeKBHelp(); closeRunnerPicker(); return; }
 });
 
 function toggleKBHelp(){
@@ -3592,8 +3904,93 @@ function closeKBHelp(){
   if(el) el.remove();
 }
 
+// ── Event delegation ──
+// Single click/change handlers on container elements instead of per-element inline handlers.
+
+function findAction(el, container){
+  // Walk up from the clicked element to find the nearest data-action
+  while(el && el !== container){
+    if(el.dataset && el.dataset.action) return el;
+    el = el.parentElement;
+  }
+  return null;
+}
+
+function setupLineupDelegation(side){
+  var panel = document.getElementById(side+'Lineup');
+  if(!panel) return;
+  panel.addEventListener('click', function(e){
+    var el = findAction(e.target, panel);
+    if(!el) return;
+    var act = el.dataset.action;
+    var idx = parseInt(el.dataset.idx);
+    if(act === 'at-bat') setAtBat(side, idx);
+    else if(act === 'start-sub') startSub(side, idx);
+    else if(act === 'confirm-sub') confirmSub(side, idx, el.dataset.subtype || 'ph');
+    else if(act === 'cancel-sub') cancelSub(side, idx);
+  });
+  panel.addEventListener('change', function(e){
+    var el = e.target;
+    if(!el.dataset || !el.dataset.action) return;
+    var act = el.dataset.action;
+    var idx = parseInt(el.dataset.idx);
+    if(act === 'set-pos') G.lineup[side][idx].pos = el.value;
+    else if(act === 'set-name') G.lineup[side][idx].name = el.value;
+    else if(act === 'select-player') onPlayerSelect(side, idx, el.value);
+    else if(act === 'set-sub-pos') G.lineup[side][idx].subs[parseInt(el.dataset.sub)].pos = el.value;
+    else if(act === 'set-sub-name') G.lineup[side][idx].subs[parseInt(el.dataset.sub)].name = el.value;
+    saveToStorage();
+  });
+}
+
+function setupPitcherDelegation(side){
+  var panel = document.getElementById(side+'PitcherPanel');
+  if(!panel) return;
+  panel.addEventListener('click', function(e){
+    var el = findAction(e.target, panel);
+    if(!el) return;
+    var act = el.dataset.action;
+    var pidx = parseInt(el.dataset.pidx);
+    // Stop propagation from inputs/selects to prevent set-active-p firing
+    if(act === 'set-p-name' || act === 'adj-p' || act === 'add-p') e.stopPropagation();
+    if(act === 'set-active-p') setActivePitcher(el.dataset.side, pidx);
+    else if(act === 'adj-p') adj(el.dataset.side, pidx, parseInt(el.dataset.dir));
+    else if(act === 'add-p') addPitcher(el.dataset.side);
+  });
+  panel.addEventListener('change', function(e){
+    var el = e.target;
+    if(!el.dataset || el.dataset.action !== 'set-p-name') return;
+    var s = el.dataset.side;
+    var pidx = parseInt(el.dataset.pidx);
+    G.pitchers[s][pidx].name = el.value;
+    renderPitchers(s);
+    saveToStorage();
+  });
+}
+
+function setupFielderDelegation(){
+  var fg = document.getElementById('fielderGrid');
+  if(fg) fg.addEventListener('click', function(e){
+    var el = findAction(e.target, fg);
+    if(!el || el.dataset.action !== 'sel-fielder') return;
+    selectFielder(parseInt(el.dataset.num));
+  });
+  var tg = document.getElementById('throwToGrid');
+  if(tg) tg.addEventListener('click', function(e){
+    var el = findAction(e.target, tg);
+    if(!el || el.dataset.action !== 'sel-throwto') return;
+    selectThrowTo(parseInt(el.dataset.num));
+  });
+}
+
 function init(){
   populateTeamDropdowns();
+  // Set up event delegation (once — containers are stable, only innerHTML changes)
+  setupLineupDelegation('home');
+  setupLineupDelegation('away');
+  setupPitcherDelegation('home');
+  setupPitcherDelegation('away');
+  setupFielderDelegation();
   var restored = loadFromStorage();
   if(restored){
     // Re-fire team change to reload logos, rosters, stadium
