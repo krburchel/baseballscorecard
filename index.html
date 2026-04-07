@@ -389,15 +389,16 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
    PRINT / PDF STYLES
 ═══════════════════════════════════════════════ */
 @media print {
-  @page { size: letter landscape; margin: 0.5in; }
+  @page { size: letter landscape; margin: 0.4in; }
   body { background:#fff; font-size:11px; }
   .app { max-width:none; padding:0; }
   /* hide interactive controls */
   .hdr-btns, .half-tog, .btns, .action-row, .add-p, .padj,
-  .set-btn, .sub-btn, .sub-form, .log-panel, .sec-title-log,
-  .pdf-btn, .reset-btn, .out-card, #kbHelpBtn { display:none!important; }
+  .set-btn, .sub-btn, .sub-form,
+  .pdf-btn, .reset-btn, .out-card, #kbHelpBtn,
+  .kb-flash, .extra-inn-btn, .runner-labels { display:none!important; }
   /* score strip */
-  .score-strip { border:1.5px solid #333; border-radius:0; }
+  .score-strip { border:1.5px solid #333; border-radius:0; margin-bottom:6px; }
   .score-table th, .score-table td { font-size:10px; padding:4px 6px; border-right:1px solid #ccc; }
   .score-table thead th { background:#e8e8e0!important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
   .total-cell { background:#e8e8e0!important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
@@ -444,15 +445,41 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   /* section titles on print */
   .sec-title { font-size:10px; margin-bottom:4px; margin-top:8px; }
   /* game info on print */
-  .game-info { border:1px solid #ccc; border-radius:0; page-break-inside:avoid; }
+  .game-info { border:1px solid #ccc; border-radius:0; page-break-inside:avoid; margin-bottom:6px; }
   .game-info-toggle { display:none!important; }
   .game-info-body { display:block!important; padding:6px 8px!important; }
-  .gi-input, .gi-temp, .gi-wind-speed, .gi-wind-dir, .gi-textarea { border-color:#ccc!important; background:#fff!important; color:#333!important; font-size:11px; }
+  .gi-row { margin-bottom:4px; }
+  .gi-label { font-size:9px; min-width:55px; }
+  .gi-input, .gi-temp, .gi-wind-speed, .gi-wind-dir, .gi-textarea { border:none!important; background:transparent!important; color:#333!important; font-size:10px; padding:1px 2px!important; }
   .gi-weather-btn { display:none!important; }
-  .gi-weather-btn.sel { display:flex!important; border:none!important; background:none!important; font-size:14px; }
+  .gi-weather-btn.sel { display:flex!important; border:none!important; background:none!important; font-size:14px; width:20px; height:20px; min-width:0; }
+  .gi-textarea { min-height:auto!important; resize:none!important; }
+  /* hide empty gi rows on print */
+  .gi-row-empty { display:none!important; }
+
+  /* ── Play log on print ── */
+  .sec-title-log { display:block!important; font-size:10px; margin-bottom:4px; margin-top:8px; }
+  .log-panel { border:1.5px solid #333; border-radius:0; page-break-inside:avoid; }
+  .log-toggle { display:none!important; }
+  .log-inner { max-height:none!important; overflow:visible!important; column-count:2; column-gap:8px; }
+  .log-inner.expanded { max-height:none!important; }
+  .log-row { font-size:9px; padding:2px 6px; border-bottom:1px solid #eee; break-inside:avoid; }
+  .ltag { font-size:8px; padding:0 3px; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  .empty-log { display:none; }
+
+  /* ── Print-only box score table ── */
+  .print-boxscore { display:block!important; margin-top:8px; page-break-inside:avoid; }
+  .print-boxscore table { width:100%; border-collapse:collapse; font-size:9px; }
+  .print-boxscore th, .print-boxscore td { padding:2px 4px; border:1px solid #ccc; text-align:center; }
+  .print-boxscore th { background:#e8e8e0!important; -webkit-print-color-adjust:exact; print-color-adjust:exact; font-weight:600; font-size:8px; text-transform:uppercase; }
+  .print-boxscore td:first-child { text-align:left; font-weight:600; padding-left:6px; }
+  .print-boxscore .bs-team-hdr { background:#f0efe8!important; -webkit-print-color-adjust:exact; print-color-adjust:exact; font-weight:700; text-align:left!important; padding:3px 6px; font-size:10px; }
+  .print-boxscore .bs-totals td { font-weight:700; border-top:2px solid #333; }
+
   /* print header */
   .print-header { display:block!important; }
-  .header { margin-bottom:8px; }
+  .header { margin-bottom:6px; }
+  .print-sub { display:block!important; }
 }
 
 .print-header {
@@ -461,9 +488,19 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   font-size:18px;
   font-weight:700;
   letter-spacing:.04em;
-  margin-bottom:6px;
+  margin-bottom:2px;
   border-bottom:2px solid #333;
   padding-bottom:4px;
+}
+.print-sub {
+  display:none;
+  text-align:center;
+  font-size:11px;
+  color:#666;
+  margin-bottom:8px;
+}
+.print-boxscore {
+  display:none;
 }
 </style>
 </head>
@@ -473,6 +510,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   <div class="kb-flash" id="kbFlash"></div>
 
 <div class="print-header" id="printHeader">⚾ Official Game Scorecard</div>
+<div class="print-sub" id="printSub"></div>
 
   <div class="header">
     <div class="team-names">
@@ -760,12 +798,32 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <div class="log-toggle" id="logToggle" onclick="toggleLog()" style="display:none">▼ Show full log</div>
   </div>
 
+  <!-- Print-only box score -->
+  <div class="print-boxscore" id="printBoxScore"></div>
+
 </div><!-- /app -->
 
 <script>
 var POSITIONS = ['—','P','C','1B','2B','3B','SS','LF','CF','RF','DH','PH','PR','IF','OF'];
 function mkHits(){ return {s:0,d:0,t:0,hr:0,kl:0,ks:0,fo:0,go:0,sb:0,cs:0,err:0,hbp:0,bb:0,sf:0,sac:0,fc:0,ibb:0,wp:0}; }
 function mkSlot(){ return {name:'',pos:'—',hits:mkHits(),subs:[],pending:false}; }
+function mkPitcher(){ return {name:'',pitches:0,k:0,bb:0,r:0,active:true}; }
+function mkNotes(){ return {date:'',firstPitch:'',venue:'',attendance:'',weather:'',temp:'',windSpeed:'',windDir:'',umpHP:'',ump1B:'',ump2B:'',ump3B:'',gameType:'',text:''}; }
+function mkGame(){
+  return {
+    inning:1, half:'top', outs:0, balls:0, strikes:0, fouls:0,
+    bases:[null,null,null],
+    totalInnings:9,
+    scores:{home:Array(9).fill(null), away:Array(9).fill(null)},
+    rhe:{home:[0,0,0], away:[0,0,0]},
+    homeBatter:0, awayBatter:0,
+    lineup:{home:Array(9).fill(null).map(mkSlot), away:Array(9).fill(null).map(mkSlot)},
+    pitchers:{home:[mkPitcher()], away:[mkPitcher()]},
+    log:[],
+    batterLog:{home:{}, away:{}},
+    notes:mkNotes()
+  };
+}
 function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
 function posOpts(sel){ return POSITIONS.map(function(p){ return '<option value="'+p+'"'+(p===sel?' selected':'')+'>'+p+'</option>'; }).join(''); }
 
@@ -779,19 +837,7 @@ function activeHits(side, idx){
   return sl.hits;
 }
 
-var G = {
-  inning:1, half:'top', outs:0, balls:0, strikes:0, fouls:0,
-  bases:[null,null,null],
-  totalInnings: 9,
-  scores:{home:Array(9).fill(null), away:Array(9).fill(null)},
-  rhe:{home:[0,0,0], away:[0,0,0]},
-  homeBatter:0, awayBatter:0,
-  lineup:{home:Array(9).fill(null).map(mkSlot), away:Array(9).fill(null).map(mkSlot)},
-  pitchers:{home:[{name:'',pitches:0,k:0,bb:0,r:0,active:true}], away:[{name:'',pitches:0,k:0,bb:0,r:0,active:true}]},
-  log:[],
-  batterLog:{home:{}, away:{}},
-  notes:{date:'',firstPitch:'',venue:'',attendance:'',weather:'',temp:'',windSpeed:'',windDir:'',umpHP:'',ump1B:'',ump2B:'',ump3B:'',gameType:'',text:''}
-};
+var G = mkGame();
 
 // ── Undo history ──
 var HISTORY = [];
@@ -819,17 +865,10 @@ function undoAction(){
   G = snapshot.G;
   // Restore outState if it was saved, otherwise reset it
   if(snapshot.outState){
-    outState.type = snapshot.outState.type;
-    outState.fielder = snapshot.outState.fielder;
-    outState.throwTo = snapshot.outState.throwTo;
-    outState.multiOut = snapshot.outState.multiOut;
-    outState.sacType = snapshot.outState.sacType || null;
+    Object.assign(outState, snapshot.outState);
+    if(outState.sacType === undefined) outState.sacType = null;
   } else {
-    outState.type = null;
-    outState.fielder = null;
-    outState.throwTo = null;
-    outState.multiOut = null;
-    outState.sacType = null;
+    resetOutState();
   }
   var btn = document.getElementById('undoBtn');
   if(btn) btn.disabled = HISTORY.length === 0;
@@ -848,30 +887,13 @@ function renderAll(){
   renderPitchers('home');
   renderPitchers('away');
   renderLog();
-
-  // Restore out-recording panel UI from outState
-  document.getElementById('outTypeFly').className = 'out-type-btn otf' + (outState.type === 'fly' ? ' sel' : '');
-  document.getElementById('outTypeGround').className = 'out-type-btn otg' + (outState.type === 'ground' ? ' sel' : '');
-  document.getElementById('outTypeError').className = 'out-type-btn ote' + (outState.type === 'error' ? ' sel' : '');
-  document.getElementById('outTypeFC').className = 'out-type-btn otfc' + (outState.type === 'fc' ? ' sel' : '');
-
-  var dpBtn = document.getElementById('dpBtn');
-  if(dpBtn) dpBtn.className = 'multi-out-btn' + (outState.multiOut === 'dp' ? ' sel' : '');
-  var tpBtn = document.getElementById('tpBtn');
-  if(tpBtn) tpBtn.className = 'multi-out-btn' + (outState.multiOut === 'tp' ? ' sel' : '');
-  var moHint = document.getElementById('multiOutHint');
-  if(moHint) moHint.textContent = outState.multiOut === 'dp' ? 'Records 2 outs total' : outState.multiOut === 'tp' ? 'Records 3 outs total' : '';
-
-  var lbl = document.getElementById('fielderLabel');
-  if(lbl) lbl.textContent = outState.type === 'error' ? 'Fielder who made the error:' : 'Fielder who fielded the ball:';
-
-  var wrap = document.getElementById('throwToWrap');
-  if(wrap) wrap.style.display = (outState.type === 'ground' || outState.type === 'fc') ? '' : 'none';
-
-  updateSacBtns();
-  buildFielderGrid();
-  updateOutBtn();
+  renderOutPanel();
   restoreNotes();
+  // Sync hitWithErr toggle UI
+  var heb = document.getElementById('hitErrToggle');
+  if(heb) heb.className = 'hit-err-toggle' + (hitWithErr ? ' on' : '');
+  var heh = document.getElementById('hitErrHint');
+  if(heh) heh.textContent = hitWithErr ? 'Next hit will also charge an E to fielding team' : '';
 }
 
 function team(s){
@@ -1082,6 +1104,41 @@ function recordIBB(){
 // ── Flyout / Groundout state ──
 var outState = { type: null, fielder: null, throwTo: null, multiOut: null, sacType: null };
 
+// Reset out-panel state and DOM to default
+function resetOutState(){
+  outState.type = null;
+  outState.fielder = null;
+  outState.throwTo = null;
+  outState.multiOut = null;
+  outState.sacType = null;
+  renderOutPanel();
+}
+
+// Sync out-recording panel DOM with current outState
+function renderOutPanel(){
+  document.getElementById('outTypeFly').className = 'out-type-btn otf' + (outState.type === 'fly' ? ' sel' : '');
+  document.getElementById('outTypeGround').className = 'out-type-btn otg' + (outState.type === 'ground' ? ' sel' : '');
+  document.getElementById('outTypeError').className = 'out-type-btn ote' + (outState.type === 'error' ? ' sel' : '');
+  document.getElementById('outTypeFC').className = 'out-type-btn otfc' + (outState.type === 'fc' ? ' sel' : '');
+
+  var dpBtn = document.getElementById('dpBtn');
+  if(dpBtn) dpBtn.className = 'multi-out-btn' + (outState.multiOut === 'dp' ? ' sel' : '');
+  var tpBtn = document.getElementById('tpBtn');
+  if(tpBtn) tpBtn.className = 'multi-out-btn' + (outState.multiOut === 'tp' ? ' sel' : '');
+  var moHint = document.getElementById('multiOutHint');
+  if(moHint) moHint.textContent = outState.multiOut === 'dp' ? 'Records 2 outs total' : outState.multiOut === 'tp' ? 'Records 3 outs total' : '';
+
+  var lbl = document.getElementById('fielderLabel');
+  if(lbl) lbl.textContent = outState.type === 'error' ? 'Fielder who made the error:' : outState.type === 'fc' ? 'Fielder who made the play:' : 'Fielder who fielded the ball:';
+
+  var wrap = document.getElementById('throwToWrap');
+  if(wrap) wrap.style.display = (outState.type === 'ground' || outState.type === 'fc') ? '' : 'none';
+
+  updateSacBtns();
+  buildFielderGrid();
+  updateOutBtn();
+}
+
 var FIELDERS = [
   {num:1, pos:'P'},  {num:2, pos:'C'},  {num:3, pos:'1B'},
   {num:4, pos:'2B'}, {num:5, pos:'3B'}, {num:6, pos:'SS'},
@@ -1175,14 +1232,7 @@ function selectOutType(type){
   outState.type = outState.type===type ? null : type;
   // Clear throwTo when switching away from groundout/fc
   if(outState.type !== 'ground' && outState.type !== 'fc') outState.throwTo = null;
-  document.getElementById('outTypeFly').className    = 'out-type-btn otf' + (outState.type==='fly'   ?' sel':'');
-  document.getElementById('outTypeGround').className = 'out-type-btn otg' + (outState.type==='ground'?' sel':'');
-  document.getElementById('outTypeError').className  = 'out-type-btn ote' + (outState.type==='error' ?' sel':'');
-  document.getElementById('outTypeFC').className     = 'out-type-btn otfc' + (outState.type==='fc'   ?' sel':'');
-  var lbl = document.getElementById('fielderLabel');
-  if(lbl) lbl.textContent = outState.type==='error' ? 'Fielder who made the error:' : outState.type==='fc' ? 'Fielder who made the play:' : 'Fielder who fielded the ball:';
-  buildFielderGrid();
-  updateOutBtn();
+  renderOutPanel();
 }
 
 function updateOutBtn(){
@@ -1361,27 +1411,8 @@ function recordOut(){
     if(!innOver && !walkoff) nextBatter(side);
   }
 
-  // Reset all out-panel state
-  outState.type = null;
-  outState.fielder = null;
-  outState.throwTo = null;
-  outState.multiOut = null;
-  outState.sacType = null;
-  document.getElementById('outTypeFly').className = 'out-type-btn otf';
-  document.getElementById('outTypeGround').className = 'out-type-btn otg';
-  document.getElementById('outTypeError').className = 'out-type-btn ote';
-  document.getElementById('outTypeFC').className = 'out-type-btn otfc';
-  document.getElementById('dpBtn').className = 'multi-out-btn';
-  document.getElementById('tpBtn').className = 'multi-out-btn';
-  var moHint = document.getElementById('multiOutHint');
-  if(moHint) moHint.textContent = '';
-  updateSacBtns();
-  var lbl = document.getElementById('fielderLabel');
-  if(lbl) lbl.textContent = 'Fielder who fielded the ball:';
-  var wrap = document.getElementById('throwToWrap');
-  if(wrap) wrap.style.display = 'none';
-  buildFielderGrid();
-  updateOutBtn();
+  // Reset out-panel for next play
+  resetOutState();
 }
 
 // ── Roster data ──
@@ -1655,31 +1686,8 @@ function resetGameSilent(){
   HISTORY = [];
   hitWithErr = false;
   clearStorage();
-  G = {
-    inning: 1, half: 'top', outs: 0,
-    balls: 0, strikes: 0, fouls: 0,
-    bases: [null, null, null],
-    totalInnings: 9,
-    scores: { home: Array(9).fill(null), away: Array(9).fill(null) },
-    rhe: { home: [0, 0, 0], away: [0, 0, 0] },
-    homeBatter: 0, awayBatter: 0,
-    lineup: {
-      home: Array(9).fill(null).map(mkSlot),
-      away: Array(9).fill(null).map(mkSlot)
-    },
-    pitchers: {
-      home: [{ name: '', pitches: 0, k: 0, bb: 0, r: 0, active: true }],
-      away: [{ name: '', pitches: 0, k: 0, bb: 0, r: 0, active: true }]
-    },
-    log: [],
-    batterLog: { home: {}, away: {} },
-    notes:{date:'',firstPitch:'',venue:'',attendance:'',weather:'',temp:'',windSpeed:'',windDir:'',umpHP:'',ump1B:'',ump2B:'',ump3B:'',gameType:'',text:''}
-  };
-  outState.type = null;
-  outState.fielder = null;
-  outState.throwTo = null;
-  outState.multiOut = null;
-  outState.sacType = null;
+  G = mkGame();
+  resetOutState();
   ROSTERS = { home: [], away: [] };
   ROSTER_LOADING = { home: false, away: false };
   renderAll();
@@ -2513,7 +2521,9 @@ function adj(side, i, d){
 }
 
 function addPitcher(side){
-  G.pitchers[side].push({ name: '', pitches: 0, k: 0, bb: 0, r: 0, active: false });
+  var p = mkPitcher();
+  p.active = false;
+  G.pitchers[side].push(p);
   renderPitchers(side);
 }
 
@@ -2523,65 +2533,128 @@ function exportPDF(){
   var awayLogo = TEAM_LOGOS[away] ? '<img src="'+TEAM_LOGOS[away]+'" style="width:36px;height:36px;object-fit:contain;vertical-align:middle;margin-right:8px;" />' : '';
   var homeLogo = TEAM_LOGOS[home] ? '<img src="'+TEAM_LOGOS[home]+'" style="width:36px;height:36px;object-fit:contain;vertical-align:middle;margin-left:8px;" />' : '';
   document.getElementById('printHeader').innerHTML = awayLogo + away + ' vs ' + home + homeLogo;
+
+  // Build subheader: score, date, venue
+  var subParts = [];
+  var awayR = G.rhe.away[0], homeR = G.rhe.home[0];
+  if(G.log.length > 0) subParts.push('Final: ' + awayR + ' – ' + homeR);
+  if(G.notes && G.notes.date){
+    try {
+      var dp = G.notes.date.split('-');
+      var dateObj = new Date(dp[0], dp[1]-1, dp[2]);
+      subParts.push(dateObj.toLocaleDateString('en-US', {weekday:'long', year:'numeric', month:'long', day:'numeric'}));
+    } catch(e){ subParts.push(G.notes.date); }
+  }
+  if(G.notes && G.notes.venue) subParts.push(G.notes.venue);
+  if(G.notes && G.notes.attendance) subParts.push('Att: ' + G.notes.attendance);
+  document.getElementById('printSub').textContent = subParts.join('  •  ');
+
+  // Hide empty game-info rows for cleaner print
+  var giRows = document.querySelectorAll('.gi-row');
+  giRows.forEach(function(row){
+    var inputs = row.querySelectorAll('input, select, textarea');
+    var hasValue = false;
+    inputs.forEach(function(inp){
+      if(inp.value && inp.value.trim() && inp.value !== '—') hasValue = true;
+    });
+    // Also check if a weather button is selected in this row
+    var weatherBtns = row.querySelectorAll('.gi-weather-btn.sel');
+    if(weatherBtns.length > 0) hasValue = true;
+    row.classList.toggle('gi-row-empty', !hasValue);
+  });
+
+  // Build box score table
+  buildPrintBoxScore();
+
   window.print();
+
+  // Clean up: remove gi-row-empty class
+  giRows.forEach(function(row){ row.classList.remove('gi-row-empty'); });
+}
+
+function buildPrintBoxScore(){
+  var el = document.getElementById('printBoxScore');
+  if(!el) return;
+
+  var html = '';
+  ['away','home'].forEach(function(side){
+    var tName = team(side);
+    var logo = TEAM_LOGOS[tName] ? '<img src="'+TEAM_LOGOS[tName]+'" style="width:14px;height:14px;object-fit:contain;vertical-align:middle;margin-right:4px;" />' : '';
+
+    html += '<table style="margin-bottom:6px">';
+    html += '<tr><td class="bs-team-hdr" colspan="11">' + logo + tName + ' — Batting</td></tr>';
+    html += '<tr><th style="text-align:left;padding-left:6px;min-width:100px">Player</th><th>Pos</th><th>AB</th><th>H</th><th>R</th><th>2B</th><th>3B</th><th>HR</th><th>BB</th><th>K</th><th>RBI</th></tr>';
+
+    var totals = {ab:0,h:0,r:0,d:0,t:0,hr:0,bb:0,k:0};
+
+    for(var i=0;i<9;i++){
+      var sl = G.lineup[side][i];
+      // Starter row
+      var sh = sl.hits;
+      var sAB = sh.s + sh.d + sh.t + sh.hr + sh.kl + sh.ks + sh.fo + sh.go + sh.fc;
+      var sH = sh.s + sh.d + sh.t + sh.hr;
+      var sK = sh.kl + sh.ks;
+      var sBB = sh.bb + sh.ibb;
+      // Rough RBI estimate: HR runs = (runners counted as HR in log... we can't perfectly track RBI, show —)
+      var sName = sl.name || 'Player ' + (i+1);
+      var sPos = sl.pos || '—';
+      var dimClass = sl.subs.length > 0 ? ' style="opacity:.5"' : '';
+
+      html += '<tr'+dimClass+'><td style="text-align:left;padding-left:6px">' + esc(sName) + '</td>';
+      html += '<td>'+sPos+'</td><td>'+sAB+'</td><td>'+sH+'</td><td>—</td><td>'+sh.d+'</td><td>'+sh.t+'</td><td>'+sh.hr+'</td><td>'+sBB+'</td><td>'+sK+'</td><td>—</td></tr>';
+
+      totals.ab += sAB; totals.h += sH; totals.d += sh.d; totals.t += sh.t; totals.hr += sh.hr; totals.bb += sBB; totals.k += sK;
+
+      // Sub rows
+      sl.subs.forEach(function(sub, si){
+        var subH = sub.hits || mkHits();
+        var subAB = subH.s + subH.d + subH.t + subH.hr + subH.kl + subH.ks + subH.fo + subH.go + subH.fc;
+        var subHits = subH.s + subH.d + subH.t + subH.hr;
+        var subK = subH.kl + subH.ks;
+        var subBB = subH.bb + subH.ibb;
+        var subName = sub.name || 'Sub';
+        var subPos = sub.pos || '—';
+        var isLast = si === sl.subs.length - 1;
+        var subDim = !isLast ? ' style="opacity:.5"' : '';
+
+        html += '<tr'+subDim+'><td style="text-align:left;padding-left:16px;font-style:italic">↳ ' + esc(subName) + '</td>';
+        html += '<td>'+subPos+'</td><td>'+subAB+'</td><td>'+subHits+'</td><td>—</td><td>'+subH.d+'</td><td>'+subH.t+'</td><td>'+subH.hr+'</td><td>'+subBB+'</td><td>'+subK+'</td><td>—</td></tr>';
+
+        totals.ab += subAB; totals.h += subHits; totals.d += subH.d; totals.t += subH.t; totals.hr += subH.hr; totals.bb += subBB; totals.k += subK;
+      });
+    }
+
+    html += '<tr class="bs-totals"><td style="text-align:left;padding-left:6px">TOTALS</td><td></td>';
+    html += '<td>'+totals.ab+'</td><td>'+totals.h+'</td><td>'+G.rhe[side][0]+'</td><td>'+totals.d+'</td><td>'+totals.t+'</td><td>'+totals.hr+'</td><td>'+totals.bb+'</td><td>'+totals.k+'</td><td>—</td></tr>';
+    html += '</table>';
+
+    // Pitching line
+    html += '<table style="margin-bottom:10px">';
+    html += '<tr><td class="bs-team-hdr" colspan="7">' + logo + tName + ' — Pitching</td></tr>';
+    html += '<tr><th style="text-align:left;padding-left:6px;min-width:100px">Pitcher</th><th>Pitches</th><th>K</th><th>BB</th><th>R</th></tr>';
+    G.pitchers[side].forEach(function(p){
+      var pName = p.name || '—';
+      var activeMarker = p.active ? ' ●' : '';
+      html += '<tr><td style="text-align:left;padding-left:6px">' + esc(pName) + activeMarker + '</td>';
+      html += '<td>'+p.pitches+'</td><td>'+p.k+'</td><td>'+p.bb+'</td><td>'+p.r+'</td></tr>';
+    });
+    html += '</table>';
+  });
+
+  el.innerHTML = html;
 }
 
 function resetGame(){
   if(!confirm('Reset the entire game? All data will be cleared.')) return;
-
-  HISTORY = [];
-  hitWithErr = false;
-  clearStorage();
+  resetGameSilent();
 
   var undoBtn = document.getElementById('undoBtn');
   if(undoBtn) undoBtn.disabled = true;
 
   var hitErrBtn = document.getElementById('hitErrToggle');
   if(hitErrBtn) hitErrBtn.className = 'hit-err-toggle';
-
   var hitErrHint = document.getElementById('hitErrHint');
   if(hitErrHint) hitErrHint.textContent = '';
-
-  G = {
-    inning: 1, half: 'top', outs: 0,
-    balls: 0, strikes: 0, fouls: 0,
-    bases: [null, null, null],
-    totalInnings: 9,
-    scores: { home: Array(9).fill(null), away: Array(9).fill(null) },
-    rhe: { home: [0, 0, 0], away: [0, 0, 0] },
-    homeBatter: 0, awayBatter: 0,
-    lineup: {
-      home: Array(9).fill(null).map(mkSlot),
-      away: Array(9).fill(null).map(mkSlot)
-    },
-    pitchers: {
-      home: [{ name: '', pitches: 0, k: 0, bb: 0, r: 0, active: true }],
-      away: [{ name: '', pitches: 0, k: 0, bb: 0, r: 0, active: true }]
-    },
-    log: [],
-    batterLog: { home: {}, away: {} },
-    notes:{date:'',firstPitch:'',venue:'',attendance:'',weather:'',temp:'',windSpeed:'',windDir:'',umpHP:'',ump1B:'',ump2B:'',ump3B:'',gameType:'',text:''}
-  };
-
-  outState.type = null;
-  outState.fielder = null;
-  outState.throwTo = null;
-  outState.multiOut = null;
-  outState.sacType = null;
-
-  ROSTERS = { home: [], away: [] };
-  ROSTER_LOADING = { home: false, away: false };
-
-  document.getElementById('outTypeFly').className = 'out-type-btn otf';
-  document.getElementById('outTypeGround').className = 'out-type-btn otg';
-  document.getElementById('outTypeError').className = 'out-type-btn ote';
-  document.getElementById('outTypeFC').className = 'out-type-btn otfc';
-
-  var dpR = document.getElementById('dpBtn');
-  if(dpR) dpR.className = 'multi-out-btn';
-
-  var tpR = document.getElementById('tpBtn');
-  if(tpR) tpR.className = 'multi-out-btn';
 
   init();
 }
@@ -2868,12 +2941,20 @@ function renderStadium(teamName) {
 
 // ── Local storage persistence ──
 var STORAGE_KEY = 'baseball_scorecard_v1';
+var _saveTimer = null;
 
 function saveToStorage(){
+  clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(_doSave, 500);
+}
+
+// Immediate save (used by debounce and when we need sync save)
+function _doSave(){
   try {
     var payload = {
       G: G,
       outState: outState,
+      hitWithErr: hitWithErr,
       history: HISTORY,
       teamAway: document.getElementById('teamAway').value,
       teamHome: document.getElementById('teamHome').value
@@ -2891,22 +2972,14 @@ function loadFromStorage(){
     G = payload.G;
     // Ensure batterLog exists (backward compat with old saves)
     if(!G.batterLog) G.batterLog = { home: {}, away: {} };
-    // Ensure hit keys exist on old lineup slots and subs
+    // Ensure all hit keys exist on lineup slots and subs (backward compat)
+    var defaultHitKeys = Object.keys(mkHits());
     ['home','away'].forEach(function(side){
       G.lineup[side].forEach(function(sl){
-        if(sl.hits.sf === undefined) sl.hits.sf = 0;
-        if(sl.hits.sac === undefined) sl.hits.sac = 0;
-        if(sl.hits.fc === undefined) sl.hits.fc = 0;
-        if(sl.hits.ibb === undefined) sl.hits.ibb = 0;
-        if(sl.hits.wp === undefined) sl.hits.wp = 0;
-        // Ensure each sub has its own hits object
+        defaultHitKeys.forEach(function(k){ if(sl.hits[k] === undefined) sl.hits[k] = 0; });
         sl.subs.forEach(function(sub){
           if(!sub.hits) sub.hits = mkHits();
-          if(sub.hits.sf === undefined) sub.hits.sf = 0;
-          if(sub.hits.sac === undefined) sub.hits.sac = 0;
-          if(sub.hits.fc === undefined) sub.hits.fc = 0;
-          if(sub.hits.ibb === undefined) sub.hits.ibb = 0;
-          if(sub.hits.wp === undefined) sub.hits.wp = 0;
+          defaultHitKeys.forEach(function(k){ if(sub.hits[k] === undefined) sub.hits[k] = 0; });
         });
       });
     });
@@ -2918,7 +2991,7 @@ function loadFromStorage(){
       }
     }
     // Ensure notes object exists (backward compat)
-    if(!G.notes) G.notes = {date:'',firstPitch:'',venue:'',attendance:'',weather:'',temp:'',windSpeed:'',windDir:'',umpHP:'',ump1B:'',ump2B:'',ump3B:'',gameType:'',text:''};
+    if(!G.notes) G.notes = mkNotes();
     // Restore outState
     if(payload.outState){
       outState.type = payload.outState.type || null;
@@ -2927,6 +3000,8 @@ function loadFromStorage(){
       outState.multiOut = payload.outState.multiOut || null;
       outState.sacType = payload.outState.sacType || null;
     }
+    // Restore hitWithErr toggle
+    if(payload.hitWithErr !== undefined) hitWithErr = !!payload.hitWithErr;
     // Restore undo history
     if(payload.history && Array.isArray(payload.history)){
       HISTORY = payload.history;
@@ -2941,6 +3016,7 @@ function loadFromStorage(){
 }
 
 function clearStorage(){
+  clearTimeout(_saveTimer);
   try { localStorage.removeItem(STORAGE_KEY); } catch(e){}
 }
 
