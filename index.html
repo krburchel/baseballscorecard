@@ -701,7 +701,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
           <div class="dot out" id="o2" onclick="toggleOut(2)"></div>
         </div>
         <div class="btns">
-          <button class="btn" onclick="addOut()">+ Out</button>
+          <button class="btn" onclick="manualOut()">+ Out</button>
           <button class="btn" onclick="clearOuts()">Clear</button>
         </div>
       </div>
@@ -904,6 +904,24 @@ function activeHits(side, idx){
     return sl.subs[sl.subs.length - 1].hits;
   }
   return sl.hits;
+}
+
+// Find the lineup slot index for a runner by name.
+// Returns the slot index (0-8) or -1 if not found.
+function findRunnerSlot(side, runnerName){
+  if(!runnerName || runnerName === '?' || runnerName === true) return -1;
+  for(var i = 0; i < 9; i++){
+    if(curName(side, i) === runnerName) return i;
+  }
+  // Fallback: check starters and subs by raw name (handles edge cases)
+  for(var i = 0; i < 9; i++){
+    var sl = G.lineup[side][i];
+    if(sl.name === runnerName) return i;
+    for(var s = 0; s < sl.subs.length; s++){
+      if(sl.subs[s].name === runnerName) return i;
+    }
+  }
+  return -1;
 }
 
 var G = mkGame();
@@ -1218,8 +1236,15 @@ function executeBRAction(type, baseIdx){
 
   if(type === 'sb'){
     // Stolen base: runner on baseIdx advances 1 base
-    activeHits(side, idx).sb++;
     var runnerName = G.bases[baseIdx] || '?';
+    // Credit SB to the runner, not the current batter
+    var runnerSlot = findRunnerSlot(side, runnerName);
+    if(runnerSlot >= 0){
+      activeHits(side, runnerSlot).sb++;
+    } else {
+      // Fallback: credit batter if runner can't be identified
+      activeHits(side, idx).sb++;
+    }
     var fromBase = labels[baseIdx];
     if(baseIdx === 2){
       // Steal home — runner scores
@@ -1240,8 +1265,14 @@ function executeBRAction(type, baseIdx){
 
   } else if(type === 'cs'){
     // Caught stealing: runner on baseIdx is out, removed from base
-    activeHits(side, idx).cs++;
     var csRunner = G.bases[baseIdx] || '?';
+    // Credit CS to the runner, not the current batter
+    var csSlot = findRunnerSlot(side, csRunner);
+    if(csSlot >= 0){
+      activeHits(side, csSlot).cs++;
+    } else {
+      activeHits(side, idx).cs++;
+    }
     var csFrom = labels[baseIdx];
     G.bases[baseIdx] = null;
     addLog((typeof csRunner === 'string' && csRunner !== '?' ? csRunner : nm) + ' — caught stealing (' + csFrom + ')', 'CS', 't-cs');
@@ -1616,7 +1647,11 @@ function recordOut(){
 
     renderBases();
     renderLineup(side);
-    if(!innOver && !walkoff) nextBatter(side);
+    if(!innOver && !walkoff){
+      nextBatter(side);
+    } else if(innOver){
+      advanceBatterSilent(side);
+    }
   } else {
     var dpSuffix = outState.multiOut === 'dp' ? ' (DP)' : outState.multiOut === 'tp' ? ' (TP)' : '';
     var sacPrefix = isSacFly ? 'SF — ' : isSacBunt ? 'SAC — ' : '';
@@ -1679,7 +1714,11 @@ function recordOut(){
       if(!innOver && outState.multiOut === 'tp') innOver = addOut();
     }
     renderLineup(side);
-    if(!innOver && !walkoff) nextBatter(side);
+    if(!innOver && !walkoff){
+      nextBatter(side);
+    } else if(innOver){
+      advanceBatterSilent(side);
+    }
   }
 
   // Reset out-panel for next play
@@ -2197,6 +2236,29 @@ function nextBatter(side){
   renderLineup(side);
 }
 
+// Advance the batter index without logging or rendering.
+// Used when a PA ends on the 3rd out — the inning flips, but
+// the batter's turn is still over, so the index must move forward
+// for the next time this team comes up to bat.
+function advanceBatterSilent(side){
+  var cur = side==='home' ? G.homeBatter : G.awayBatter;
+  var next = (cur + 1) % 9;
+  if(side==='home') G.homeBatter=next; else G.awayBatter=next;
+}
+
+// Manual out: wraps addOut with batter advancement logic.
+// Called by the "+ Out" button and the "O" keyboard shortcut.
+function manualOut(){
+  saveState();
+  var side = batting();
+  var innOver = addOut();
+  if(!innOver){
+    nextBatter(side);
+  } else {
+    advanceBatterSilent(side);
+  }
+}
+
 var hitWithErr = false;
 
 function toggleHitErr(){
@@ -2489,19 +2551,31 @@ function rpConfirm(){
   }
 
   // Handle outs on bases
+  var innOver = false;
   if(outsOnBases > 0){
     for(var oi = 0; oi < outsOnBases; oi++){
       addLog('Runner out on basepaths', 'Out', 't-out');
-      // Don't call addOut() here — just increment. addOut() would flip innings.
-      G.outs = Math.min(3, G.outs + 1);
+      innOver = addOut();
+      if(innOver) break; // inning flipped, stop adding outs
     }
-    renderOuts();
-    // If 3 outs reached, the inning-flip logic will be handled by addOut flow.
-    // But since we're mid-hit, let's just render and let finishHit proceed.
   }
 
   closeRunnerPicker();
-  finishHit(side, rp.batterName, rp.hitBases);
+  if(!innOver){
+    finishHit(side, rp.batterName, rp.hitBases);
+  } else {
+    // Inning ended on a runner out — batter's PA is complete, advance silently
+    advanceBatterSilent(side);
+    // Still need to reset count and error toggle
+    G.balls = 0; G.strikes = 0; G.fouls = 0;
+    renderCount(); renderBases(); renderScore(); renderLineup(side);
+    if(hitWithErr){ hitWithErr = false;
+      var btn2 = document.getElementById('hitErrToggle');
+      var hint2 = document.getElementById('hitErrHint');
+      if(btn2) btn2.className = 'hit-err-toggle';
+      if(hint2) hint2.textContent = '';
+    }
+  }
 }
 
 // Auto-advance: use the old uniform advancement logic as a fallback
@@ -2544,9 +2618,14 @@ function recordKO(type){
   }
   var innOver = addOut();
   renderLineup(side);
-  if(!innOver) nextBatter(side);
+  if(!innOver){
+    nextBatter(side);
+  } else {
+    // Inning flipped, but this batter's PA is complete — advance index silently
+    // so next time this team bats, the correct batter leads off.
+    advanceBatterSilent(side);
+  }
 }
-
 function renderScore(){
   var n = G.totalInnings;
   var tbl = document.getElementById('scoreTable');
@@ -2726,8 +2805,14 @@ function addBall(){
 function addStrike(){
   saveState(); addPitch(fielding());
   if(G.strikes>=2){
+    var side = batting();
     addLog('Strike 3','Out','t-out');
-    addOut();
+    var innOver = addOut();
+    if(!innOver){
+      nextBatter(side);
+    } else {
+      advanceBatterSilent(side);
+    }
     return;
   }
   G.strikes++;
@@ -3829,7 +3914,7 @@ document.addEventListener('keydown', function(e){
   if(key === 'k' && shift){ e.preventDefault(); recordKO('looking'); kbFlash('ꓘ Looking', '#993C1D'); return; }
 
   // ── Outs / special ──
-  if(key === 'o' && !shift){ e.preventDefault(); saveState(); addOut(); kbFlash('Out ' + G.outs); return; }
+  if(key === 'o' && !shift){ e.preventDefault(); manualOut(); kbFlash('Out ' + G.outs); return; }
   if(key === 'w' && !shift){ e.preventDefault(); recordHBP(); kbFlash('HBP', '#BA7517'); return; }
   if(key === 'w' && shift){ e.preventDefault(); recordIBB(); kbFlash('IBB', '#0F6E56'); return; }
 
