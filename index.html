@@ -481,7 +481,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   .set-btn, .sub-btn, .sub-form,
   .pdf-btn, .reset-btn, .out-card, #kbHelpBtn,
   .kb-flash, .extra-inn-btn, .runner-labels, .rp-overlay,
-  .abs-picker, .abs-tally, .abs-btn { display:none!important; }
+  .abs-picker, .abs-tally, .abs-btn, .atbat-bar { display:none!important; }
   /* score strip */
   .score-strip { border:1.5px solid #333; border-radius:0; margin-bottom:6px; }
   .score-table th, .score-table td { font-size:10px; padding:4px 6px; border-right:1px solid #ccc; }
@@ -590,6 +590,29 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .print-boxscore {
   display:none;
 }
+
+/* ── Current at-bat bar ── */
+.atbat-bar { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:8px 12px; margin-bottom:10px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.atbat-batter { display:flex; align-items:center; gap:7px; flex:1; min-width:0; }
+.atbat-logo { width:22px; height:22px; object-fit:contain; flex-shrink:0; }
+.atbat-name { font-size:14px; font-weight:700; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.atbat-detail { font-size:11px; color:var(--muted); flex-shrink:0; }
+.atbat-pos { font-size:11px; font-weight:600; padding:1px 5px; border-radius:3px; background:var(--header-bg); color:var(--muted); flex-shrink:0; }
+.atbat-badges { display:flex; gap:3px; flex-wrap:wrap; flex-shrink:0; }
+.atbat-count { font-size:13px; font-weight:700; color:var(--text); flex-shrink:0; letter-spacing:.5px; }
+.atbat-count-b { color:var(--green); }
+.atbat-count-s { color:var(--red); }
+.atbat-sep { width:1px; height:20px; background:var(--border); flex-shrink:0; }
+.atbat-vs { display:flex; align-items:center; gap:6px; flex-shrink:0; }
+.atbat-vs-label { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; }
+.atbat-pitcher { font-size:12px; font-weight:600; color:var(--text); white-space:nowrap; }
+.atbat-pc { font-size:11px; color:var(--muted); }
+.atbat-ondeck { font-size:11px; color:var(--muted); flex-shrink:0; }
+@media(max-width:480px){
+  .atbat-bar { padding:6px 10px; gap:6px; }
+  .atbat-name { font-size:13px; }
+  .atbat-sep { display:none; }
+}
 </style>
 </head>
 <body>
@@ -636,6 +659,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       <button class="extra-inn-btn" onclick="addExtraInning()">+ Extra inning</button>
     </div>
   </div>
+
+  <!-- Current at-bat bar -->
+  <div class="atbat-bar" id="atbatBar"></div>
 
   <!-- Game info / notes -->
   <div class="game-info" id="gameInfoPanel">
@@ -1019,12 +1045,78 @@ function renderAll(){
   renderPitchers('away');
   renderLog();
   renderOutPanel();
+  renderAtBatBar();
   restoreNotes();
   // Sync hitWithErr toggle UI
   var heb = document.getElementById('hitErrToggle');
   if(heb) heb.className = 'hit-err-toggle' + (hitWithErr ? ' on' : '');
   var heh = document.getElementById('hitErrHint');
   if(heh) heh.textContent = hitWithErr ? 'Next hit will also charge an E to fielding team' : '';
+}
+
+// ── Current at-bat summary bar ──
+function renderAtBatBar(){
+  var el = document.getElementById('atbatBar');
+  if(!el) return;
+
+  var bSide = batting();
+  var fSide = fielding();
+  var bIdx = abIdx(bSide);
+  var bName = curName(bSide, bIdx);
+  var bSlot = G.lineup[bSide][bIdx];
+  var bPos = bSlot.subs.length > 0 ? bSlot.subs[bSlot.subs.length - 1].pos : bSlot.pos;
+  var bTeamName = team(bSide);
+  var bLogo = TEAM_LOGOS[bTeamName] || '';
+  var bHits = activeHits(bSide, bIdx);
+  var bBadges = badges(bHits);
+
+  // Pitcher info
+  var pIdx = activePIdx(fSide);
+  var pitcher = G.pitchers[fSide][pIdx];
+  var pName = pitcher.name || 'Pitcher ' + (pIdx + 1);
+  var pTeamName = team(fSide);
+  var pLogo = TEAM_LOGOS[pTeamName] || '';
+
+  // On-deck batter
+  var onDeckIdx = (bIdx + 1) % 9;
+  var onDeckName = curName(bSide, onDeckIdx);
+
+  // Count display
+  var countHtml = '<span class="atbat-count-b">' + G.balls + '</span>'
+    + '-'
+    + '<span class="atbat-count-s">' + G.strikes + '</span>';
+
+  var html = '';
+
+  // Batter section
+  html += '<div class="atbat-batter">';
+  if(bLogo) html += '<img class="atbat-logo" src="' + bLogo + '" alt="" />';
+  html += '<span class="atbat-name">' + esc(bName) + '</span>';
+  if(bPos && bPos !== '—') html += '<span class="atbat-pos">' + esc(bPos) + '</span>';
+  html += '<span class="atbat-detail">#' + (bIdx + 1) + '</span>';
+  html += '</div>';
+
+  // Badges
+  if(bBadges) html += '<div class="atbat-badges">' + bBadges + '</div>';
+
+  // Count
+  html += '<span class="atbat-count">' + countHtml + '</span>';
+
+  // Separator
+  html += '<div class="atbat-sep"></div>';
+
+  // Pitcher section
+  html += '<div class="atbat-vs">';
+  html += '<span class="atbat-vs-label">vs</span>';
+  if(pLogo) html += '<img class="atbat-logo" src="' + pLogo + '" alt="" />';
+  html += '<span class="atbat-pitcher">' + esc(shortName(pName)) + '</span>';
+  html += '<span class="atbat-pc">' + pitcher.pitches + 'P</span>';
+  html += '</div>';
+
+  // On deck
+  html += '<span class="atbat-ondeck">On deck: ' + esc(shortName(onDeckName)) + '</span>';
+
+  el.innerHTML = html;
 }
 
 function team(s){
@@ -2197,6 +2289,7 @@ function confirmSub(side,i,subType){
   }
 
   renderLineup(side);
+  renderAtBatBar();
 }
 
 function renderLineup(side){
@@ -2259,6 +2352,7 @@ function setAtBat(side, i){
   else G.awayBatter = i;
   addLog(curName(side, i) + ' up to bat', 'AB', 't-info');
   renderLineup(side);
+  renderAtBatBar();
 }
 
 // ── Per-inning batter tracking ──
@@ -2344,6 +2438,7 @@ function nextBatter(side){
   if(side==='home') G.homeBatter=next; else G.awayBatter=next;
   addLog(curName(side,next)+' up to bat','AB','t-info');
   renderLineup(side);
+  renderAtBatBar();
 }
 
 // Advance the batter index without logging or rendering.
@@ -2976,6 +3071,7 @@ function renderCount(){
     ? G.fouls + ' foul' + (G.fouls > 1 ? 's' : '') + ' this at-bat'
     : '';
   renderABSTally();
+  renderAtBatBar();
 }
 
 // ── ABS Challenge System ──
@@ -3331,6 +3427,7 @@ function setActivePitcher(side, idx){
   var name = G.pitchers[side][idx].name || 'P' + (idx + 1);
   addLog(name + ' pitching for ' + team(side), 'P', 't-info');
   renderPitchers(side);
+  renderAtBatBar();
 }
 
 function pitcherOpts(side, selectedName) {
@@ -3901,6 +3998,7 @@ function onTeamChange() {
   else { ROSTERS['away']=[]; renderLineup('away'); }
   if(home && home !== '— Select Team —') fetchRoster('home', home);
   else { ROSTERS['home']=[]; renderLineup('home'); }
+  renderAtBatBar();
   saveToStorage();
 }
 
