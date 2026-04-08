@@ -352,8 +352,21 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .log-inner.expanded { max-height:600px; }
 .log-toggle { display:flex; justify-content:center; padding:4px 0; border-top:1px solid var(--border); cursor:pointer; font-size:11px; color:var(--muted); font-weight:600; letter-spacing:.03em; background:var(--surface); }
 .log-toggle:hover { background:var(--header-bg); }
-.log-row { font-size:12px; color:var(--muted); padding:4px 12px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; }
+.log-row { font-size:12px; color:var(--muted); padding:4px 12px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; gap:6px; }
 .log-row:last-child { border-bottom:none; }
+.log-row-text { flex:1; min-width:0; }
+.log-row-actions { display:flex; align-items:center; gap:4px; flex-shrink:0; }
+.log-edit-btn { border:none; background:none; font-size:11px; cursor:pointer; color:var(--muted); padding:1px 3px; border-radius:3px; opacity:0; transition:opacity .15s; line-height:1; }
+.log-row:hover .log-edit-btn { opacity:1; }
+@media(hover:none){ .log-edit-btn { opacity:.5; } }
+.log-editing { background:var(--header-bg); padding:6px 12px; flex-wrap:wrap; }
+.log-edit-input { flex:1; min-width:120px; font-size:12px; padding:3px 6px; border:1px solid var(--blue); border-radius:4px; background:var(--surface); color:var(--text); font-family:inherit; outline:none; }
+.log-edit-save { padding:3px 8px; font-size:11px; font-weight:600; border:none; border-radius:4px; background:var(--blue); color:#fff; cursor:pointer; }
+.log-edit-save:hover { background:#1150a0; }
+.log-edit-del { padding:3px 8px; font-size:11px; font-weight:600; border:1px solid var(--red); border-radius:4px; background:transparent; color:var(--red); cursor:pointer; }
+.log-edit-del:hover { background:var(--rl); }
+.log-edit-cancel { padding:3px 8px; font-size:11px; border:1px solid var(--border); border-radius:4px; background:transparent; color:var(--muted); cursor:pointer; }
+.log-edit-cancel:hover { background:var(--header-bg); }
 .ltag { font-size:11px; padding:1px 5px; border-radius:3px; font-weight:600; }
 .t-ball { background:var(--gl); color:var(--green); }
 .t-k { background:var(--rl); color:var(--red); }
@@ -378,7 +391,29 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .t-fc { background:#EEEDFE; color:#534AB7; }
 .t-ibb { background:#E1F5EE; color:#0F6E56; }
 .t-wp { background:#FAECE7; color:#993C1D; }
+.t-abs { background:#F0E6FB; color:#7C3AED; }
 .empty-log { font-size:13px; color:var(--muted); padding:16px 12px; text-align:center; }
+
+/* ABS challenge picker */
+.abs-picker { margin-top:8px; padding:8px; border:1.5px solid #7C3AED; border-radius:var(--radius); background:var(--surface); }
+.abs-picker-title { font-size:11px; color:#7C3AED; font-weight:700; text-transform:uppercase; letter-spacing:.04em; margin-bottom:6px; }
+.abs-picker-row { display:flex; gap:5px; flex-wrap:wrap; align-items:center; margin-bottom:6px; }
+.abs-picker-row:last-child { margin-bottom:0; }
+.abs-picker-label { font-size:11px; color:var(--muted); font-weight:600; min-width:65px; flex-shrink:0; }
+.abs-opt { padding:5px 10px; font-size:12px; font-weight:600; border:1.5px solid var(--border); border-radius:6px; background:transparent; cursor:pointer; color:var(--text); transition:border-color .1s, background .1s; }
+.abs-opt:hover { background:var(--header-bg); }
+.abs-opt.sel { border-color:#7C3AED; background:#F0E6FB; color:#7C3AED; }
+.abs-opt.sel-over { border-color:var(--green); background:var(--gl); color:var(--green); }
+.abs-opt.sel-upheld { border-color:var(--red); background:var(--rl); color:var(--red); }
+.abs-confirm { padding:6px 14px; font-size:12px; font-weight:600; border:none; border-radius:6px; background:#7C3AED; color:#fff; cursor:pointer; }
+.abs-confirm:hover { background:#6D28D9; }
+.abs-confirm:disabled { background:var(--disabled); cursor:not-allowed; }
+.abs-cancel { padding:6px 10px; font-size:12px; border:1px solid var(--border); border-radius:6px; background:transparent; cursor:pointer; color:var(--muted); }
+.abs-cancel:hover { background:var(--header-bg); }
+.abs-btn { border-color:#7C3AED; color:#7C3AED; }
+.abs-tally { font-size:11px; color:var(--muted); margin-top:4px; }
+.abs-tally-won { color:var(--green); font-weight:600; }
+.abs-tally-lost { color:var(--red); font-weight:600; }
 
 /* log filter bar */
 .log-filters { display:flex; align-items:center; gap:5px; padding:6px 10px; border-bottom:1px solid var(--border); flex-wrap:wrap; }
@@ -445,7 +480,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   .hdr-btns, .half-tog, .btns, .action-row, .add-p, .padj,
   .set-btn, .sub-btn, .sub-form,
   .pdf-btn, .reset-btn, .out-card, #kbHelpBtn,
-  .kb-flash, .extra-inn-btn, .runner-labels, .rp-overlay { display:none!important; }
+  .kb-flash, .extra-inn-btn, .runner-labels, .rp-overlay,
+  .abs-picker, .abs-tally, .abs-btn { display:none!important; }
   /* score strip */
   .score-strip { border:1.5px solid #333; border-radius:0; margin-bottom:6px; }
   .score-table th, .score-table td { font-size:10px; padding:4px 6px; border-right:1px solid #ccc; }
@@ -514,6 +550,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   .log-inner { max-height:none!important; overflow:visible!important; column-count:2; column-gap:8px; }
   .log-inner.expanded { max-height:none!important; }
   .log-row { font-size:9px; padding:2px 6px; border-bottom:1px solid #eee; break-inside:avoid; }
+  .log-edit-btn { display:none!important; }
+  .log-editing { display:none!important; }
   .ltag { font-size:8px; padding:0 3px; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
   .empty-log { display:none; }
 
@@ -732,7 +770,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         <button class="btn strike" onclick="addStrike()">Strike</button>
         <button class="btn foul" onclick="addFoul()">Foul</button>
         <button class="btn" onclick="clearCount()">Clear</button>
+        <button class="btn abs-btn" onclick="toggleABSPicker()">ABS</button>
       </div>
+      <div id="absPicker" style="display:none"></div>
+      <div class="abs-tally" id="absTally"></div>
     </div>
 
     <div class="card">
@@ -861,6 +902,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       <button class="log-fpill" data-filter="outs">Outs</button>
       <button class="log-fpill" data-filter="runs">Runs</button>
       <button class="log-fpill" data-filter="pitches">Pitches</button>
+      <button class="log-fpill" data-filter="abs">ABS</button>
       <button class="log-fpill" data-filter="">All</button>
     </div>
     <div class="log-inner" id="logInner"><div class="empty-log">No plays logged yet</div></div>
@@ -890,7 +932,8 @@ function mkGame(){
     pitchers:{home:[mkPitcher()], away:[mkPitcher()]},
     log:[],
     batterLog:{home:{}, away:{}},
-    notes:mkNotes()
+    notes:mkNotes(),
+    abs:{home:{challenged:0,overturned:0}, away:{challenged:0,overturned:0}}
   };
 }
 function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
@@ -1030,6 +1073,7 @@ function addLog(text, tag, cls){
   else if(cls === 't-fo' || cls === 't-go' || cls === 't-out' || cls === 't-kl' || cls === 't-ks' || cls === 't-fc' || cls === 't-cs') cat = 'outs';
   else if(cls === 't-run') cat = 'runs';
   else if(cls === 't-ball' || cls === 't-k' || cls === 't-foul' || cls === 't-wp' || cls === 't-pb' || cls === 't-ibb') cat = 'pitches';
+  else if(cls === 't-abs') cat = 'abs';
   G.log.unshift({ text: inn + ' — ' + text, tag: tag, cls: cls, inn: inn, cat: cat });
   if(G.log.length > 80) G.log.pop();
   renderLog();
@@ -1037,6 +1081,7 @@ function addLog(text, tag, cls){
 }
 
 var logFilter = { inn: '', cat: '' };
+var logEditIdx = -1; // index into G.log currently being edited, -1 = none
 
 function renderLog(){
   var el = document.getElementById('logInner');
@@ -1068,27 +1113,85 @@ function renderLog(){
     }).join('');
   }
 
-  // Filter entries
-  var filtered = G.log.filter(function(e){
-    if(logFilter.inn && e.inn !== logFilter.inn) return false;
-    if(logFilter.cat && e.cat !== logFilter.cat) return false;
-    return true;
+  // Build filtered list with original indices
+  var filtered = [];
+  G.log.forEach(function(e, i){
+    if(logFilter.inn && e.inn !== logFilter.inn) return;
+    if(logFilter.cat && e.cat !== logFilter.cat) return;
+    filtered.push({ entry: e, idx: i });
   });
 
   if(filtered.length === 0){
     el.innerHTML = '<div class="empty-log">No matching plays</div>';
   } else {
-    el.innerHTML = filtered.map(function(e){
+    el.innerHTML = filtered.map(function(f){
+      var e = f.entry;
+      var i = f.idx;
+
+      if(i === logEditIdx){
+        // Inline edit mode
+        return '<div class="log-row log-editing">'
+          + '<input class="log-edit-input" id="logEditInput" value="' + esc(e.text) + '" />'
+          + '<span class="ltag ' + e.cls + '">' + e.tag + '</span>'
+          + '<button class="log-edit-save" onclick="logEditSave()">Save</button>'
+          + '<button class="log-edit-del" onclick="logEditDelete(' + i + ')">Delete</button>'
+          + '<button class="log-edit-cancel" onclick="logEditCancel()">Cancel</button>'
+          + '</div>';
+      }
+
       return '<div class="log-row">'
-        + '<span>' + e.text + '</span>'
+        + '<span class="log-row-text">' + e.text + '</span>'
+        + '<div class="log-row-actions">'
         + '<span class="ltag ' + e.cls + '">' + e.tag + '</span>'
+        + '<button class="log-edit-btn" onclick="logEditStart(' + i + ')" title="Edit entry">✎</button>'
+        + '</div>'
         + '</div>';
     }).join('');
+
+    // Auto-focus the edit input if we just entered edit mode
+    if(logEditIdx >= 0){
+      var inp = document.getElementById('logEditInput');
+      if(inp){
+        inp.focus();
+        inp.setSelectionRange(inp.value.length, inp.value.length);
+      }
+    }
   }
   // Show toggle when log has enough entries to overflow
   if(toggle){
     toggle.style.display = G.log.length > 5 ? '' : 'none';
   }
+}
+
+function logEditStart(idx){
+  logEditIdx = idx;
+  renderLog();
+}
+
+function logEditCancel(){
+  logEditIdx = -1;
+  renderLog();
+}
+
+function logEditSave(){
+  if(logEditIdx < 0 || logEditIdx >= G.log.length) return;
+  var inp = document.getElementById('logEditInput');
+  if(!inp) return;
+  var newText = inp.value.trim();
+  if(newText){
+    G.log[logEditIdx].text = newText;
+  }
+  logEditIdx = -1;
+  renderLog();
+  saveToStorage();
+}
+
+function logEditDelete(idx){
+  if(idx < 0 || idx >= G.log.length) return;
+  G.log.splice(idx, 1);
+  logEditIdx = -1;
+  renderLog();
+  saveToStorage();
 }
 
 var logExpanded = false;
@@ -1124,6 +1227,13 @@ function toggleLog(){
       var pills = document.querySelectorAll('.log-fpill');
       pills.forEach(function(p){ p.classList.toggle('active', p.dataset.filter === logFilter.cat); });
       renderLog();
+    }
+  });
+  // Log edit input: Enter to save, Escape to cancel
+  document.addEventListener('keydown', function(e){
+    if(e.target.id === 'logEditInput'){
+      if(e.key === 'Enter'){ e.preventDefault(); logEditSave(); }
+      else if(e.key === 'Escape'){ e.preventDefault(); logEditCancel(); }
     }
   });
 })();
@@ -2865,6 +2975,174 @@ function renderCount(){
   document.getElementById('foulNote').textContent = G.fouls > 0
     ? G.fouls + ' foul' + (G.fouls > 1 ? 's' : '') + ' this at-bat'
     : '';
+  renderABSTally();
+}
+
+// ── ABS Challenge System ──
+var absState = { open: false, callType: null, result: null };
+// callType: 'ball' (challenging a ball call → wants strike) or 'strike' (challenging a strike → wants ball)
+// result: 'overturned' or 'upheld'
+
+function toggleABSPicker(){
+  absState.open = !absState.open;
+  if(!absState.open){
+    absState.callType = null;
+    absState.result = null;
+  }
+  renderABSPicker();
+}
+
+function renderABSPicker(){
+  var el = document.getElementById('absPicker');
+  if(!el) return;
+  if(!absState.open){
+    el.style.display = 'none';
+    el.innerHTML = '';
+    return;
+  }
+  el.style.display = '';
+
+  var side = batting();
+  var nm = curName(side, abIdx(side));
+
+  var html = '<div class="abs-picker">';
+  html += '<div class="abs-picker-title">ABS Challenge — ' + esc(shortName(nm)) + ' (' + team(side) + ')</div>';
+
+  // What call is being challenged?
+  html += '<div class="abs-picker-row">';
+  html += '<span class="abs-picker-label">Call was:</span>';
+  html += '<button class="abs-opt' + (absState.callType === 'ball' ? ' sel' : '') + '" onclick="absSetCall(\'ball\')">Ball</button>';
+  html += '<button class="abs-opt' + (absState.callType === 'strike' ? ' sel' : '') + '" onclick="absSetCall(\'strike\')">Strike</button>';
+  html += '</div>';
+
+  // Result
+  html += '<div class="abs-picker-row">';
+  html += '<span class="abs-picker-label">Result:</span>';
+  html += '<button class="abs-opt' + (absState.result === 'overturned' ? ' sel-over' : '') + '" onclick="absSetResult(\'overturned\')">Overturned ✓</button>';
+  html += '<button class="abs-opt' + (absState.result === 'upheld' ? ' sel-upheld' : '') + '" onclick="absSetResult(\'upheld\')">Upheld ✕</button>';
+  html += '</div>';
+
+  // Confirm / Cancel
+  var ready = absState.callType && absState.result;
+  html += '<div class="abs-picker-row">';
+  html += '<button class="abs-confirm"' + (ready ? '' : ' disabled') + ' onclick="absConfirm()">' + (ready ? 'Record challenge' : 'Select call & result') + '</button>';
+  html += '<button class="abs-cancel" onclick="toggleABSPicker()">Cancel</button>';
+  html += '</div>';
+
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+function absSetCall(type){
+  absState.callType = type;
+  renderABSPicker();
+  haptic();
+}
+
+function absSetResult(result){
+  absState.result = result;
+  renderABSPicker();
+  haptic();
+}
+
+function absConfirm(){
+  if(!absState.callType || !absState.result) return;
+  saveState();
+
+  var side = batting();
+  var idx = abIdx(side);
+  var nm = curName(side, idx);
+  var overturned = absState.result === 'overturned';
+  var callType = absState.callType;
+
+  // Ensure abs tracking exists (backward compat)
+  if(!G.abs) G.abs = {home:{challenged:0,overturned:0}, away:{challenged:0,overturned:0}};
+  if(!G.abs[side]) G.abs[side] = {challenged:0, overturned:0};
+
+  G.abs[side].challenged++;
+  if(overturned) G.abs[side].overturned++;
+
+  // Build log text
+  var callLabel = callType === 'ball' ? 'ball' : 'strike';
+  var newCall = callType === 'ball' ? 'strike' : 'ball';
+  var resultLabel = overturned ? 'OVERTURNED → ' + newCall : 'UPHELD';
+
+  addLog(nm + ' (' + team(side) + ') ABS challenge: ' + callLabel + ' call — ' + resultLabel, 'ABS', 't-abs');
+
+  // If overturned, adjust the count
+  if(overturned){
+    if(callType === 'ball'){
+      // Ball call overturned → should be strike
+      // Remove 1 ball, add 1 strike
+      if(G.balls > 0) G.balls--;
+      if(G.strikes < 2) G.strikes++;
+      addLog('Count adjusted: ball → strike (' + G.balls + '-' + G.strikes + ')', 'ABS', 't-abs');
+    } else {
+      // Strike call overturned → should be ball
+      // Remove 1 strike, add 1 ball
+      if(G.strikes > 0) G.strikes--;
+      else if(G.fouls > 0 && G.strikes === 0){
+        // Edge: if strike was from a foul that pushed to strike 2, just remove the foul effect
+        // This is tricky — for simplicity just note it
+      }
+      G.balls++;
+      addLog('Count adjusted: strike → ball (' + G.balls + '-' + G.strikes + ')', 'ABS', 't-abs');
+
+      // Check if the added ball caused a walk (ball 4)
+      if(G.balls >= 4){
+        activeHits(side, idx).bb++;
+        addLog('Walk (via ABS challenge)', 'Walk', 't-ball');
+        logBatter(side, idx, 'BB');
+        addPitcherStat(fielding(), 'bb');
+        var bnm = curName(side, idx);
+        var runs = forceAdvance(side, bnm);
+        if(runs > 0){
+          addLog(runs + ' run' + (runs > 1 ? 's' : '') + ' score', 'Run', 't-run');
+        }
+        renderBases();
+        renderScore();
+        G.balls = 0; G.strikes = 0; G.fouls = 0;
+        renderCount();
+        renderLineup(side);
+        if(!checkWalkoff()){
+          nextBatter(side);
+        }
+        // Close picker and done
+        absState.open = false;
+        absState.callType = null;
+        absState.result = null;
+        renderABSPicker();
+        saveToStorage();
+        return;
+      }
+    }
+    renderCount();
+  }
+
+  // Close picker
+  absState.open = false;
+  absState.callType = null;
+  absState.result = null;
+  renderABSPicker();
+  saveToStorage();
+}
+
+function renderABSTally(){
+  var el = document.getElementById('absTally');
+  if(!el) return;
+  if(!G.abs) { el.innerHTML = ''; return; }
+
+  var parts = [];
+  ['away','home'].forEach(function(side){
+    var a = G.abs[side];
+    if(!a || a.challenged === 0) return;
+    var tName = team(side);
+    var won = a.overturned;
+    var lost = a.challenged - a.overturned;
+    parts.push(tName + ': <span class="abs-tally-won">' + won + '✓</span> / <span class="abs-tally-lost">' + lost + '✕</span>');
+  });
+
+  el.innerHTML = parts.length > 0 ? 'ABS: ' + parts.join(' · ') : '';
 }
 
 // ── Game-over detection ──
@@ -3572,6 +3850,10 @@ function loadFromStorage(){
     }
     // Ensure notes object exists (backward compat)
     if(!G.notes) G.notes = mkNotes();
+    // Ensure ABS challenge tracking exists (backward compat)
+    if(!G.abs) G.abs = {home:{challenged:0,overturned:0}, away:{challenged:0,overturned:0}};
+    if(!G.abs.home) G.abs.home = {challenged:0,overturned:0};
+    if(!G.abs.away) G.abs.away = {challenged:0,overturned:0};
     // Restore outState
     if(payload.outState){
       outState.type = payload.outState.type || null;
@@ -3825,6 +4107,9 @@ function importJSON(evt){
       // Run the same backward compat migrations as loadFromStorage
       if(!G.batterLog) G.batterLog = { home: {}, away: {} };
       if(!G.notes) G.notes = mkNotes();
+      if(!G.abs) G.abs = {home:{challenged:0,overturned:0}, away:{challenged:0,overturned:0}};
+      if(!G.abs.home) G.abs.home = {challenged:0,overturned:0};
+      if(!G.abs.away) G.abs.away = {challenged:0,overturned:0};
       var defaultHitKeys = Object.keys(mkHits());
       ['home','away'].forEach(function(side){
         G.lineup[side].forEach(function(sl){
