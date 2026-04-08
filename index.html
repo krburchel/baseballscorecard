@@ -2450,7 +2450,19 @@ function renderRunnerPicker(){
   }
 
   var hitLabel = rp.hitBases === 1 ? 'Single' : rp.hitBases === 2 ? 'Double' : 'Triple';
-  var batterDest = baseLabels[rp.hitBases - 1]; // 1B for single, 2B for double, 3B for triple
+  var batterDest = rp.hitBases - 1; // 0=1B, 1=2B, 2=3B (0-indexed)
+  var batterDestLabel = baseLabels[batterDest];
+
+  // Build a set of bases that are already claimed:
+  // - batter's destination is always claimed
+  // - any runner whose dest is already chosen claims that base
+  var claimed = {};
+  claimed[batterDest] = 'batter';
+  rp.runners.forEach(function(r, ri){
+    if(r.dest !== null && r.dest >= 0 && r.dest <= 2){
+      claimed[r.dest] = ri; // claimed by runner index ri
+    }
+  });
 
   var html = '<div class="rp-modal">';
   html += '<div class="rp-hdr"><h3>Place runners <span class="rp-hdr-sub">— ' + hitLabel + '</span></h3></div>';
@@ -2464,28 +2476,28 @@ function renderRunnerPicker(){
     html += '<div class="rp-runner-name">' + esc(dispName) + ' <span class="rp-runner-from">from ' + fromLabel + '</span></div>';
     html += '<div class="rp-opts">';
 
-    // Possible destinations: each base ahead of current, plus Home (score)
-    // For a single: runner on 1B can go to 2B, 3B, or Home
-    // For a double: runner on 1B can go to 3B or Home
-    // etc. — show all bases ahead of current position
-    var minDest = r.baseIdx + 1; // at least 1 base ahead
-    // But realistically a runner can end up anywhere ahead, even hold
-    // Let's offer: stay (same base — unusual but possible on certain plays),
-    // each base from current+1 up to 3B, and Home (score).
-    // "Hold" only makes sense if the batter's destination doesn't conflict.
-    // For simplicity: offer bases from (current+1) through 3 (Home=score).
-    // Also offer "Out" for fielder's-choice-like situations on hits? 
-    // Keep it clean: just forward destinations + score.
-
-    for(var d = r.baseIdx + 1; d <= 2; d++){
-      var selCls = r.dest === d ? ' sel' : '';
-      html += '<button class="rp-opt' + selCls + '" onclick="rpSetDest(' + ri + ',' + d + ')">' + baseLabels[d] + '</button>';
+    // "Hold" option: stay on current base, only if not claimed by batter or another runner
+    var holdBase = r.baseIdx;
+    var holdAvail = (claimed[holdBase] === undefined || claimed[holdBase] === ri);
+    if(holdAvail){
+      var holdCls = r.dest === holdBase ? ' sel' : '';
+      html += '<button class="rp-opt' + holdCls + '" onclick="rpSetDest(' + ri + ',' + holdBase + ')" title="Hold at ' + baseLabels[holdBase] + '">⏸ Hold</button>';
     }
-    // Home (score)
+
+    // Forward bases: from current+1 up through 3B (index 2)
+    for(var d = r.baseIdx + 1; d <= 2; d++){
+      var baseAvail = (claimed[d] === undefined || claimed[d] === ri);
+      if(baseAvail){
+        var selCls = r.dest === d ? ' sel' : '';
+        html += '<button class="rp-opt' + selCls + '" onclick="rpSetDest(' + ri + ',' + d + ')">' + baseLabels[d] + '</button>';
+      }
+    }
+
+    // Home (score) — always available
     var scoreCls = r.dest === 3 ? ' sel-score' : '';
     html += '<button class="rp-opt' + scoreCls + '" onclick="rpSetDest(' + ri + ',3)">🏠 Scores</button>';
 
-    // Out on bases option (runner thrown out advancing)
+    // Out on bases option
     var outCls = r.dest === -1 ? ' sel-out' : '';
     html += '<button class="rp-opt' + outCls + '" onclick="rpSetDest(' + ri + ',-1)">✕ Out</button>';
 
@@ -2493,7 +2505,7 @@ function renderRunnerPicker(){
   });
 
   // Show batter placement (fixed)
-  html += '<div class="rp-batter">🏏 ' + esc(shortName(rp.batterName)) + ' → ' + batterDest + '</div>';
+  html += '<div class="rp-batter">🏏 ' + esc(shortName(rp.batterName)) + ' → ' + batterDestLabel + '</div>';
 
   // Confirm button
   var allChosen = rp.runners.every(function(r){ return r.dest !== null; });
@@ -2507,6 +2519,12 @@ function renderRunnerPicker(){
 function rpSetDest(runnerIdx, dest){
   if(!_rpState) return;
   _rpState.runners[runnerIdx].dest = dest;
+  // If this runner claimed a base (0-2), clear any other runner who had the same base
+  if(dest >= 0 && dest <= 2){
+    _rpState.runners.forEach(function(r, ri){
+      if(ri !== runnerIdx && r.dest === dest) r.dest = null;
+    });
+  }
   renderRunnerPicker();
   haptic();
 }
