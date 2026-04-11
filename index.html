@@ -82,6 +82,37 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .save-menu-item:hover { background:var(--header-bg); }
 .save-menu-item + .save-menu-item { border-top:1px solid var(--border); }
 
+/* ── Game manager modal ── */
+.gm-overlay { position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:200; display:flex; align-items:center; justify-content:center; padding:16px; }
+.gm-modal { background:var(--surface); border:1px solid var(--border); border-radius:12px; max-width:520px; width:100%; max-height:80vh; display:flex; flex-direction:column; box-shadow:0 8px 32px rgba(0,0,0,.2); }
+.gm-hdr { padding:14px 16px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; flex-shrink:0; }
+.gm-hdr h3 { font-size:15px; font-weight:700; color:var(--text); margin:0; }
+.gm-close { border:none; background:none; font-size:20px; cursor:pointer; color:var(--muted); line-height:1; padding:0 4px; }
+.gm-body { padding:0; overflow-y:auto; flex:1; }
+.gm-actions { padding:10px 16px; border-bottom:1px solid var(--border); display:flex; gap:8px; flex-wrap:wrap; flex-shrink:0; }
+.gm-save-btn { padding:7px 14px; font-size:12px; font-weight:600; border:none; border-radius:6px; background:var(--blue); color:#fff; cursor:pointer; }
+.gm-save-btn:hover { background:#1150a0; }
+.gm-new-btn { padding:7px 14px; font-size:12px; font-weight:600; border:1.5px solid var(--green); border-radius:6px; background:transparent; color:var(--green); cursor:pointer; }
+.gm-new-btn:hover { background:var(--gl); }
+.gm-card { display:flex; align-items:center; gap:10px; padding:10px 16px; border-bottom:1px solid var(--border); transition:background .1s; }
+.gm-card:last-child { border-bottom:none; }
+.gm-card:hover { background:var(--header-bg); }
+.gm-card.gm-active { background:var(--bl); }
+.gm-card-info { flex:1; min-width:0; }
+.gm-card-teams { font-size:13px; font-weight:600; color:var(--text); display:flex; align-items:center; gap:6px; }
+.gm-card-logo { width:18px; height:18px; object-fit:contain; }
+.gm-card-score { font-size:13px; font-weight:700; color:var(--text); margin-left:4px; }
+.gm-card-meta { font-size:11px; color:var(--muted); margin-top:2px; }
+.gm-card-active-badge { font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px; background:var(--blue); color:#fff; flex-shrink:0; }
+.gm-card-btns { display:flex; gap:4px; flex-shrink:0; }
+.gm-card-btn { padding:4px 10px; font-size:11px; font-weight:600; border:1px solid var(--border); border-radius:5px; background:transparent; cursor:pointer; color:var(--muted); }
+.gm-card-btn:hover { background:var(--header-bg); }
+.gm-card-btn.gm-load { border-color:var(--blue); color:var(--blue); }
+.gm-card-btn.gm-load:hover { background:var(--bl); }
+.gm-card-btn.gm-del { border-color:var(--red); color:var(--red); }
+.gm-card-btn.gm-del:hover { background:var(--rl); }
+.gm-empty { padding:24px 16px; text-align:center; color:var(--muted); font-size:13px; }
+
 /* baserunner action picker */
 .br-picker-inner { margin-top:6px; padding:6px 0; }
 .br-picker-title { font-size:11px; color:var(--muted); font-weight:600; margin-bottom:4px; }
@@ -322,6 +353,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .hbfc  { background:#EEEDFE; color:#534AB7; }
 .hbibb { background:#E1F5EE; color:#0F6E56; }
 .hbwp  { background:#FAECE7; color:#993C1D; }
+.hbr   { background:var(--bl); color:var(--blue); }
+.hbrbi { background:var(--al); color:var(--amber); }
 
 /* pitchers */
 .prow { display:flex; align-items:center; gap:8px; padding:7px 12px; border-bottom:1px solid var(--border); cursor:pointer; }
@@ -517,6 +550,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   .hbhr { background:var(--rl)!important; color:var(--red)!important; }
   .hbkl { background:var(--cl)!important; color:var(--coral)!important; }
   .hbks { background:var(--rl)!important; color:var(--red)!important; }
+  .hbr  { background:var(--bl)!important; color:var(--blue)!important; }
+  .hbrbi { background:var(--al)!important; color:var(--amber)!important; }
   /* pitchers */
   .pitcher-panel { border:1.5px solid #333; border-radius:0; page-break-inside:avoid; margin-bottom:6px; }
   .ph { background:#e8e8e0!important; -webkit-print-color-adjust:exact; print-color-adjust:exact; font-size:11px; padding:5px 8px; }
@@ -643,6 +678,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       <div class="save-menu-wrap">
         <button class="pdf-btn" onclick="toggleSaveMenu()" id="saveMenuBtn">💾 Save ▾</button>
         <div class="save-menu" id="saveMenu">
+          <button class="save-menu-item" onclick="showGameManager(); closeSaveMenu()">📋 My Games</button>
           <button class="save-menu-item" onclick="exportPDF(); closeSaveMenu()">🖨 Export PDF</button>
           <button class="save-menu-item" onclick="exportJSON(); closeSaveMenu()">📁 Save game file</button>
           <button class="save-menu-item" onclick="triggerImport(); closeSaveMenu()">📂 Load game file</button>
@@ -942,7 +978,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 
 <script>
 var POSITIONS = ['—','P','C','1B','2B','3B','SS','LF','CF','RF','DH','PH','PR','IF','OF'];
-function mkHits(){ return {s:0,d:0,t:0,hr:0,kl:0,ks:0,fo:0,go:0,sb:0,cs:0,err:0,hbp:0,bb:0,sf:0,sac:0,fc:0,ibb:0,wp:0}; }
+function mkHits(){ return {s:0,d:0,t:0,hr:0,kl:0,ks:0,fo:0,go:0,sb:0,cs:0,err:0,hbp:0,bb:0,sf:0,sac:0,fc:0,ibb:0,wp:0,r:0,rbi:0}; }
 function mkSlot(){ return {name:'',pos:'—',hits:mkHits(),subs:[],pending:false}; }
 function mkPitcher(){ return {name:'',pitches:0,k:0,bb:0,r:0,active:true}; }
 function mkNotes(){ return {date:'',firstPitch:'',venue:'',attendance:'',weather:'',temp:'',windSpeed:'',windDir:'',umpHP:'',ump1B:'',ump2B:'',ump3B:'',gameType:'',text:''}; }
@@ -991,6 +1027,20 @@ function findRunnerSlot(side, runnerName){
     }
   }
   return -1;
+}
+
+// Credit a run scored to the runner who crossed home plate.
+// runnerName: the name string from the base, or null/unknown.
+function creditRun(side, runnerName){
+  var slot = findRunnerSlot(side, runnerName);
+  if(slot >= 0) activeHits(side, slot).r++;
+}
+
+// Credit RBI(s) to the current batter.
+function creditRBI(side, count){
+  if(!count || count <= 0) return;
+  var idx = abIdx(side);
+  activeHits(side, idx).rbi += count;
 }
 
 var G = mkGame();
@@ -1355,7 +1405,9 @@ function badges(h){
     { key:'sac', cls:'hbsac', label:'SAC'     },
     { key:'fc',  cls:'hbfc',  label:'FC'      },
     { key:'ibb', cls:'hbibb', label:'IBB'     },
-    { key:'wp',  cls:'hbwp',  label:'WP'      }
+    { key:'wp',  cls:'hbwp',  label:'WP'      },
+    { key:'r',   cls:'hbr',   label:'R'       },
+    { key:'rbi', cls:'hbrbi', label:'RBI'     }
   ];
   items.forEach(function(it){
     if(h[it.key] > 0){
@@ -1450,6 +1502,7 @@ function executeBRAction(type, baseIdx){
     var fromBase = labels[baseIdx];
     if(baseIdx === 2){
       // Steal home — runner scores
+      creditRun(side, runnerName);
       G.rhe[side][0]++;
       G.scores[side][G.inning - 1] = (G.scores[side][G.inning - 1] || 0) + 1;
       addPitcherStat(fielding(), 'r');
@@ -1501,6 +1554,7 @@ function executeBRAction(type, baseIdx){
       // Single runner advances
       var wpRunner = G.bases[baseIdx] || '?';
       if(baseIdx === 2){
+        creditRun(side, wpRunner);
         G.rhe[side][0]++;
         G.scores[side][G.inning - 1] = (G.scores[side][G.inning - 1] || 0) + 1;
         addPitcherStat(fielding(), 'r');
@@ -1531,6 +1585,7 @@ function executeBRAction(type, baseIdx){
     } else {
       var pbRunner = G.bases[baseIdx] || '?';
       if(baseIdx === 2){
+        creditRun(side, pbRunner);
         G.rhe[side][0]++;
         G.scores[side][G.inning - 1] = (G.scores[side][G.inning - 1] || 0) + 1;
         addPitcherStat(fielding(), 'r');
@@ -1562,6 +1617,7 @@ function recordHBP(){
   // Force-advance runners and place batter on 1B (same as walk)
   var runs = forceAdvance(side, nm);
   if(runs > 0){
+    creditRBI(side, runs);
     addLog(runs + ' run' + (runs > 1 ? 's' : '') + ' score', 'Run', 't-run');
   }
   renderBases();
@@ -1591,6 +1647,7 @@ function recordIBB(){
   // Force-advance runners and place batter on 1B (same as walk)
   var runs = forceAdvance(side, nm);
   if(runs > 0){
+    creditRBI(side, runs);
     addLog(runs + ' run' + (runs > 1 ? 's' : '') + ' score', 'Run', 't-run');
   }
   renderBases();
@@ -1888,6 +1945,8 @@ function recordOut(){
     // Sac fly: score runner from 3B if occupied
     if(isSacFly && baseOcc(2)){
       var scoredRunner = G.bases[2];
+      creditRun(side, scoredRunner);
+      creditRBI(side, 1);
       G.bases[2] = null;
       G.rhe[side][0]++;
       G.scores[side][G.inning - 1] = (G.scores[side][G.inning - 1] || 0) + 1;
@@ -1901,6 +1960,7 @@ function recordOut(){
     if(isSacBunt){
       var sacRuns = advanceRunners(side, 1);
       if(sacRuns > 0){
+        creditRBI(side, sacRuns);
         addLog(sacRuns + ' run' + (sacRuns > 1 ? 's' : '') + ' score on sac bunt', 'Run', 't-run');
       }
       renderBases();
@@ -2078,8 +2138,18 @@ function loadTodaysGame(gameIdx){
     if(!confirm('Load this game? Your current scorecard will be reset.')) return;
   }
 
+  // Save current game to its slot before loading a new one
+  var activeId = gmGetActiveId();
+  if(activeId && G.log.length > 0){
+    gmSaveToSlot(activeId);
+  }
+
   // Reset the game
   resetGameSilent();
+
+  // Start a new game slot for this game
+  var newId = gmGenId();
+  gmSetActiveId(newId);
 
   var away = game.teams.away;
   var home = game.teams.home;
@@ -2487,6 +2557,7 @@ function advanceRunners(side, bases){
       var newPos = i + bases; // 0-indexed: 0=1B, 1=2B, 2=3B, 3+=scores
       if(newPos >= 3){
         runs++;
+        creditRun(side, G.bases[i]); // credit R to the runner who scored
       } else {
         newBases[newPos] = G.bases[i]; // carry runner name
       }
@@ -2515,6 +2586,7 @@ function forceAdvance(side, batterName){
     if(baseOcc(1)){ // 2B also occupied
       if(baseOcc(2)){ // bases loaded — 3B scores
         runs++;
+        creditRun(side, G.bases[2]); // credit R to runner from 3B
         G.rhe[side][0]++;
         G.scores[side][G.inning - 1] = (G.scores[side][G.inning - 1] || 0) + 1;
         addPitcherStat(fielding(), 'r');
@@ -2563,6 +2635,14 @@ function recordHit(b){
     // Home run: all runners + batter score — no picker needed
     var runnersOn = G.bases.filter(function(v){ return !!v; }).length;
     var runsScored = runnersOn + 1;
+    // Credit R to each runner who was on base
+    for(var bi = 0; bi < 3; bi++){
+      if(baseOcc(bi)) creditRun(side, G.bases[bi]);
+    }
+    // Credit R to the batter (they score too)
+    h.r++;
+    // Credit all RBIs to the batter
+    creditRBI(side, runsScored);
     G.rhe[side][0] += runsScored;
     G.scores[side][G.inning - 1] = (G.scores[side][G.inning - 1] || 0) + runsScored;
     for(var ri = 0; ri < runsScored; ri++){
@@ -2749,6 +2829,7 @@ function rpConfirm(){
     if(r.dest === 3){
       // Scores
       runs++;
+      creditRun(side, r.name); // credit R to the runner
     } else if(r.dest === -1){
       // Out on bases
       outsOnBases++;
@@ -2765,6 +2846,7 @@ function rpConfirm(){
 
   // Score the runs
   if(runs > 0){
+    creditRBI(side, runs); // batter's hit drove in the runs
     G.rhe[side][0] += runs;
     G.scores[side][G.inning - 1] = (G.scores[side][G.inning - 1] || 0) + runs;
     for(var r2 = 0; r2 < runs; r2++){
@@ -2810,6 +2892,7 @@ function rpAutoAdvance(){
   var runs = advanceRunners(side, rp.hitBases);
   G.bases[rp.hitBases - 1] = rp.batterName;
   if(runs > 0){
+    creditRBI(side, runs);
     addLog(runs + ' run' + (runs > 1 ? 's' : '') + ' score', 'Run', 't-run');
   }
 
@@ -3010,6 +3093,7 @@ function addBall(){
     var bnm = curName(bside, bidx);
     var runs = forceAdvance(bside, bnm);
     if(runs > 0){
+      creditRBI(bside, runs);
       addLog(runs + ' run' + (runs > 1 ? 's' : '') + ' score', 'Run', 't-run');
     }
     renderBases();
@@ -3075,13 +3159,15 @@ function renderCount(){
 }
 
 // ── ABS Challenge System ──
-var absState = { open: false, callType: null, result: null };
+var absState = { open: false, challenger: null, callType: null, result: null };
+// challenger: 'batting' or 'fielding' — which team initiated the challenge
 // callType: 'ball' (challenging a ball call → wants strike) or 'strike' (challenging a strike → wants ball)
 // result: 'overturned' or 'upheld'
 
 function toggleABSPicker(){
   absState.open = !absState.open;
   if(!absState.open){
+    absState.challenger = null;
     absState.callType = null;
     absState.result = null;
   }
@@ -3098,11 +3184,35 @@ function renderABSPicker(){
   }
   el.style.display = '';
 
-  var side = batting();
-  var nm = curName(side, abIdx(side));
+  var bSide = batting();
+  var fSide = fielding();
+  var bTeam = team(bSide);
+  var fTeam = team(fSide);
+  var bLogo = TEAM_LOGOS[bTeam] || '';
+  var fLogo = TEAM_LOGOS[fTeam] || '';
+  var nm = curName(bSide, abIdx(bSide));
 
   var html = '<div class="abs-picker">';
-  html += '<div class="abs-picker-title">ABS Challenge — ' + esc(shortName(nm)) + ' (' + team(side) + ')</div>';
+  html += '<div class="abs-picker-title">ABS Challenge</div>';
+
+  // Who is challenging?
+  html += '<div class="abs-picker-row">';
+  html += '<span class="abs-picker-label">Team:</span>';
+  html += '<button class="abs-opt' + (absState.challenger === 'batting' ? ' sel' : '') + '" onclick="absSetChallenger(\'batting\')">'
+    + (bLogo ? '<img src="' + bLogo + '" style="width:14px;height:14px;object-fit:contain;vertical-align:middle;margin-right:4px" />' : '')
+    + esc(bTeam) + ' <span style="font-weight:400;opacity:.7">(bat)</span></button>';
+  html += '<button class="abs-opt' + (absState.challenger === 'fielding' ? ' sel' : '') + '" onclick="absSetChallenger(\'fielding\')">'
+    + (fLogo ? '<img src="' + fLogo + '" style="width:14px;height:14px;object-fit:contain;vertical-align:middle;margin-right:4px" />' : '')
+    + esc(fTeam) + ' <span style="font-weight:400;opacity:.7">(fld)</span></button>';
+  html += '</div>';
+
+  // Context line
+  if(absState.challenger){
+    var contextNote = absState.challenger === 'batting'
+      ? 'At bat: ' + esc(shortName(nm))
+      : 'Pitching to: ' + esc(shortName(nm));
+    html += '<div style="font-size:11px;color:var(--muted);margin-bottom:4px;padding-left:2px">' + contextNote + '</div>';
+  }
 
   // What call is being challenged?
   html += '<div class="abs-picker-row">';
@@ -3119,14 +3229,20 @@ function renderABSPicker(){
   html += '</div>';
 
   // Confirm / Cancel
-  var ready = absState.callType && absState.result;
+  var ready = absState.challenger && absState.callType && absState.result;
   html += '<div class="abs-picker-row">';
-  html += '<button class="abs-confirm"' + (ready ? '' : ' disabled') + ' onclick="absConfirm()">' + (ready ? 'Record challenge' : 'Select call & result') + '</button>';
+  html += '<button class="abs-confirm"' + (ready ? '' : ' disabled') + ' onclick="absConfirm()">' + (ready ? 'Record challenge' : 'Select team, call & result') + '</button>';
   html += '<button class="abs-cancel" onclick="toggleABSPicker()">Cancel</button>';
   html += '</div>';
 
   html += '</div>';
   el.innerHTML = html;
+}
+
+function absSetChallenger(who){
+  absState.challenger = who;
+  renderABSPicker();
+  haptic();
 }
 
 function absSetCall(type){
@@ -3142,69 +3258,71 @@ function absSetResult(result){
 }
 
 function absConfirm(){
-  if(!absState.callType || !absState.result) return;
+  if(!absState.challenger || !absState.callType || !absState.result) return;
   saveState();
 
-  var side = batting();
-  var idx = abIdx(side);
-  var nm = curName(side, idx);
+  // Determine which side initiated the challenge
+  var challengerSide = absState.challenger === 'batting' ? batting() : fielding();
+  var challengerTeam = team(challengerSide);
+  var bSide = batting();
+  var idx = abIdx(bSide);
+  var nm = curName(bSide, idx);
   var overturned = absState.result === 'overturned';
   var callType = absState.callType;
 
   // Ensure abs tracking exists (backward compat)
   if(!G.abs) G.abs = {home:{challenged:0,overturned:0}, away:{challenged:0,overturned:0}};
-  if(!G.abs[side]) G.abs[side] = {challenged:0, overturned:0};
+  if(!G.abs[challengerSide]) G.abs[challengerSide] = {challenged:0, overturned:0};
 
-  G.abs[side].challenged++;
-  if(overturned) G.abs[side].overturned++;
+  G.abs[challengerSide].challenged++;
+  if(overturned) G.abs[challengerSide].overturned++;
 
   // Build log text
   var callLabel = callType === 'ball' ? 'ball' : 'strike';
   var newCall = callType === 'ball' ? 'strike' : 'ball';
   var resultLabel = overturned ? 'OVERTURNED → ' + newCall : 'UPHELD';
 
-  addLog(nm + ' (' + team(side) + ') ABS challenge: ' + callLabel + ' call — ' + resultLabel, 'ABS', 't-abs');
+  addLog(challengerTeam + ' ABS challenge (AB: ' + shortName(nm) + '): ' + callLabel + ' call — ' + resultLabel, 'ABS', 't-abs');
 
   // If overturned, adjust the count
   if(overturned){
     if(callType === 'ball'){
       // Ball call overturned → should be strike
-      // Remove 1 ball, add 1 strike
       if(G.balls > 0) G.balls--;
       if(G.strikes < 2) G.strikes++;
       addLog('Count adjusted: ball → strike (' + G.balls + '-' + G.strikes + ')', 'ABS', 't-abs');
     } else {
       // Strike call overturned → should be ball
-      // Remove 1 strike, add 1 ball
       if(G.strikes > 0) G.strikes--;
       else if(G.fouls > 0 && G.strikes === 0){
-        // Edge: if strike was from a foul that pushed to strike 2, just remove the foul effect
-        // This is tricky — for simplicity just note it
+        // Edge: if strike was from a foul that pushed to strike 2, just note it
       }
       G.balls++;
       addLog('Count adjusted: strike → ball (' + G.balls + '-' + G.strikes + ')', 'ABS', 't-abs');
 
       // Check if the added ball caused a walk (ball 4)
       if(G.balls >= 4){
-        activeHits(side, idx).bb++;
+        activeHits(bSide, idx).bb++;
         addLog('Walk (via ABS challenge)', 'Walk', 't-ball');
-        logBatter(side, idx, 'BB');
+        logBatter(bSide, idx, 'BB');
         addPitcherStat(fielding(), 'bb');
-        var bnm = curName(side, idx);
-        var runs = forceAdvance(side, bnm);
+        var bnm = curName(bSide, idx);
+        var runs = forceAdvance(bSide, bnm);
         if(runs > 0){
+          creditRBI(bSide, runs);
           addLog(runs + ' run' + (runs > 1 ? 's' : '') + ' score', 'Run', 't-run');
         }
         renderBases();
         renderScore();
         G.balls = 0; G.strikes = 0; G.fouls = 0;
         renderCount();
-        renderLineup(side);
+        renderLineup(bSide);
         if(!checkWalkoff()){
-          nextBatter(side);
+          nextBatter(bSide);
         }
         // Close picker and done
         absState.open = false;
+        absState.challenger = null;
         absState.callType = null;
         absState.result = null;
         renderABSPicker();
@@ -3217,6 +3335,7 @@ function absConfirm(){
 
   // Close picker
   absState.open = false;
+  absState.challenger = null;
   absState.callType = null;
   absState.result = null;
   renderABSPicker();
@@ -3540,7 +3659,7 @@ function buildPrintBoxScore(){
     html += '<tr><td class="bs-team-hdr" colspan="11">' + logo + tName + ' — Batting</td></tr>';
     html += '<tr><th style="text-align:left;padding-left:6px;min-width:100px">Player</th><th>Pos</th><th>AB</th><th>H</th><th>R</th><th>2B</th><th>3B</th><th>HR</th><th>BB</th><th>K</th><th>RBI</th></tr>';
 
-    var totals = {ab:0,h:0,r:0,d:0,t:0,hr:0,bb:0,k:0};
+    var totals = {ab:0,h:0,r:0,d:0,t:0,hr:0,bb:0,k:0,rbi:0};
 
     for(var i=0;i<9;i++){
       var sl = G.lineup[side][i];
@@ -3550,15 +3669,16 @@ function buildPrintBoxScore(){
       var sH = sh.s + sh.d + sh.t + sh.hr;
       var sK = sh.kl + sh.ks;
       var sBB = sh.bb + sh.ibb;
-      // Rough RBI estimate: HR runs = (runners counted as HR in log... we can't perfectly track RBI, show —)
+      var sR = sh.r || 0;
+      var sRBI = sh.rbi || 0;
       var sName = sl.name || 'Player ' + (i+1);
       var sPos = sl.pos || '—';
       var dimClass = sl.subs.length > 0 ? ' style="opacity:.5"' : '';
 
       html += '<tr'+dimClass+'><td style="text-align:left;padding-left:6px">' + esc(sName) + '</td>';
-      html += '<td>'+sPos+'</td><td>'+sAB+'</td><td>'+sH+'</td><td>—</td><td>'+sh.d+'</td><td>'+sh.t+'</td><td>'+sh.hr+'</td><td>'+sBB+'</td><td>'+sK+'</td><td>—</td></tr>';
+      html += '<td>'+sPos+'</td><td>'+sAB+'</td><td>'+sH+'</td><td>'+sR+'</td><td>'+sh.d+'</td><td>'+sh.t+'</td><td>'+sh.hr+'</td><td>'+sBB+'</td><td>'+sK+'</td><td>'+sRBI+'</td></tr>';
 
-      totals.ab += sAB; totals.h += sH; totals.d += sh.d; totals.t += sh.t; totals.hr += sh.hr; totals.bb += sBB; totals.k += sK;
+      totals.ab += sAB; totals.h += sH; totals.r += sR; totals.d += sh.d; totals.t += sh.t; totals.hr += sh.hr; totals.bb += sBB; totals.k += sK; totals.rbi += sRBI;
 
       // Sub rows
       sl.subs.forEach(function(sub, si){
@@ -3567,20 +3687,22 @@ function buildPrintBoxScore(){
         var subHits = subH.s + subH.d + subH.t + subH.hr;
         var subK = subH.kl + subH.ks;
         var subBB = subH.bb + subH.ibb;
+        var subR = subH.r || 0;
+        var subRBI = subH.rbi || 0;
         var subName = sub.name || 'Sub';
         var subPos = sub.pos || '—';
         var isLast = si === sl.subs.length - 1;
         var subDim = !isLast ? ' style="opacity:.5"' : '';
 
         html += '<tr'+subDim+'><td style="text-align:left;padding-left:16px;font-style:italic">↳ ' + esc(subName) + '</td>';
-        html += '<td>'+subPos+'</td><td>'+subAB+'</td><td>'+subHits+'</td><td>—</td><td>'+subH.d+'</td><td>'+subH.t+'</td><td>'+subH.hr+'</td><td>'+subBB+'</td><td>'+subK+'</td><td>—</td></tr>';
+        html += '<td>'+subPos+'</td><td>'+subAB+'</td><td>'+subHits+'</td><td>'+subR+'</td><td>'+subH.d+'</td><td>'+subH.t+'</td><td>'+subH.hr+'</td><td>'+subBB+'</td><td>'+subK+'</td><td>'+subRBI+'</td></tr>';
 
-        totals.ab += subAB; totals.h += subHits; totals.d += subH.d; totals.t += subH.t; totals.hr += subH.hr; totals.bb += subBB; totals.k += subK;
+        totals.ab += subAB; totals.h += subHits; totals.r += subR; totals.d += subH.d; totals.t += subH.t; totals.hr += subH.hr; totals.bb += subBB; totals.k += subK; totals.rbi += subRBI;
       });
     }
 
     html += '<tr class="bs-totals"><td style="text-align:left;padding-left:6px">TOTALS</td><td></td>';
-    html += '<td>'+totals.ab+'</td><td>'+totals.h+'</td><td>'+G.rhe[side][0]+'</td><td>'+totals.d+'</td><td>'+totals.t+'</td><td>'+totals.hr+'</td><td>'+totals.bb+'</td><td>'+totals.k+'</td><td>—</td></tr>';
+    html += '<td>'+totals.ab+'</td><td>'+totals.h+'</td><td>'+totals.r+'</td><td>'+totals.d+'</td><td>'+totals.t+'</td><td>'+totals.hr+'</td><td>'+totals.bb+'</td><td>'+totals.k+'</td><td>'+totals.rbi+'</td></tr>';
     html += '</table>';
 
     // Pitching line
@@ -3601,7 +3723,18 @@ function buildPrintBoxScore(){
 
 function resetGame(){
   if(!confirm('Reset the entire game? All data will be cleared.')) return;
+
+  // Save the current game to its slot before resetting
+  var activeId = gmGetActiveId();
+  if(activeId && G.log.length > 0){
+    gmSaveToSlot(activeId);
+  }
+
   resetGameSilent();
+
+  // Start a new game slot
+  var newId = gmGenId();
+  gmSetActiveId(newId);
 
   var undoBtn = document.getElementById('undoBtn');
   if(undoBtn) undoBtn.disabled = true;
@@ -3979,6 +4112,401 @@ function clearStorage(){
   try { localStorage.removeItem(STORAGE_KEY); } catch(e){}
 }
 
+// ── Multi-game manager ──
+var GM_INDEX_KEY = 'baseball_scorecard_games';
+var GM_GAME_PREFIX = 'baseball_scorecard_game_';
+var GM_ACTIVE_KEY = 'baseball_scorecard_active';
+
+function gmGenId(){
+  return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+}
+
+function gmGetIndex(){
+  try {
+    var raw = localStorage.getItem(GM_INDEX_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch(e){ return []; }
+}
+
+function gmSaveIndex(index){
+  try { localStorage.setItem(GM_INDEX_KEY, JSON.stringify(index)); } catch(e){}
+}
+
+function gmGetActiveId(){
+  try { return localStorage.getItem(GM_ACTIVE_KEY) || ''; } catch(e){ return ''; }
+}
+
+function gmSetActiveId(id){
+  try { localStorage.setItem(GM_ACTIVE_KEY, id); } catch(e){}
+}
+
+// Build a summary object for the current game state
+function gmCurrentSummary(){
+  var away = document.getElementById('teamAway').value || '';
+  var home = document.getElementById('teamHome').value || '';
+  var awayLabel = (!away || away === '— Select Team —') ? 'Away' : away;
+  var homeLabel = (!home || home === '— Select Team —') ? 'Home' : home;
+  var inn = (G.half === 'top' ? 'T' : 'B') + G.inning;
+  var status = G.log.length === 0 ? 'New' : inn;
+  // Check if game is final
+  var lastLog = G.log.length > 0 ? G.log[0] : null;
+  if(lastLog && (lastLog.tag === 'Final' || (lastLog.text && lastLog.text.indexOf('FINAL') >= 0))){
+    status = 'Final';
+  }
+  return {
+    away: awayLabel,
+    home: homeLabel,
+    awayScore: G.rhe.away[0],
+    homeScore: G.rhe.home[0],
+    date: (G.notes && G.notes.date) || '',
+    status: status,
+    plays: G.log.length
+  };
+}
+
+// Build the full payload to store for a game slot
+function gmBuildPayload(){
+  return {
+    G: G,
+    outState: outState,
+    hitWithErr: hitWithErr,
+    history: HISTORY,
+    teamAway: document.getElementById('teamAway').value,
+    teamHome: document.getElementById('teamHome').value
+  };
+}
+
+// Save current game to a specific slot
+function gmSaveToSlot(id){
+  try {
+    localStorage.setItem(GM_GAME_PREFIX + id, JSON.stringify(gmBuildPayload()));
+  } catch(e){}
+  // Update the index entry
+  var index = gmGetIndex();
+  var summary = gmCurrentSummary();
+  var found = false;
+  for(var i = 0; i < index.length; i++){
+    if(index[i].id === id){
+      index[i].away = summary.away;
+      index[i].home = summary.home;
+      index[i].awayScore = summary.awayScore;
+      index[i].homeScore = summary.homeScore;
+      index[i].date = summary.date;
+      index[i].status = summary.status;
+      index[i].plays = summary.plays;
+      index[i].savedAt = new Date().toISOString();
+      found = true;
+      break;
+    }
+  }
+  if(!found){
+    index.unshift({
+      id: id,
+      away: summary.away,
+      home: summary.home,
+      awayScore: summary.awayScore,
+      homeScore: summary.homeScore,
+      date: summary.date,
+      status: summary.status,
+      plays: summary.plays,
+      savedAt: new Date().toISOString()
+    });
+  }
+  gmSaveIndex(index);
+  gmSetActiveId(id);
+}
+
+// Load a game from a slot
+function gmLoadFromSlot(id){
+  try {
+    var raw = localStorage.getItem(GM_GAME_PREFIX + id);
+    if(!raw) return false;
+    var payload = JSON.parse(raw);
+    if(!payload || !payload.G) return false;
+
+    // Restore using the same logic as loadFromStorage
+    G = payload.G;
+    if(!G.batterLog) G.batterLog = { home: {}, away: {} };
+    var defaultHitKeys = Object.keys(mkHits());
+    ['home','away'].forEach(function(side){
+      G.lineup[side].forEach(function(sl){
+        defaultHitKeys.forEach(function(k){ if(sl.hits[k] === undefined) sl.hits[k] = 0; });
+        sl.subs.forEach(function(sub){
+          if(!sub.hits) sub.hits = mkHits();
+          defaultHitKeys.forEach(function(k){ if(sub.hits[k] === undefined) sub.hits[k] = 0; });
+        });
+      });
+    });
+    if(G.bases){
+      for(var bi=0;bi<3;bi++){
+        if(G.bases[bi] === true) G.bases[bi] = '?';
+        else if(G.bases[bi] === false) G.bases[bi] = null;
+      }
+    }
+    if(!G.notes) G.notes = mkNotes();
+    if(!G.abs) G.abs = {home:{challenged:0,overturned:0}, away:{challenged:0,overturned:0}};
+    if(!G.abs.home) G.abs.home = {challenged:0,overturned:0};
+    if(!G.abs.away) G.abs.away = {challenged:0,overturned:0};
+    if(payload.outState){
+      Object.assign(outState, payload.outState);
+      if(outState.sacType === undefined) outState.sacType = null;
+    } else { resetOutState(); }
+    if(payload.hitWithErr !== undefined) hitWithErr = !!payload.hitWithErr;
+    if(payload.history && Array.isArray(payload.history)){
+      HISTORY = payload.history;
+    } else { HISTORY = []; }
+    var undoBtn = document.getElementById('undoBtn');
+    if(undoBtn) undoBtn.disabled = HISTORY.length === 0;
+    if(payload.teamAway) document.getElementById('teamAway').value = payload.teamAway;
+    if(payload.teamHome) document.getElementById('teamHome').value = payload.teamHome;
+
+    gmSetActiveId(id);
+    // Also update the auto-save slot
+    _doSave();
+
+    // Re-fire team change for logos, rosters, stadium
+    var away = document.getElementById('teamAway').value;
+    var home = document.getElementById('teamHome').value;
+    if(away && away !== '— Select Team —'){ updateLogo('away'); fetchRoster('away', away); }
+    if(home && home !== '— Select Team —'){ updateLogo('home'); fetchRoster('home', home); renderStadium(home); }
+    onTeamChange();
+    renderAll();
+    return true;
+  } catch(e){ return false; }
+}
+
+// Delete a saved game slot
+function gmDeleteSlot(id){
+  try { localStorage.removeItem(GM_GAME_PREFIX + id); } catch(e){}
+  var index = gmGetIndex();
+  index = index.filter(function(g){ return g.id !== id; });
+  gmSaveIndex(index);
+  // If we deleted the active game, clear the active marker
+  if(gmGetActiveId() === id) gmSetActiveId('');
+}
+
+// ── Game Manager UI ──
+function showGameManager(){
+  // Auto-save current game to its slot before showing the list
+  var activeId = gmGetActiveId();
+  if(activeId){
+    gmSaveToSlot(activeId);
+  }
+
+  var overlay = document.createElement('div');
+  overlay.className = 'gm-overlay';
+  overlay.id = 'gmOverlay';
+  overlay.onclick = function(e){ if(e.target === overlay) closeGameManager(); };
+
+  renderGameManagerContent(overlay);
+  document.body.appendChild(overlay);
+}
+
+function closeGameManager(){
+  var el = document.getElementById('gmOverlay');
+  if(el) el.remove();
+}
+
+function renderGameManagerContent(overlay){
+  if(!overlay) overlay = document.getElementById('gmOverlay');
+  if(!overlay) return;
+
+  var index = gmGetIndex();
+  var activeId = gmGetActiveId();
+
+  var html = '<div class="gm-modal">';
+  html += '<div class="gm-hdr"><h3>📋 My Games</h3><button class="gm-close" onclick="closeGameManager()">&times;</button></div>';
+
+  // Action buttons
+  html += '<div class="gm-actions">';
+  if(activeId){
+    html += '<button class="gm-save-btn" onclick="gmSaveCurrentGame()">💾 Save current game</button>';
+  }
+  html += '<button class="gm-new-btn" onclick="gmNewGame()">+ New game</button>';
+  html += '</div>';
+
+  html += '<div class="gm-body">';
+
+  if(index.length === 0){
+    html += '<div class="gm-empty">No saved games yet.<br>Tap "Save current game" to save your first one.</div>';
+  } else {
+    index.forEach(function(g){
+      var isActive = g.id === activeId;
+      var awayLogo = TEAM_LOGOS[g.away] || '';
+      var homeLogo = TEAM_LOGOS[g.home] || '';
+
+      html += '<div class="gm-card' + (isActive ? ' gm-active' : '') + '">';
+      html += '<div class="gm-card-info">';
+
+      // Teams row
+      html += '<div class="gm-card-teams">';
+      if(awayLogo) html += '<img class="gm-card-logo" src="' + awayLogo + '" alt="" />';
+      html += esc(g.away);
+      html += '<span class="gm-card-score">' + (g.awayScore || 0) + '</span>';
+      html += '<span style="color:var(--muted);font-weight:400;font-size:11px">@</span>';
+      if(homeLogo) html += '<img class="gm-card-logo" src="' + homeLogo + '" alt="" />';
+      html += esc(g.home);
+      html += '<span class="gm-card-score">' + (g.homeScore || 0) + '</span>';
+      html += '</div>';
+
+      // Meta row
+      var metaParts = [];
+      if(g.date) metaParts.push(g.date);
+      if(g.status) metaParts.push(g.status);
+      if(g.plays !== undefined) metaParts.push(g.plays + ' plays');
+      if(g.savedAt){
+        try {
+          var sd = new Date(g.savedAt);
+          var timeStr = sd.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'});
+          metaParts.push('saved ' + timeStr);
+        } catch(e){}
+      }
+      html += '<div class="gm-card-meta">' + metaParts.join(' · ') + '</div>';
+
+      html += '</div>'; // card-info
+
+      if(isActive){
+        html += '<span class="gm-card-active-badge">Active</span>';
+      }
+
+      html += '<div class="gm-card-btns">';
+      if(!isActive){
+        html += '<button class="gm-card-btn gm-load" onclick="gmLoadGame(\'' + g.id + '\')">Load</button>';
+      }
+      html += '<button class="gm-card-btn gm-del" onclick="gmConfirmDelete(\'' + g.id + '\')">Delete</button>';
+      html += '</div>';
+
+      html += '</div>'; // gm-card
+    });
+  }
+
+  html += '</div>'; // gm-body
+  html += '</div>'; // gm-modal
+
+  overlay.innerHTML = html;
+}
+
+function gmSaveCurrentGame(){
+  var activeId = gmGetActiveId();
+  if(!activeId){
+    // No active slot — create one
+    activeId = gmGenId();
+  }
+  gmSaveToSlot(activeId);
+  kbFlash('Game saved', '#1D9E75');
+  renderGameManagerContent();
+}
+
+function gmNewGame(){
+  // Save current game first if it has data
+  var activeId = gmGetActiveId();
+  if(activeId && G.log.length > 0){
+    gmSaveToSlot(activeId);
+  }
+
+  // Create a fresh game
+  var newId = gmGenId();
+  resetGameSilent();
+  HISTORY = [];
+  hitWithErr = false;
+  var undoBtn = document.getElementById('undoBtn');
+  if(undoBtn) undoBtn.disabled = true;
+  var hitErrBtn = document.getElementById('hitErrToggle');
+  if(hitErrBtn) hitErrBtn.className = 'hit-err-toggle';
+  var hitErrHint = document.getElementById('hitErrHint');
+  if(hitErrHint) hitErrHint.textContent = '';
+
+  gmSetActiveId(newId);
+  _doSave();
+
+  // Save empty game to slot so it appears in the list
+  gmSaveToSlot(newId);
+
+  renderAll();
+  closeGameManager();
+  kbFlash('New game started', '#185FA5');
+}
+
+function gmLoadGame(id){
+  // Save current game first
+  var activeId = gmGetActiveId();
+  if(activeId && activeId !== id){
+    gmSaveToSlot(activeId);
+  }
+
+  var ok = gmLoadFromSlot(id);
+  if(ok){
+    closeGameManager();
+    kbFlash('Game loaded', '#185FA5');
+  } else {
+    alert('Could not load this game. The save data may be corrupted.');
+  }
+}
+
+function gmConfirmDelete(id){
+  var index = gmGetIndex();
+  var g = null;
+  for(var i = 0; i < index.length; i++){
+    if(index[i].id === id){ g = index[i]; break; }
+  }
+  var label = g ? (g.away + ' @ ' + g.home + (g.date ? ' (' + g.date + ')' : '')) : 'this game';
+  if(!confirm('Delete ' + label + '? This cannot be undone.')) return;
+  gmDeleteSlot(id);
+  renderGameManagerContent();
+  kbFlash('Game deleted', '#E24B4A');
+}
+
+// ── Auto-assign active ID on first load ──
+// If there's data in the old v1 slot but no active game ID, assign one
+function gmEnsureActiveId(){
+  var activeId = gmGetActiveId();
+  if(activeId) return;
+  // Check if there's existing game data worth saving
+  try {
+    var raw = localStorage.getItem(STORAGE_KEY);
+    if(raw){
+      var payload = JSON.parse(raw);
+      if(payload && payload.G && payload.G.log && payload.G.log.length > 0){
+        // Migrate: assign an ID and save to the game index
+        var newId = gmGenId();
+        localStorage.setItem(GM_GAME_PREFIX + newId, raw);
+        var g = payload.G;
+        var away = payload.teamAway || 'Away';
+        var home = payload.teamHome || 'Home';
+        if(away === '— Select Team —') away = 'Away';
+        if(home === '— Select Team —') home = 'Home';
+        var index = gmGetIndex();
+        index.unshift({
+          id: newId,
+          away: away,
+          home: home,
+          awayScore: g.rhe ? g.rhe.away[0] : 0,
+          homeScore: g.rhe ? g.rhe.home[0] : 0,
+          date: (g.notes && g.notes.date) || '',
+          status: g.log.length > 0 ? ((g.half === 'top' ? 'T' : 'B') + g.inning) : 'New',
+          plays: g.log.length,
+          savedAt: new Date().toISOString()
+        });
+        gmSaveIndex(index);
+        gmSetActiveId(newId);
+      }
+    }
+  } catch(e){}
+}
+
+// Also hook into the existing _doSave to keep the active slot in sync
+var _origDoSave = _doSave;
+_doSave = function(){
+  _origDoSave();
+  // Also update the active game slot
+  var activeId = gmGetActiveId();
+  if(activeId){
+    try {
+      localStorage.setItem(GM_GAME_PREFIX + activeId, JSON.stringify(gmBuildPayload()));
+    } catch(e){}
+  }
+};
+
 function onTeamChange() {
   var away = document.getElementById('teamAway').value;
   var home = document.getElementById('teamHome').value;
@@ -4199,6 +4727,16 @@ function importJSON(evt){
         if(!confirm('Load this game file? Your current scorecard will be replaced.')) return;
       }
 
+      // Save current game before importing
+      var activeId = gmGetActiveId();
+      if(activeId && G.log.length > 0){
+        gmSaveToSlot(activeId);
+      }
+
+      // Assign a new slot for the imported game
+      var newId = gmGenId();
+      gmSetActiveId(newId);
+
       // Load the game state
       G = payload.G;
 
@@ -4290,6 +4828,10 @@ document.addEventListener('keydown', function(e){
   // Don't intercept if a modal is open
   if(document.getElementById('gamesOverlay')) return;
   if(document.getElementById('kbOverlay')) return;
+  if(document.getElementById('gmOverlay')){
+    if(e.key === 'Escape') closeGameManager();
+    return;
+  }
   // If runner placement picker is open, only allow Escape (auto-advance)
   if(document.getElementById('rpOverlay')){
     if(e.key === 'Escape'){ rpAutoAdvance(); }
@@ -4477,6 +5019,8 @@ function init(){
   setupPitcherDelegation('home');
   setupPitcherDelegation('away');
   setupFielderDelegation();
+  // Migrate existing save data to multi-game system if needed
+  gmEnsureActiveId();
   var restored = loadFromStorage();
   if(restored){
     // Re-fire team change to reload logos, rosters, stadium
