@@ -857,12 +857,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       </div>
       <div class="runner-labels" id="runnerLabels"></div>
       <div style="border-top:1px solid var(--border);margin-top:8px;padding-top:8px">
-        <div class="label" style="margin-bottom:5px">Stolen bases / wild pitch / passed ball</div>
+        <div class="label" style="margin-bottom:5px">Stolen bases / wild pitch / passed ball / balk</div>
         <div class="btns" id="brBtns">
           <button class="btn" style="border-color:#185FA5;color:#185FA5" onclick="startBRAction('sb')">SB</button>
           <button class="btn" style="border-color:#BA7517;color:#BA7517" onclick="startBRAction('cs')">CS</button>
           <button class="btn" style="border-color:#993C1D;color:#993C1D" onclick="startBRAction('wp')">WP</button>
           <button class="btn" style="border-color:#993C1D;color:#993C1D" onclick="startBRAction('pb')">PB</button>
+          <button class="btn" style="border-color:#534AB7;color:#534AB7" onclick="recordBalk()">BLK</button>
         </div>
         <div id="brPicker" style="display:none"></div>
       </div>
@@ -1661,6 +1662,34 @@ function recordIBB(){
   if(!checkWalkoff()){
     nextBatter(side);
   }
+}
+
+function recordBalk(){
+  saveState();
+  var side = batting();
+  var runners = [];
+  for(var i = 0; i < 3; i++){
+    if(baseOcc(i)) runners.push(i);
+  }
+
+  if(runners.length === 0){
+    // No runners on base — balk is still recorded (ball on the batter? No — balk with no runners: just log it)
+    addLog('Balk — no runners on base, no advancement', 'BLK', 't-abs');
+    saveToStorage();
+    return;
+  }
+
+  // All runners advance one base; anyone on 3B scores
+  var runs = advanceRunners(side, 1);
+  var runMsg = runs > 0 ? ' — ' + runs + ' run' + (runs > 1 ? 's' : '') + ' score' : '';
+  addLog('Balk — all runners advance' + runMsg, 'BLK', 't-abs');
+  if(runs > 0){
+    renderScore();
+  }
+  renderBases();
+  renderLineup(side);
+  checkWalkoff();
+  saveToStorage();
 }
 
 // ── Flyout / Groundout state ──
@@ -3159,15 +3188,13 @@ function renderCount(){
 }
 
 // ── ABS Challenge System ──
-var absState = { open: false, challenger: null, callType: null, result: null };
-// challenger: 'batting' or 'fielding' — which team initiated the challenge
+var absState = { open: false, callType: null, result: null };
 // callType: 'ball' (challenging a ball call → wants strike) or 'strike' (challenging a strike → wants ball)
 // result: 'overturned' or 'upheld'
 
 function toggleABSPicker(){
   absState.open = !absState.open;
   if(!absState.open){
-    absState.challenger = null;
     absState.callType = null;
     absState.result = null;
   }
@@ -3184,35 +3211,11 @@ function renderABSPicker(){
   }
   el.style.display = '';
 
-  var bSide = batting();
-  var fSide = fielding();
-  var bTeam = team(bSide);
-  var fTeam = team(fSide);
-  var bLogo = TEAM_LOGOS[bTeam] || '';
-  var fLogo = TEAM_LOGOS[fTeam] || '';
-  var nm = curName(bSide, abIdx(bSide));
+  var side = batting();
+  var nm = curName(side, abIdx(side));
 
   var html = '<div class="abs-picker">';
-  html += '<div class="abs-picker-title">ABS Challenge</div>';
-
-  // Who is challenging?
-  html += '<div class="abs-picker-row">';
-  html += '<span class="abs-picker-label">Team:</span>';
-  html += '<button class="abs-opt' + (absState.challenger === 'batting' ? ' sel' : '') + '" onclick="absSetChallenger(\'batting\')">'
-    + (bLogo ? '<img src="' + bLogo + '" style="width:14px;height:14px;object-fit:contain;vertical-align:middle;margin-right:4px" />' : '')
-    + esc(bTeam) + ' <span style="font-weight:400;opacity:.7">(bat)</span></button>';
-  html += '<button class="abs-opt' + (absState.challenger === 'fielding' ? ' sel' : '') + '" onclick="absSetChallenger(\'fielding\')">'
-    + (fLogo ? '<img src="' + fLogo + '" style="width:14px;height:14px;object-fit:contain;vertical-align:middle;margin-right:4px" />' : '')
-    + esc(fTeam) + ' <span style="font-weight:400;opacity:.7">(fld)</span></button>';
-  html += '</div>';
-
-  // Context line
-  if(absState.challenger){
-    var contextNote = absState.challenger === 'batting'
-      ? 'At bat: ' + esc(shortName(nm))
-      : 'Pitching to: ' + esc(shortName(nm));
-    html += '<div style="font-size:11px;color:var(--muted);margin-bottom:4px;padding-left:2px">' + contextNote + '</div>';
-  }
+  html += '<div class="abs-picker-title">ABS Challenge — ' + esc(shortName(nm)) + ' (' + team(side) + ')</div>';
 
   // What call is being challenged?
   html += '<div class="abs-picker-row">';
@@ -3229,20 +3232,14 @@ function renderABSPicker(){
   html += '</div>';
 
   // Confirm / Cancel
-  var ready = absState.challenger && absState.callType && absState.result;
+  var ready = absState.callType && absState.result;
   html += '<div class="abs-picker-row">';
-  html += '<button class="abs-confirm"' + (ready ? '' : ' disabled') + ' onclick="absConfirm()">' + (ready ? 'Record challenge' : 'Select team, call & result') + '</button>';
+  html += '<button class="abs-confirm"' + (ready ? '' : ' disabled') + ' onclick="absConfirm()">' + (ready ? 'Record challenge' : 'Select call & result') + '</button>';
   html += '<button class="abs-cancel" onclick="toggleABSPicker()">Cancel</button>';
   html += '</div>';
 
   html += '</div>';
   el.innerHTML = html;
-}
-
-function absSetChallenger(who){
-  absState.challenger = who;
-  renderABSPicker();
-  haptic();
 }
 
 function absSetCall(type){
@@ -3258,71 +3255,70 @@ function absSetResult(result){
 }
 
 function absConfirm(){
-  if(!absState.challenger || !absState.callType || !absState.result) return;
+  if(!absState.callType || !absState.result) return;
   saveState();
 
-  // Determine which side initiated the challenge
-  var challengerSide = absState.challenger === 'batting' ? batting() : fielding();
-  var challengerTeam = team(challengerSide);
-  var bSide = batting();
-  var idx = abIdx(bSide);
-  var nm = curName(bSide, idx);
+  var side = batting();
+  var idx = abIdx(side);
+  var nm = curName(side, idx);
   var overturned = absState.result === 'overturned';
   var callType = absState.callType;
 
   // Ensure abs tracking exists (backward compat)
   if(!G.abs) G.abs = {home:{challenged:0,overturned:0}, away:{challenged:0,overturned:0}};
-  if(!G.abs[challengerSide]) G.abs[challengerSide] = {challenged:0, overturned:0};
+  if(!G.abs[side]) G.abs[side] = {challenged:0, overturned:0};
 
-  G.abs[challengerSide].challenged++;
-  if(overturned) G.abs[challengerSide].overturned++;
+  G.abs[side].challenged++;
+  if(overturned) G.abs[side].overturned++;
 
   // Build log text
   var callLabel = callType === 'ball' ? 'ball' : 'strike';
   var newCall = callType === 'ball' ? 'strike' : 'ball';
   var resultLabel = overturned ? 'OVERTURNED → ' + newCall : 'UPHELD';
 
-  addLog(challengerTeam + ' ABS challenge (AB: ' + shortName(nm) + '): ' + callLabel + ' call — ' + resultLabel, 'ABS', 't-abs');
+  addLog(nm + ' (' + team(side) + ') ABS challenge: ' + callLabel + ' call — ' + resultLabel, 'ABS', 't-abs');
 
   // If overturned, adjust the count
   if(overturned){
     if(callType === 'ball'){
       // Ball call overturned → should be strike
+      // Remove 1 ball, add 1 strike
       if(G.balls > 0) G.balls--;
       if(G.strikes < 2) G.strikes++;
       addLog('Count adjusted: ball → strike (' + G.balls + '-' + G.strikes + ')', 'ABS', 't-abs');
     } else {
       // Strike call overturned → should be ball
+      // Remove 1 strike, add 1 ball
       if(G.strikes > 0) G.strikes--;
       else if(G.fouls > 0 && G.strikes === 0){
-        // Edge: if strike was from a foul that pushed to strike 2, just note it
+        // Edge: if strike was from a foul that pushed to strike 2, just remove the foul effect
+        // This is tricky — for simplicity just note it
       }
       G.balls++;
       addLog('Count adjusted: strike → ball (' + G.balls + '-' + G.strikes + ')', 'ABS', 't-abs');
 
       // Check if the added ball caused a walk (ball 4)
       if(G.balls >= 4){
-        activeHits(bSide, idx).bb++;
+        activeHits(side, idx).bb++;
         addLog('Walk (via ABS challenge)', 'Walk', 't-ball');
-        logBatter(bSide, idx, 'BB');
+        logBatter(side, idx, 'BB');
         addPitcherStat(fielding(), 'bb');
-        var bnm = curName(bSide, idx);
-        var runs = forceAdvance(bSide, bnm);
+        var bnm = curName(side, idx);
+        var runs = forceAdvance(side, bnm);
         if(runs > 0){
-          creditRBI(bSide, runs);
+          creditRBI(side, runs);
           addLog(runs + ' run' + (runs > 1 ? 's' : '') + ' score', 'Run', 't-run');
         }
         renderBases();
         renderScore();
         G.balls = 0; G.strikes = 0; G.fouls = 0;
         renderCount();
-        renderLineup(bSide);
+        renderLineup(side);
         if(!checkWalkoff()){
-          nextBatter(bSide);
+          nextBatter(side);
         }
         // Close picker and done
         absState.open = false;
-        absState.challenger = null;
         absState.callType = null;
         absState.result = null;
         renderABSPicker();
@@ -3335,7 +3331,6 @@ function absConfirm(){
 
   // Close picker
   absState.open = false;
-  absState.challenger = null;
   absState.callType = null;
   absState.result = null;
   renderABSPicker();
