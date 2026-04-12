@@ -923,6 +923,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <div class="sac-toggle-row">
       <button class="sac-toggle" id="sfBtn" onclick="selectSac('sf')">SF<span style="font-size:9px;font-weight:400;display:block;opacity:.75">Sac fly</span></button>
       <button class="sac-toggle" id="sacBtn" onclick="selectSac('sac')">SAC<span style="font-size:9px;font-weight:400;display:block;opacity:.75">Sac bunt</span></button>
+      <button class="sac-toggle" id="runScoresBtn" onclick="toggleRunScores()" style="display:none">+R<span style="font-size:9px;font-weight:400;display:block;opacity:.75">Run scores</span></button>
       <span class="sac-hint" id="sacHint"></span>
     </div>
     <div style="font-size:11px;color:var(--muted);margin-top:8px;margin-bottom:2px" id="fielderLabel">Fielder who made the play:</div>
@@ -1693,7 +1694,7 @@ function recordBalk(){
 }
 
 // ── Flyout / Groundout state ──
-var outState = { type: null, fielder: null, throwTo: null, multiOut: null, sacType: null };
+var outState = { type: null, fielder: null, throwTo: null, multiOut: null, sacType: null, runScores: false };
 
 // Reset out-panel state and DOM to default
 function resetOutState(){
@@ -1702,6 +1703,7 @@ function resetOutState(){
   outState.throwTo = null;
   outState.multiOut = null;
   outState.sacType = null;
+  outState.runScores = false;
   renderOutPanel();
 }
 
@@ -1752,6 +1754,8 @@ function selectSac(type){
   outState.sacType = outState.sacType === type ? null : type;
   // Sac and multi-out are mutually exclusive
   if(outState.sacType) outState.multiOut = null;
+  // Sac and runScores are mutually exclusive
+  outState.runScores = false;
   document.getElementById('dpBtn').className = 'multi-out-btn';
   document.getElementById('tpBtn').className = 'multi-out-btn';
   var moHint = document.getElementById('multiOutHint');
@@ -1760,15 +1764,33 @@ function selectSac(type){
   updateOutBtn();
 }
 
+function toggleRunScores(){
+  outState.runScores = !outState.runScores;
+  updateSacBtns();
+  updateOutBtn();
+}
+
 function updateSacBtns(){
   var sfBtn = document.getElementById('sfBtn');
   var sacBtn = document.getElementById('sacBtn');
+  var runScoresBtn = document.getElementById('runScoresBtn');
   var hint = document.getElementById('sacHint');
+
   if(sfBtn) sfBtn.className = 'sac-toggle' + (outState.sacType === 'sf' ? ' sel-sf' : '');
   if(sacBtn) sacBtn.className = 'sac-toggle' + (outState.sacType === 'sac' ? ' sel-sac' : '');
+
+  // Show "+R Run scores" only for groundout (not sac, not fly), and only when 3B is occupied
+  var showRunScores = (outState.type === 'ground' || outState.type === 'fly') && !outState.sacType && baseOcc(2);
+  if(runScoresBtn){
+    runScoresBtn.style.display = showRunScores ? '' : 'none';
+    if(!showRunScores) outState.runScores = false;
+    runScoresBtn.className = 'sac-toggle' + (outState.runScores ? ' sel-sf' : '');
+  }
+
   if(hint){
     if(outState.sacType === 'sf') hint.textContent = 'Sac fly — scores runner from 3B';
     else if(outState.sacType === 'sac') hint.textContent = 'Sac bunt — advances runner(s)';
+    else if(outState.runScores) hint.textContent = 'Runner scores from 3B, RBI credited';
     else hint.textContent = '';
   }
 }
@@ -1832,7 +1854,7 @@ function updateOutBtn(){
   var isErr = outState.type === 'error';
   var isGround = outState.type === 'ground';
   var isFC = outState.type === 'fc';
-  var sacLabel = outState.sacType === 'sf' ? 'Sac Fly — ' : outState.sacType === 'sac' ? 'Sac Bunt — ' : '';
+  var sacLabel = outState.sacType === 'sf' ? 'Sac Fly — ' : outState.sacType === 'sac' ? 'Sac Bunt — ' : outState.runScores ? 'RBI — ' : '';
   btn.className = 'rec-out-btn' + (isErr ? ' rec-err-btn' : '');
 
   if(outState.type && outState.fielder){
@@ -1864,6 +1886,7 @@ function updateOutBtn(){
       var hintText = '';
       if(outState.sacType === 'sf') hintText = 'Scores runner from 3B';
       else if(outState.sacType === 'sac') hintText = 'Advances runner(s) 1 base';
+      else if(outState.runScores) hintText = 'Runner scores from 3B, RBI credited to batter';
       else if(isGround) hintText = 'Tap "Thrown to" to add receiving fielder.';
       else if(outState.multiOut === 'dp') hintText = 'Records 2 outs';
       else if(outState.multiOut === 'tp') hintText = 'Records 3 outs';
@@ -1992,6 +2015,20 @@ function recordOut(){
         creditRBI(side, sacRuns);
         addLog(sacRuns + ' run' + (sacRuns > 1 ? 's' : '') + ' score on sac bunt', 'Run', 't-run');
       }
+      renderBases();
+      renderScore();
+    }
+
+    // Run scores on groundout/flyout (RBI groundout — runner scores from 3B, no sac credit)
+    if(outState.runScores && !isSacFly && !isSacBunt && baseOcc(2)){
+      var goRunner = G.bases[2];
+      creditRun(side, goRunner);
+      creditRBI(side, 1);
+      G.bases[2] = null;
+      G.rhe[side][0]++;
+      G.scores[side][G.inning - 1] = (G.scores[side][G.inning - 1] || 0) + 1;
+      addPitcherStat(fielding(), 'r');
+      addLog((goRunner || 'Runner') + ' scores from 3B (RBI)', 'Run', 't-run');
       renderBases();
       renderScore();
     }
