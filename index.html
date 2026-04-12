@@ -3851,134 +3851,57 @@ function updateLogo(side) {
   else { img.src=''; img.alt=''; img.className='team-logo'; }
 }
 
-// ── Stadium outlines ──
-// Each stadium has a detailed wall contour defined as an array of [angle, distance] pairs.
-// Angles in degrees: -45 = LF foul line, 0 = dead center, +45 = RF foul line.
-// Distances in feet from home plate.
-// These capture the real asymmetric shapes: notches, corners, pockets, short porches, etc.
+// ── Stadium satellite tiles (OpenStreetMap) ──
 var STADIUMS = {
-  'Arizona Diamondbacks': { name:'Chase Field', wall:[
-    [-45,328],[-40,332],[-35,345],[-30,360],[-25,374],[-22,376],[-18,385],[-15,394],[-10,402],[-5,406],[0,407],
-    [5,406],[10,401],[12,396],[15,390],[18,383],[22,374],[25,370],[30,358],[35,348],[40,340],[45,335]
-  ]},
-  'Atlanta Braves': { name:'Truist Park', wall:[
-    [-45,335],[-40,340],[-35,355],[-30,370],[-25,380],[-22,385],[-18,390],[-15,394],[-10,398],[-5,400],[0,400],
-    [5,400],[10,398],[15,393],[18,388],[22,385],[25,378],[30,365],[35,350],[40,335],[45,325]
-  ]},
-  'Baltimore Orioles': { name:'Oriole Park', wall:[
-    [-45,333],[-42,336],[-38,348],[-35,356],[-30,364],[-25,373],[-22,380],[-18,392],[-15,400],[-10,406],[-5,409],[0,410],
-    [5,408],[10,400],[12,393],[15,385],[18,380],[22,373],[25,368],[28,360],[30,355],[33,348],[35,342],[38,333],[40,326],[45,318]
-  ]},
-  'Boston Red Sox': { name:'Fenway Park', wall:[
-    [-45,310],[-44,310],[-42,312],[-40,315],[-38,320],[-37,325],[-36,340],[-35,355],[-34,365],[-33,370],[-30,379],
-    [-25,388],[-20,400],[-15,410],[-10,418],[-5,420],[0,420],
-    [5,415],[10,405],[15,390],[18,383],[22,380],[25,370],[28,355],[30,345],[33,330],[35,320],[38,312],[40,308],[42,304],[45,302]
-  ]},
-  'Chicago Cubs': { name:'Wrigley Field', wall:[
-    [-45,355],[-40,356],[-35,360],[-30,365],[-25,368],[-22,370],[-18,378],[-15,385],[-10,393],[-5,398],[0,400],
-    [5,398],[10,392],[15,384],[18,377],[22,370],[25,368],[30,364],[35,360],[40,356],[45,353]
-  ]},
-  'Chicago White Sox': { name:'Guaranteed Rate', wall:[
-    [-45,330],[-40,338],[-35,352],[-30,365],[-25,375],[-22,378],[-18,386],[-15,392],[-10,397],[-5,400],[0,400],
-    [5,400],[10,397],[15,392],[18,386],[22,378],[25,375],[30,365],[35,352],[40,340],[45,335]
-  ]},
-  'Cincinnati Reds': { name:'Great American', wall:[
-    [-45,328],[-40,335],[-35,348],[-30,360],[-25,370],[-22,375],[-18,384],[-15,392],[-10,399],[-5,403],[0,404],
-    [5,403],[10,398],[15,390],[18,382],[22,370],[25,362],[30,350],[35,340],[40,332],[45,325]
-  ]},
-  'Cleveland Guardians': { name:'Progressive Field', wall:[
-    [-45,325],[-40,332],[-35,348],[-30,360],[-25,370],[-22,374],[-18,384],[-15,392],[-10,400],[-5,404],[0,405],
-    [5,404],[10,400],[15,393],[18,386],[22,375],[25,370],[30,358],[35,345],[40,334],[45,325]
-  ]},
-  'Colorado Rockies': { name:'Coors Field', wall:[
-    [-45,347],[-40,352],[-35,365],[-30,378],[-25,390],[-22,395],[-18,402],[-15,408],[-10,413],[-5,415],[0,415],
-    [5,412],[10,405],[15,395],[18,386],[22,375],[25,370],[30,365],[35,360],[40,355],[45,350]
-  ]},
-  'Detroit Tigers': { name:'Comerica Park', wall:[
-    [-45,345],[-40,348],[-35,355],[-30,362],[-25,370],[-22,374],[-18,385],[-15,398],[-10,412],[-7,418],[-5,420],[0,420],
-    [5,415],[10,400],[15,385],[18,375],[22,365],[25,358],[30,348],[35,340],[40,335],[45,330]
-  ]},
-  'Houston Astros': { name:'Minute Maid Park', wall:[
-    [-45,315],[-42,318],[-40,325],[-38,335],[-35,348],[-30,362],[-25,374],[-22,380],[-18,392],[-15,400],[-10,406],[-5,409],[0,409],
-    [5,407],[10,400],[15,390],[18,383],[22,373],[25,365],[28,355],[30,348],[33,340],[35,335],[38,330],[42,327],[45,326]
-  ]},
-  'Kansas City Royals': { name:'Kauffman Stadium', wall:[
-    [-45,330],[-40,340],[-35,355],[-30,368],[-25,375],[-22,380],[-18,390],[-15,398],[-10,405],[-5,408],[0,410],
-    [5,408],[10,405],[15,398],[18,390],[22,380],[25,375],[30,368],[35,355],[40,340],[45,330]
-  ]},
-  'Los Angeles Angels': { name:'Angel Stadium', wall:[
-    [-45,333],[-40,345],[-35,360],[-30,375],[-25,387],[-22,390],[-18,393],[-15,395],[-10,396],[-5,396],[0,396],
-    [5,395],[10,392],[15,386],[18,378],[22,370],[25,362],[30,352],[35,342],[40,335],[45,330]
-  ]},
-  'Los Angeles Dodgers': { name:'Dodger Stadium', wall:[
-    [-45,330],[-40,338],[-35,352],[-30,365],[-25,375],[-22,378],[-18,385],[-15,390],[-10,394],[-5,395],[0,395],
-    [5,395],[10,394],[15,390],[18,385],[22,378],[25,375],[30,365],[35,352],[40,338],[45,330]
-  ]},
-  'Miami Marlins': { name:'LoanDepot Park', wall:[
-    [-45,344],[-40,350],[-35,362],[-30,374],[-25,386],[-22,390],[-18,397],[-15,402],[-10,406],[-5,407],[0,407],
-    [5,406],[10,404],[12,400],[15,396],[18,392],[22,388],[25,382],[30,370],[35,355],[40,344],[45,335]
-  ]},
-  'Milwaukee Brewers': { name:'American Family', wall:[
-    [-45,344],[-40,348],[-35,356],[-30,364],[-25,371],[-22,374],[-18,382],[-15,390],[-10,396],[-5,399],[0,400],
-    [5,399],[10,396],[15,390],[18,384],[22,374],[25,370],[30,362],[35,356],[40,350],[45,345]
-  ]},
-  'Minnesota Twins': { name:'Target Field', wall:[
-    [-45,339],[-40,344],[-35,356],[-30,368],[-25,377],[-22,380],[-18,392],[-15,400],[-10,407],[-5,410],[0,411],
-    [5,408],[10,400],[15,390],[18,380],[22,373],[25,365],[30,352],[35,340],[40,333],[45,328]
-  ]},
-  'New York Mets': { name:'Citi Field', wall:[
-    [-45,335],[-40,342],[-35,356],[-30,368],[-25,379],[-22,383],[-18,393],[-15,400],[-10,405],[-5,408],[0,408],
-    [5,406],[10,402],[15,396],[18,390],[22,383],[25,376],[30,363],[35,350],[40,340],[45,330]
-  ]},
-  'New York Yankees': { name:'Yankee Stadium', wall:[
-    [-45,318],[-42,322],[-40,330],[-38,342],[-35,358],[-33,370],[-30,382],[-27,392],[-25,399],[-22,403],[-18,406],[-15,408],[-10,408],[-5,408],[0,408],
-    [5,406],[10,400],[15,392],[18,385],[22,378],[25,370],[28,358],[30,348],[33,338],[35,330],[38,322],[40,318],[42,316],[45,314]
-  ]},
-  'Oakland Athletics': { name:'Sutter Health Park', wall:[
-    [-45,330],[-40,340],[-35,355],[-30,367],[-25,375],[-22,378],[-18,386],[-15,392],[-10,397],[-5,400],[0,400],
-    [5,400],[10,397],[15,392],[18,386],[22,378],[25,375],[30,367],[35,355],[40,340],[45,330]
-  ]},
-  'Philadelphia Phillies': { name:'Citizens Bank Park', wall:[
-    [-45,329],[-40,336],[-35,350],[-30,362],[-25,374],[-22,378],[-18,387],[-15,394],[-10,399],[-5,401],[0,401],
-    [5,399],[10,394],[15,385],[18,378],[22,369],[25,360],[30,350],[35,342],[40,336],[45,330]
-  ]},
-  'Pittsburgh Pirates': { name:'PNC Park', wall:[
-    [-45,325],[-42,330],[-40,338],[-35,356],[-30,370],[-25,383],[-22,387],[-18,393],[-15,397],[-10,399],[-5,399],[0,399],
-    [5,398],[10,395],[15,390],[18,383],[22,375],[25,368],[30,355],[33,345],[35,338],[38,330],[40,325],[45,320]
-  ]},
-  'San Diego Padres': { name:'Petco Park', wall:[
-    [-45,334],[-40,340],[-35,350],[-30,360],[-25,367],[-22,370],[-18,380],[-15,388],[-10,393],[-5,396],[0,396],
-    [5,395],[10,394],[12,392],[15,388],[18,385],[22,382],[25,375],[28,362],[30,352],[33,342],[35,335],[38,328],[40,325],[45,322]
-  ]},
-  'San Francisco Giants': { name:'Oracle Park', wall:[
-    [-45,339],[-40,342],[-35,350],[-30,358],[-25,364],[-22,367],[-18,376],[-15,385],[-10,393],[-5,397],[0,399],
-    [3,400],[5,402],[8,408],[10,412],[12,416],[14,420],[16,421],[18,420],[20,416],[22,410],[25,400],[28,380],[30,362],[33,342],[35,328],[38,318],[40,312],[45,309]
-  ]},
-  'Seattle Mariners': { name:'T-Mobile Park', wall:[
-    [-45,331],[-40,340],[-35,355],[-30,368],[-25,378],[-22,382],[-18,392],[-15,398],[-10,403],[-5,405],[0,405],
-    [5,404],[10,400],[15,393],[18,386],[22,381],[25,374],[30,360],[35,346],[40,336],[45,326]
-  ]},
-  'St. Louis Cardinals': { name:'Busch Stadium', wall:[
-    [-45,336],[-40,342],[-35,355],[-30,366],[-25,375],[-22,378],[-18,386],[-15,393],[-10,398],[-5,400],[0,400],
-    [5,400],[10,398],[15,393],[18,386],[22,378],[25,375],[30,366],[35,355],[40,342],[45,335]
-  ]},
-  'Tampa Bay Rays': { name:'Tropicana Field', wall:[
-    [-45,315],[-40,325],[-35,342],[-30,358],[-25,370],[-22,375],[-18,386],[-15,394],[-10,400],[-5,403],[0,404],
-    [5,403],[10,398],[15,390],[18,382],[22,370],[25,360],[30,348],[35,338],[40,330],[45,322]
-  ]},
-  'Texas Rangers': { name:'Globe Life Field', wall:[
-    [-45,329],[-40,336],[-35,350],[-30,362],[-25,372],[-22,376],[-18,386],[-15,396],[-10,403],[-5,406],[0,407],
-    [5,406],[10,402],[15,393],[18,384],[22,374],[25,366],[30,354],[35,342],[40,334],[45,326]
-  ]},
-  'Toronto Blue Jays': { name:'Rogers Centre', wall:[
-    [-45,328],[-40,338],[-35,355],[-30,367],[-25,375],[-22,378],[-18,386],[-15,393],[-10,398],[-5,400],[0,400],
-    [5,400],[10,398],[15,393],[18,386],[22,378],[25,375],[30,367],[35,355],[40,338],[45,328]
-  ]},
-  'Washington Nationals': { name:'Nationals Park', wall:[
-    [-45,336],[-40,342],[-35,354],[-30,366],[-25,377],[-22,380],[-18,389],[-15,396],[-10,400],[-5,402],[0,402],
-    [5,400],[10,395],[15,386],[18,378],[22,370],[25,362],[30,352],[35,344],[40,340],[45,335]
-  ]}
+  'Arizona Diamondbacks': { name:'Chase Field',             lat:33.44528, lng:-112.06694 },
+  'Atlanta Braves':        { name:'Truist Park',             lat:33.89089, lng:-84.46778  },
+  'Baltimore Orioles':     { name:'Oriole Park',             lat:39.28389, lng:-76.62167  },
+  'Boston Red Sox':        { name:'Fenway Park',             lat:42.34667, lng:-71.09722  },
+  'Chicago Cubs':          { name:'Wrigley Field',           lat:41.94833, lng:-87.65528  },
+  'Chicago White Sox':     { name:'Guaranteed Rate Field',   lat:41.83000, lng:-87.63389  },
+  'Cincinnati Reds':       { name:'Great American Ball Park',lat:39.09750, lng:-84.50833  },
+  'Cleveland Guardians':   { name:'Progressive Field',       lat:41.49583, lng:-81.68528  },
+  'Colorado Rockies':      { name:'Coors Field',             lat:39.75583, lng:-104.99417 },
+  'Detroit Tigers':        { name:'Comerica Park',           lat:42.33917, lng:-83.04861  },
+  'Houston Astros':        { name:'Minute Maid Park',        lat:29.75722, lng:-95.35556  },
+  'Kansas City Royals':    { name:'Kauffman Stadium',        lat:39.05139, lng:-94.48028  },
+  'Los Angeles Angels':    { name:'Angel Stadium',           lat:33.80028, lng:-117.88278 },
+  'Los Angeles Dodgers':   { name:'Dodger Stadium',          lat:34.07361, lng:-118.24000 },
+  'Miami Marlins':         { name:'LoanDepot Park',          lat:25.77806, lng:-80.21972  },
+  'Milwaukee Brewers':     { name:'American Family Field',   lat:43.02806, lng:-87.97111  },
+  'Minnesota Twins':       { name:'Target Field',            lat:44.98167, lng:-93.27806  },
+  'New York Mets':         { name:'Citi Field',              lat:40.75694, lng:-73.84583  },
+  'New York Yankees':      { name:'Yankee Stadium',          lat:40.82944, lng:-73.92611  },
+  'Oakland Athletics':     { name:'Sutter Health Park',      lat:38.58000, lng:-121.50056 },
+  'Philadelphia Phillies': { name:'Citizens Bank Park',      lat:39.90583, lng:-75.16639  },
+  'Pittsburgh Pirates':    { name:'PNC Park',                lat:40.44694, lng:-80.00583  },
+  'San Diego Padres':      { name:'Petco Park',              lat:32.70722, lng:-117.15722 },
+  'San Francisco Giants':  { name:'Oracle Park',             lat:37.77861, lng:-122.38917 },
+  'Seattle Mariners':      { name:'T-Mobile Park',           lat:47.59139, lng:-122.33250 },
+  'St. Louis Cardinals':   { name:'Busch Stadium',           lat:38.62250, lng:-90.19278  },
+  'Tampa Bay Rays':        { name:'Tropicana Field',         lat:27.76833, lng:-82.65333  },
+  'Texas Rangers':         { name:'Globe Life Field',        lat:32.74722, lng:-97.08222  },
+  'Toronto Blue Jays':     { name:'Rogers Centre',           lat:43.64139, lng:-79.38944  },
+  'Washington Nationals':  { name:'Nationals Park',          lat:38.87306, lng:-77.00750  }
 };
+
+// Convert lat/lng + zoom to OSM tile x,y
+function latLngToTile(lat, lng, zoom) {
+  var n = Math.pow(2, zoom);
+  var x = Math.floor((lng + 180) / 360 * n);
+  var latRad = lat * Math.PI / 180;
+  var y = Math.floor((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n);
+  return { x: x, y: y };
+}
+
+// Pixel offset of a lat/lng within its tile (0-255)
+function latLngToPixelOffset(lat, lng, zoom, tileX, tileY) {
+  var n = Math.pow(2, zoom);
+  var fx = (lng + 180) / 360 * n - tileX;
+  var latRad = lat * Math.PI / 180;
+  var fy = (1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n - tileY;
+  return { px: fx * 256, py: fy * 256 };
+}
 
 function renderStadium(teamName) {
   var wrap = document.getElementById('stadiumWrap');
@@ -3986,77 +3909,54 @@ function renderStadium(teamName) {
   var sd = STADIUMS[teamName];
   if(!sd){ wrap.innerHTML=''; return; }
 
-  // SVG coordinate space: 120×100, home plate at (60, 88)
-  var cx=60, cy=88, scale=55/420;
+  var zoom = 17;
+  var tile = latLngToTile(sd.lat, sd.lng, zoom);
+  var offset = latLngToPixelOffset(sd.lat, sd.lng, zoom, tile.x, tile.y);
 
-  function polar(angleDeg, dist) {
-    var rad = (angleDeg - 90) * Math.PI / 180;
-    var r = dist * scale;
-    return [cx + r*Math.cos(rad), cy + r*Math.sin(rad)];
-  }
-  function pt(p){ return p[0].toFixed(1)+','+p[1].toFixed(1); }
+  // We'll show a 2×2 grid of tiles clipped to a square, panning so the stadium center is centered
+  var displaySize = 120; // px, matches the space available
+  var tileSize = 256;
+  var halfDisplay = displaySize / 2;
 
-  var wall = sd.wall;
-  // Build wall points
-  var wallPts = wall.map(function(w){ return polar(w[0], w[1]); });
+  // Top-left tile offsets in the 2×2 grid
+  // offset.px/py is where the center falls within tile (tile.x, tile.y)
+  // We want the center of the display to align with offset.px, offset.py
+  // So the 2×2 canvas (512×512) is panned by: panX = offset.px - halfDisplay, panY = offset.py - halfDisplay
 
-  // Extend foul lines slightly past the poles
-  var lfLine = polar(wall[0][0], wall[0][1] + 12);
-  var rfLine = polar(wall[wall.length-1][0], wall[wall.length-1][1] + 12);
+  var panX = offset.px - halfDisplay;
+  var panY = offset.py - halfDisplay;
 
-  // Wall SVG path as smooth curve
-  var wallPath = 'M ' + pt(lfLine);
-  wallPts.forEach(function(p){ wallPath += ' L ' + pt(p); });
-  wallPath += ' L ' + pt(rfLine);
-
-  // Grass fill polygon: home → foul line ext → wall points → foul line ext
-  var grassPts = pt([cx,cy]) + ' ' + pt(lfLine);
-  wallPts.forEach(function(p){ grassPts += ' ' + pt(p); });
-  grassPts += ' ' + pt(rfLine);
-
-  // Infield geometry
-  var bscale = 90*scale;
-  var hb = [cx, cy];
-  var first  = [cx+bscale*Math.sin(Math.PI/4), cy-bscale*Math.cos(Math.PI/4)];
-  var second = [cx, cy - bscale*Math.sqrt(2)];
-  var third  = [cx-bscale*Math.sin(Math.PI/4), cy-bscale*Math.cos(Math.PI/4)];
-  var mound = [cx, cy - 60.5*scale];
-
-  // Distance labels: LF pole, CF, RF pole
-  var lfPt = wallPts[0];
-  var rfPt = wallPts[wallPts.length - 1];
-  // Find CF point (angle closest to 0)
-  var cfIdx = 0, cfMinAngle = 999;
-  wall.forEach(function(w, i){ if(Math.abs(w[0]) < cfMinAngle){ cfMinAngle = Math.abs(w[0]); cfIdx = i; }});
-  var cfPt = wallPts[cfIdx];
+  // Build 2×2 tile grid
+  var tiles = [
+    { tx: tile.x,     ty: tile.y,     dx: -panX,            dy: -panY            },
+    { tx: tile.x + 1, ty: tile.y,     dx: tileSize - panX,  dy: -panY            },
+    { tx: tile.x,     ty: tile.y + 1, dx: -panX,            dy: tileSize - panY  },
+    { tx: tile.x + 1, ty: tile.y + 1, dx: tileSize - panX,  dy: tileSize - panY  }
+  ];
 
   var isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-  var grassColor  = isDark ? '#1a3020' : '#c8e6b0';
-  var dirtColor   = isDark ? '#3a2a1a' : '#d4a56a';
-  var wallColor   = isDark ? '#4a5568' : '#718096';
-  var lineColor   = isDark ? '#a0aec0' : '#4a5568';
-  var textColor   = isDark ? '#a0aec0' : '#4a5568';
-  var markerColor = isDark ? '#e2e8f0' : '#2d3748';
+  // Use a different OSM tile style for dark mode if desired; standard works fine for both
+  var tileBase = 'https://tile.openstreetmap.org/';
 
-  var svg = '<svg viewBox="0 0 120 100" width="100%" style="display:block;max-height:120px;">'
-    +'<polygon points="'+grassPts+'" fill="'+grassColor+'" stroke="none"/>'
-    +'<circle cx="'+cx+'" cy="'+(cy-13)+'" r="15" fill="'+dirtColor+'" stroke="none"/>'
-    +'<path d="'+wallPath+'" fill="none" stroke="'+wallColor+'" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>'
-    +'<line x1="'+cx+'" y1="'+cy+'" x2="'+lfLine[0]+'" y2="'+lfLine[1]+'" stroke="'+lineColor+'" stroke-width="0.4" stroke-dasharray="1.5,1"/>'
-    +'<line x1="'+cx+'" y1="'+cy+'" x2="'+rfLine[0]+'" y2="'+rfLine[1]+'" stroke="'+lineColor+'" stroke-width="0.4" stroke-dasharray="1.5,1"/>'
-    +'<polygon points="'+pt(hb)+' '+pt(first)+' '+pt(second)+' '+pt(third)+'" fill="none" stroke="'+lineColor+'" stroke-width="0.6"/>'
-    +'<rect x="'+(hb[0]-1.2)+'" y="'+(hb[1]-1.2)+'" width="2.4" height="2.4" rx="0.4" fill="white" stroke="'+lineColor+'" stroke-width="0.3"/>'
-    +'<rect x="'+(first[0]-1.2)+'" y="'+(first[1]-1.2)+'" width="2.4" height="2.4" rx="0.4" fill="white" stroke="'+lineColor+'" stroke-width="0.3"/>'
-    +'<rect x="'+(second[0]-1.2)+'" y="'+(second[1]-1.2)+'" width="2.4" height="2.4" rx="0.4" fill="white" stroke="'+lineColor+'" stroke-width="0.3"/>'
-    +'<rect x="'+(third[0]-1.2)+'" y="'+(third[1]-1.2)+'" width="2.4" height="2.4" rx="0.4" fill="white" stroke="'+lineColor+'" stroke-width="0.3"/>'
-    +'<circle cx="'+mound[0].toFixed(1)+'" cy="'+mound[1].toFixed(1)+'" r="1.4" fill="'+dirtColor+'" stroke="'+lineColor+'" stroke-width="0.3"/>'
-    +'<text x="'+(lfPt[0]-2)+'" y="'+(lfPt[1]-1)+'" font-size="4.5" fill="'+markerColor+'" text-anchor="middle" font-family="sans-serif" font-weight="600">'+wall[0][1]+'</text>'
-    +'<text x="'+cfPt[0]+'" y="'+(cfPt[1]-1.5)+'" font-size="4.5" fill="'+markerColor+'" text-anchor="middle" font-family="sans-serif" font-weight="600">'+wall[cfIdx][1]+'</text>'
-    +'<text x="'+(rfPt[0]+2)+'" y="'+(rfPt[1]-1)+'" font-size="4.5" fill="'+markerColor+'" text-anchor="middle" font-family="sans-serif" font-weight="600">'+wall[wall.length-1][1]+'</text>'
-    +'<text x="'+cx+'" y="97.5" font-size="4" fill="'+textColor+'" text-anchor="middle" font-family="sans-serif">'+sd.name+'</text>'
-    +'</svg>';
+  var html = '<div style="position:relative;width:'+displaySize+'px;height:'+displaySize+'px;overflow:hidden;border-radius:6px;border:1px solid var(--border);flex-shrink:0;">';
 
-  wrap.innerHTML = svg;
+  tiles.forEach(function(t) {
+    var url = tileBase + zoom + '/' + t.tx + '/' + t.ty + '.png';
+    html += '<img src="'+url+'" '
+      + 'width="256" height="256" '
+      + 'style="position:absolute;left:'+t.dx.toFixed(1)+'px;top:'+t.dy.toFixed(1)+'px;display:block;image-rendering:auto;" '
+      + 'draggable="false" />';
+  });
+
+  // Crosshair dot at center
+  html += '<div style="position:absolute;left:'+( halfDisplay-4)+'px;top:'+(halfDisplay-4)+'px;width:8px;height:8px;border-radius:50%;background:rgba(220,50,50,0.85);border:1.5px solid #fff;pointer-events:none;"></div>';
+
+  // Stadium name label
+  html += '<div style="position:absolute;bottom:3px;left:0;right:0;text-align:center;font-size:9px;font-weight:600;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.8);pointer-events:none;">'+sd.name+'</div>';
+
+  html += '</div>';
+
+  wrap.innerHTML = html;
 }
 
 // ── Local storage persistence ──
