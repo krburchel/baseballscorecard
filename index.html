@@ -699,89 +699,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   <!-- Current at-bat bar -->
   <div class="atbat-bar" id="atbatBar"></div>
 
-  <!-- Game info / notes -->
-  <div class="game-info" id="gameInfoPanel">
-    <div class="game-info-toggle" onclick="toggleGameInfo()">
-      <span class="game-info-title">📋 Game Info &amp; Notes</span>
-      <span class="game-info-arrow" id="giArrow">▼</span>
-    </div>
-    <div class="game-info-body" id="giBody">
-      <div class="gi-row">
-        <span class="gi-label">Date</span>
-        <input class="gi-input" id="giDate" type="date" onchange="saveNotes()" />
-      </div>
-      <div class="gi-row">
-        <span class="gi-label">First pitch</span>
-        <div class="gi-first-pitch-row">
-          <input class="gi-input" id="giFirstPitch" type="time" onchange="saveNotes()" style="flex:none;width:120px" />
-        </div>
-      </div>
-      <div class="gi-row">
-        <span class="gi-label">Venue</span>
-        <input class="gi-input" id="giVenue" placeholder="Stadium name" onchange="saveNotes()" />
-      </div>
-      <div class="gi-row">
-        <span class="gi-label">Attendance</span>
-        <input class="gi-input" id="giAttendance" type="text" inputmode="numeric" placeholder="e.g. 38,421" onchange="saveNotes()" />
-      </div>
-      <div class="gi-row">
-        <span class="gi-label">Weather</span>
-        <div class="gi-weather-row">
-          <button class="gi-weather-btn" data-weather="sunny" onclick="selectWeather('sunny')" title="Sunny">☀️</button>
-          <button class="gi-weather-btn" data-weather="partly" onclick="selectWeather('partly')" title="Partly cloudy">⛅</button>
-          <button class="gi-weather-btn" data-weather="cloudy" onclick="selectWeather('cloudy')" title="Cloudy">☁️</button>
-          <button class="gi-weather-btn" data-weather="rain" onclick="selectWeather('rain')" title="Rain">🌧️</button>
-          <button class="gi-weather-btn" data-weather="snow" onclick="selectWeather('snow')" title="Snow">🌨️</button>
-          <button class="gi-weather-btn" data-weather="dome" onclick="selectWeather('dome')" title="Dome / retractable roof">🏟️</button>
-          <button class="gi-weather-btn" data-weather="night" onclick="selectWeather('night')" title="Night game">🌙</button>
-          <input class="gi-temp" id="giTemp" type="text" placeholder="72°F" onchange="saveNotes()" />
-        </div>
-      </div>
-      <div class="gi-row">
-        <span class="gi-label">Wind</span>
-        <div class="gi-wind-row">
-          <input class="gi-wind-speed" id="giWindSpeed" type="text" inputmode="numeric" placeholder="12" onchange="saveNotes()" />
-          <span class="gi-wind-unit">mph</span>
-          <select class="gi-wind-dir" id="giWindDir" onchange="saveNotes()">
-            <option value="">—</option>
-            <option value="out">→ Out to CF</option>
-            <option value="in">← In from CF</option>
-            <option value="ltor">→ L to R</option>
-            <option value="rtol">← R to L</option>
-            <option value="calm">Calm</option>
-          </select>
-        </div>
-      </div>
-      <div class="gi-row">
-        <span class="gi-label">Umpires</span>
-        <input class="gi-input" id="giUmpHP" placeholder="HP" onchange="saveNotes()" style="flex:1" />
-        <input class="gi-input" id="giUmp1B" placeholder="1B" onchange="saveNotes()" style="flex:1" />
-        <input class="gi-input" id="giUmp2B" placeholder="2B" onchange="saveNotes()" style="flex:1" />
-        <input class="gi-input" id="giUmp3B" placeholder="3B" onchange="saveNotes()" style="flex:1" />
-      </div>
-      <div class="gi-row">
-        <span class="gi-label">Game type</span>
-        <select class="gi-input" id="giGameType" onchange="saveNotes()" style="flex:none;width:160px">
-          <option value="">—</option>
-          <option value="regular">Regular season</option>
-          <option value="spring">Spring training</option>
-          <option value="asg">All-Star Game</option>
-          <option value="wild">Wild Card</option>
-          <option value="alds">ALDS</option>
-          <option value="alcs">ALCS</option>
-          <option value="nlds">NLDS</option>
-          <option value="nlcs">NLCS</option>
-          <option value="ws">World Series</option>
-          <option value="other">Other</option>
-        </select>
-      </div>
-      <div class="gi-row" style="align-items:flex-start">
-        <span class="gi-label" style="margin-top:6px">Notes</span>
-        <textarea class="gi-textarea" id="giNotes" placeholder="Notable plays, ejections, delays, milestones…" onchange="saveNotes()"></textarea>
-      </div>
-    </div>
-  </div>
-
   <!-- Game state -->
   <div class="game-state">
     <div class="card">
@@ -937,6 +854,90 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   </div>
 
   <!-- Lineups -->
+  <!-- Game info / notes -->
+  <div class="game-info" id="gameInfoPanel">
+    <div class="game-info-toggle" onclick="toggleGameInfo()">
+      <span class="game-info-title">📋 Game Info &amp; Notes</span>
+      <span class="game-info-arrow" id="giArrow">▼</span>
+    </div>
+    <div class="game-info-body" id="giBody">
+      <div class="gi-row">
+        <span class="gi-label">Date</span>
+        <input class="gi-input" id="giDate" type="date" onchange="saveNotes()" />
+      </div>
+      <div class="gi-row">
+        <span class="gi-label">First pitch</span>
+        <div class="gi-first-pitch-row">
+          <input class="gi-input" id="giFirstPitch" type="time" onchange="saveNotes()" style="flex:none;width:120px" />
+        </div>
+      </div>
+      <div class="gi-row">
+        <span class="gi-label">Venue</span>
+        <input class="gi-input" id="giVenue" placeholder="Stadium name" onchange="saveNotes()" />
+      </div>
+      <div class="gi-row">
+        <span class="gi-label">Attendance</span>
+        <input class="gi-input" id="giAttendance" type="text" inputmode="numeric" placeholder="e.g. 38,421" onchange="saveNotes()" />
+      </div>
+      <div class="gi-row">
+        <span class="gi-label">Weather</span>
+        <div class="gi-weather-row">
+          <button class="gi-weather-btn" data-weather="sunny" onclick="selectWeather('sunny')" title="Sunny">☀️</button>
+          <button class="gi-weather-btn" data-weather="partly" onclick="selectWeather('partly')" title="Partly cloudy">⛅</button>
+          <button class="gi-weather-btn" data-weather="cloudy" onclick="selectWeather('cloudy')" title="Cloudy">☁️</button>
+          <button class="gi-weather-btn" data-weather="rain" onclick="selectWeather('rain')" title="Rain">🌧️</button>
+          <button class="gi-weather-btn" data-weather="snow" onclick="selectWeather('snow')" title="Snow">🌨️</button>
+          <button class="gi-weather-btn" data-weather="dome" onclick="selectWeather('dome')" title="Dome / retractable roof">🏟️</button>
+          <button class="gi-weather-btn" data-weather="night" onclick="selectWeather('night')" title="Night game">🌙</button>
+          <input class="gi-temp" id="giTemp" type="text" placeholder="72°F" onchange="saveNotes()" />
+        </div>
+      </div>
+      <div class="gi-row">
+        <span class="gi-label">Wind</span>
+        <div class="gi-wind-row">
+          <input class="gi-wind-speed" id="giWindSpeed" type="text" inputmode="numeric" placeholder="12" onchange="saveNotes()" />
+          <span class="gi-wind-unit">mph</span>
+          <select class="gi-wind-dir" id="giWindDir" onchange="saveNotes()">
+            <option value="">—</option>
+            <option value="out">→ Out to CF</option>
+            <option value="in">← In from CF</option>
+            <option value="ltor">→ L to R</option>
+            <option value="rtol">← R to L</option>
+            <option value="calm">Calm</option>
+          </select>
+        </div>
+      </div>
+      <div class="gi-row">
+        <span class="gi-label">Umpires</span>
+        <input class="gi-input" id="giUmpHP" placeholder="HP" onchange="saveNotes()" style="flex:1" />
+        <input class="gi-input" id="giUmp1B" placeholder="1B" onchange="saveNotes()" style="flex:1" />
+        <input class="gi-input" id="giUmp2B" placeholder="2B" onchange="saveNotes()" style="flex:1" />
+        <input class="gi-input" id="giUmp3B" placeholder="3B" onchange="saveNotes()" style="flex:1" />
+      </div>
+      <div class="gi-row">
+        <span class="gi-label">Game type</span>
+        <select class="gi-input" id="giGameType" onchange="saveNotes()" style="flex:none;width:160px">
+          <option value="">—</option>
+          <option value="regular">Regular season</option>
+          <option value="spring">Spring training</option>
+          <option value="asg">All-Star Game</option>
+          <option value="wild">Wild Card</option>
+          <option value="alds">ALDS</option>
+          <option value="alcs">ALCS</option>
+          <option value="nlds">NLDS</option>
+          <option value="nlcs">NLCS</option>
+          <option value="ws">World Series</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="gi-row" style="align-items:flex-start">
+        <span class="gi-label" style="margin-top:6px">Notes</span>
+        <textarea class="gi-textarea" id="giNotes" placeholder="Notable plays, ejections, delays, milestones…" onchange="saveNotes()"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- Batting lineups -->
   <div class="sec-title">Batting lineups</div>
   <div class="lineup-grid">
     <div class="lineup-panel">
@@ -3225,17 +3226,27 @@ function renderCount(){
 }
 
 // ── ABS Challenge System ──
-var absState = { open: false, callType: null, result: null };
+var absState = { open: false, side: null, callType: null, result: null };
 // callType: 'ball' (challenging a ball call → wants strike) or 'strike' (challenging a strike → wants ball)
 // result: 'overturned' or 'upheld'
 
 function toggleABSPicker(){
   absState.open = !absState.open;
   if(!absState.open){
+    absState.side = null;
     absState.callType = null;
     absState.result = null;
+  } else {
+    // Default to batting team
+    absState.side = batting();
   }
   renderABSPicker();
+}
+
+function absSetSide(side){
+  absState.side = side;
+  renderABSPicker();
+  haptic();
 }
 
 function renderABSPicker(){
@@ -3248,11 +3259,23 @@ function renderABSPicker(){
   }
   el.style.display = '';
 
-  var side = batting();
+  var side = absState.side || batting();
   var nm = curName(side, abIdx(side));
+  var awaySide = 'away', homeSide = 'home';
+  var awayName = team('away'), homeName = team('home');
 
   var html = '<div class="abs-picker">';
-  html += '<div class="abs-picker-title">ABS Challenge — ' + esc(shortName(nm)) + ' (' + team(side) + ')</div>';
+  html += '<div class="abs-picker-title">ABS Challenge</div>';
+
+  // Team selector
+  html += '<div class="abs-picker-row">';
+  html += '<span class="abs-picker-label">Team:</span>';
+  html += '<button class="abs-opt' + (side === 'away' ? ' sel' : '') + '" onclick="absSetSide(\'away\')">' + esc(awayName) + '</button>';
+  html += '<button class="abs-opt' + (side === 'home' ? ' sel' : '') + '" onclick="absSetSide(\'home\')">' + esc(homeName) + '</button>';
+  html += '</div>';
+
+  // Current batter label
+  html += '<div style="font-size:11px;color:var(--muted);margin-bottom:4px;">Batter: ' + esc(shortName(nm)) + '</div>';
 
   // What call is being challenged?
   html += '<div class="abs-picker-row">';
@@ -3295,7 +3318,7 @@ function absConfirm(){
   if(!absState.callType || !absState.result) return;
   saveState();
 
-  var side = batting();
+  var side = absState.side || batting();
   var idx = abIdx(side);
   var nm = curName(side, idx);
   var overturned = absState.result === 'overturned';
@@ -3356,6 +3379,7 @@ function absConfirm(){
         }
         // Close picker and done
         absState.open = false;
+        absState.side = null;
         absState.callType = null;
         absState.result = null;
         renderABSPicker();
@@ -3368,6 +3392,7 @@ function absConfirm(){
 
   // Close picker
   absState.open = false;
+  absState.side = null;
   absState.callType = null;
   absState.result = null;
   renderABSPicker();
