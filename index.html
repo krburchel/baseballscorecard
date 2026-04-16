@@ -502,6 +502,25 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .kb-flash { position:fixed; top:12px; left:50%; transform:translateX(-50%); z-index:400; padding:6px 16px; border-radius:8px; font-size:13px; font-weight:600; color:#fff; background:var(--blue); box-shadow:0 4px 12px rgba(0,0,0,.2); pointer-events:none; opacity:0; transition:opacity .15s; }
 .kb-flash.show { opacity:1; }
 
+/* ── Confirm / alert modal ── */
+.cf-overlay { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:500; display:flex; align-items:center; justify-content:center; padding:16px; }
+.cf-modal { background:var(--surface); border:1px solid var(--border); border-radius:12px; max-width:400px; width:100%; box-shadow:0 12px 40px rgba(0,0,0,.25); overflow:hidden; }
+.cf-hdr { padding:14px 16px 8px; display:flex; align-items:center; gap:10px; }
+.cf-icon { width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0; }
+.cf-icon.warn { background:var(--al); color:var(--amber); }
+.cf-icon.danger { background:var(--rl); color:var(--red); }
+.cf-icon.info { background:var(--bl); color:var(--blue); }
+.cf-title { font-size:15px; font-weight:700; color:var(--text); line-height:1.3; }
+.cf-body { padding:0 16px 14px; font-size:13px; color:var(--text); line-height:1.45; }
+.cf-body.with-icon { padding-left:52px; }
+.cf-btns { padding:10px 14px 14px; display:flex; justify-content:flex-end; gap:8px; }
+.cf-btn { padding:7px 14px; font-size:13px; font-weight:600; border-radius:6px; cursor:pointer; font-family:inherit; border:1px solid var(--border); background:var(--surface); color:var(--text); min-width:72px; }
+.cf-btn:hover { background:var(--header-bg); }
+.cf-btn.primary { background:var(--blue); border-color:var(--blue); color:#fff; }
+.cf-btn.primary:hover { filter:brightness(1.08); background:var(--blue); }
+.cf-btn.danger { background:var(--red); border-color:var(--red); color:#fff; }
+.cf-btn.danger:hover { filter:brightness(1.08); background:var(--red); }
+
 /* ═══════════════════════════════════════════════
    PRINT / PDF STYLES
 ═══════════════════════════════════════════════ */
@@ -515,6 +534,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   .pdf-btn, .reset-btn, .out-card, #kbHelpBtn,
   .kb-flash, .extra-inn-btn, .runner-labels, .rp-overlay,
   .abs-picker, .abs-tally, .abs-btn, .atbat-bar { display:none!important; }
+  .cf-overlay { display:none!important; }
   /* score strip */
   .score-strip { border:1.5px solid #333; border-radius:0; margin-bottom:6px; }
   .score-table th, .score-table td { font-size:10px; padding:4px 6px; border-right:1px solid #ccc; }
@@ -1001,6 +1021,67 @@ function mkGame(){
     abs:{home:{challenged:0,overturned:0}, away:{challenged:0,overturned:0}}
   };
 }
+
+// ── Schema migrations ──
+// Given a (possibly old-shape) G loaded from JSON or localStorage, fill in any
+// missing fields so downstream code can assume the current shape. Mutates and
+// returns g. This is the SINGLE source of truth for backward compatibility —
+// loadFromStorage, gmLoadFromSlot, and _applyImportedPayload all delegate here.
+//
+// When you add a new field to mkGame/mkHits/mkNotes/mkPitcher, add the matching
+// default here too so games saved before the change still load correctly.
+function migrateGame(g){
+  if(!g) return g;
+
+  // v1 → v2: batterLog added
+  if(!g.batterLog) g.batterLog = { home:{}, away:{} };
+  if(!g.batterLog.home) g.batterLog.home = {};
+  if(!g.batterLog.away) g.batterLog.away = {};
+
+  // v2 → v3: game notes added
+  if(!g.notes) g.notes = mkNotes();
+
+  // v3 → v4: ABS challenge tracking added
+  if(!g.abs) g.abs = { home:{challenged:0,overturned:0}, away:{challenged:0,overturned:0} };
+  if(!g.abs.home) g.abs.home = {challenged:0,overturned:0};
+  if(!g.abs.away) g.abs.away = {challenged:0,overturned:0};
+
+  // Backfill any newly-added hit keys on every lineup slot and sub.
+  // Subs from old saves may have no hits object at all (pre-per-sub stats).
+  var defaultHitKeys = Object.keys(mkHits());
+  if(g.lineup){
+    ['home','away'].forEach(function(side){
+      if(!g.lineup[side]) return;
+      g.lineup[side].forEach(function(sl){
+        if(!sl) return;
+        if(!sl.hits) sl.hits = mkHits();
+        defaultHitKeys.forEach(function(k){
+          if(sl.hits[k] === undefined) sl.hits[k] = 0;
+        });
+        if(sl.subs){
+          sl.subs.forEach(function(sub){
+            if(!sub) return;
+            if(!sub.hits) sub.hits = mkHits();
+            defaultHitKeys.forEach(function(k){
+              if(sub.hits[k] === undefined) sub.hits[k] = 0;
+            });
+          });
+        }
+      });
+    });
+  }
+
+  // Very early saves stored bases as booleans; now we store runner names
+  // (string) or null. Normalize either way.
+  if(g.bases){
+    for(var bi = 0; bi < 3; bi++){
+      if(g.bases[bi] === true) g.bases[bi] = '?';
+      else if(g.bases[bi] === false) g.bases[bi] = null;
+    }
+  }
+
+  return g;
+}
 function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
 function posOpts(sel){ return POSITIONS.map(function(p){ return '<option value="'+p+'"'+(p===sel?' selected':'')+'>'+p+'</option>'; }).join(''); }
 
@@ -1221,14 +1302,34 @@ function addLog(text, tag, cls){
   else if(cls === 't-abs') cat = 'abs';
   G.log.unshift({ text: inn + ' — ' + text, tag: tag, cls: cls, inn: inn, cat: cat });
   if(G.log.length > 80) G.log.pop();
-  renderLog();
+  scheduleLogRender();
   haptic();
+}
+
+// ── Coalesced log rendering ──
+// Multiple addLog() calls in a single play (e.g. "Ball 4", "Walk", "Run scores")
+// would otherwise each trigger a full innerHTML rebuild. Batch them into one
+// render per animation frame, which keeps the hot pitch path cheap on mobile.
+var _logRenderScheduled = false;
+function scheduleLogRender(){
+  if(_logRenderScheduled) return;
+  _logRenderScheduled = true;
+  // rAF coalesces N calls in the current tick into one render next frame.
+  // Fallback to setTimeout(0) for very old environments, though modern iOS
+  // Safari and desktop browsers all have rAF.
+  var schedule = window.requestAnimationFrame || function(cb){ return setTimeout(cb, 0); };
+  schedule(function(){
+    _logRenderScheduled = false;
+    renderLog();
+  });
 }
 
 var logFilter = { inn: '', cat: '' };
 var logEditIdx = -1; // index into G.log currently being edited, -1 = none
 
 function renderLog(){
+  // If a frame-scheduled render was pending, this sync call satisfies it.
+  _logRenderScheduled = false;
   var el = document.getElementById('logInner');
   var toggle = document.getElementById('logToggle');
   var filtersEl = document.getElementById('logFilters');
@@ -1908,149 +2009,169 @@ function updateOutBtn(){
   }
 }
 
-function recordOut(){
-  if(!outState.type || !outState.fielder) return;
-  saveState();
+// ── Record-out dispatch & helpers ──
+// recordOut() is a thin dispatcher; the real work happens in _apply* helpers
+// so each branch can be reasoned about on its own.
+
+// Build a context bundle so helpers don't each recompute the same things.
+function _buildOutCtx(){
   var side = batting();
   var idx = abIdx(side);
-  var nm = curName(side, idx);
-  var h = activeHits(side, idx);
-  var fInfo = FIELDERS.filter(function(f){ return f.num === outState.fielder; })[0];
-  var ttInfo = outState.throwTo ? FIELDERS.filter(function(f){ return f.num === outState.throwTo; })[0] : null;
-  var isSacFly = outState.sacType === 'sf';
-  var isSacBunt = outState.sacType === 'sac';
+  return {
+    side: side,
+    idx: idx,
+    nm: curName(side, idx),
+    h: activeHits(side, idx),
+    fInfo: FIELDERS.filter(function(f){ return f.num === outState.fielder; })[0],
+    ttInfo: outState.throwTo ? FIELDERS.filter(function(f){ return f.num === outState.throwTo; })[0] : null,
+    isSacFly: outState.sacType === 'sf',
+    isSacBunt: outState.sacType === 'sac'
+  };
+}
 
-  if(outState.type === 'error'){
-    h.err++;
-    var fSide = fielding();
-    G.rhe[fSide][2]++;
-    renderScore();
-    addLog(nm + ' reached on E' + outState.fielder + ' — ' + fInfo.pos + ' error', 'E' + outState.fielder, 't-err');
-    logBatter(side, idx, 'E' + outState.fielder);
-    renderLineup(side);
+// Score the runner on 3B (shared by sac fly / sac bunt / RBI groundout paths)
+function _scoreRunnerFrom3B(side, label){
+  if(!baseOcc(2)) return 0;
+  var runner = G.bases[2];
+  creditRun(side, runner);
+  creditRBI(side, 1);
+  G.bases[2] = null;
+  G.rhe[side][0]++;
+  G.scores[side][G.inning - 1] = (G.scores[side][G.inning - 1] || 0) + 1;
+  addPitcherStat(fielding(), 'r');
+  addLog((runner || 'Runner') + ' ' + label, 'Run', 't-run');
+  return 1;
+}
+
+// Common "what happens after the out is on the books" tail
+function _finishAtBat(side){
+  addPitch(fielding());
+  var walkoff = checkWalkoff();
+  var innOver = addOut();
+  // Extra outs for DP/TP — stop early if the inning flips
+  if(!innOver && (outState.multiOut === 'dp' || outState.multiOut === 'tp')){
+    innOver = addOut();
+    if(!innOver && outState.multiOut === 'tp') innOver = addOut();
+  }
+  renderLineup(side);
+  if(!innOver && !walkoff){
     nextBatter(side);
-  } else if(outState.type === 'fc'){
-    // Fielder's choice: batter reaches 1B, out recorded on another runner
-    h.fc++;
-    var fcTag = ttInfo ? 'FC' + outState.fielder + '-' + outState.throwTo : 'FC' + outState.fielder;
-    if(ttInfo){
-      addLog(nm + " — fielder's choice " + outState.fielder + '-' + outState.throwTo + ' (' + fInfo.pos + ' to ' + ttInfo.pos + ')', fcTag, 't-fc');
-    } else {
-      addLog(nm + " — fielder's choice " + outState.fielder + ' (' + fInfo.pos + ')', fcTag, 't-fc');
-    }
-    logBatter(side, idx, fcTag);
-    addPitch(fielding());
+  } else if(innOver){
+    advanceBatterSilent(side);
+  }
+}
 
-    // Record out on a runner (remove lead runner if present)
-    var walkoff = checkWalkoff();
-    var innOver = addOut();
+// Batter reached on a fielding error — charged to the defense, not the batter.
+function _applyError(ctx){
+  ctx.h.err++;
+  G.rhe[fielding()][2]++;
+  renderScore();
+  var tag = 'E' + outState.fielder;
+  addLog(ctx.nm + ' reached on ' + tag + ' — ' + ctx.fInfo.pos + ' error', tag, 't-err');
+  logBatter(ctx.side, ctx.idx, tag);
+  renderLineup(ctx.side);
+  nextBatter(ctx.side);
+}
 
-    // Place batter on 1B; remove the most advanced occupied base (runner retired)
-    // Work from 3B down to find a runner to remove
-    var removedRunner = false;
-    for(var bi = 2; bi >= 0; bi--){
-      if(baseOcc(bi)){
-        G.bases[bi] = null;
-        removedRunner = true;
-        break;
-      }
-    }
-    G.bases[0] = nm; // batter to 1B
+// Fielder's choice — batter to 1B, lead runner retired.
+function _applyFieldersChoice(ctx){
+  ctx.h.fc++;
+  var fcTag = ctx.ttInfo ? 'FC' + outState.fielder + '-' + outState.throwTo : 'FC' + outState.fielder;
+  var throwDesc = ctx.ttInfo
+    ? outState.fielder + '-' + outState.throwTo + ' (' + ctx.fInfo.pos + ' to ' + ctx.ttInfo.pos + ')'
+    : outState.fielder + ' (' + ctx.fInfo.pos + ')';
+  addLog(ctx.nm + " — fielder's choice " + throwDesc, fcTag, 't-fc');
+  logBatter(ctx.side, ctx.idx, fcTag);
+  addPitch(fielding());
 
-    renderBases();
-    renderLineup(side);
-    if(!innOver && !walkoff){
-      nextBatter(side);
-    } else if(innOver){
-      advanceBatterSilent(side);
-    }
+  // Out recorded before we move the batter to 1B
+  var walkoff = checkWalkoff();
+  var innOver = addOut();
+
+  // Retire the lead (most advanced) runner, then place batter on 1B
+  for(var bi = 2; bi >= 0; bi--){
+    if(baseOcc(bi)){ G.bases[bi] = null; break; }
+  }
+  G.bases[0] = ctx.nm;
+
+  renderBases();
+  renderLineup(ctx.side);
+  if(!innOver && !walkoff){
+    nextBatter(ctx.side);
+  } else if(innOver){
+    advanceBatterSilent(ctx.side);
+  }
+}
+
+// Flyout / groundout (including sac fly, sac bunt, RBI groundout, DP, TP).
+function _applyRecordedOut(ctx){
+  var dpSuffix = outState.multiOut === 'dp' ? ' (DP)' : outState.multiOut === 'tp' ? ' (TP)' : '';
+  var sacPrefix = ctx.isSacFly ? 'SF — ' : ctx.isSacBunt ? 'SAC — ' : '';
+
+  if(ctx.isSacFly) ctx.h.sf++;
+  else if(ctx.isSacBunt) ctx.h.sac++;
+
+  // ── Log + batter-cell tag
+  if(outState.type === 'fly'){
+    if(!ctx.isSacFly && !ctx.isSacBunt) ctx.h.fo++;
+    var flyTag = ctx.isSacFly ? 'SF' + outState.fielder : 'F' + outState.fielder;
+    var flyCls = ctx.isSacFly ? 't-sf' : 't-fo';
+    addLog(ctx.nm + ' — ' + sacPrefix + 'flyout ' + outState.fielder + ' (' + ctx.fInfo.pos + ')' + dpSuffix, flyTag, flyCls);
+    logBatter(ctx.side, ctx.idx, flyTag);
   } else {
-    var dpSuffix = outState.multiOut === 'dp' ? ' (DP)' : outState.multiOut === 'tp' ? ' (TP)' : '';
-    var sacPrefix = isSacFly ? 'SF — ' : isSacBunt ? 'SAC — ' : '';
-
-    if(isSacFly) h.sf++;
-    else if(isSacBunt) h.sac++;
-
-    if(outState.type === 'fly'){
-      if(!isSacFly && !isSacBunt) h.fo++;
-      var flyTag = isSacFly ? 'SF' + outState.fielder : 'F' + outState.fielder;
-      var flyCls = isSacFly ? 't-sf' : 't-fo';
-      addLog(nm + ' — ' + sacPrefix + 'flyout ' + outState.fielder + ' (' + fInfo.pos + ')' + dpSuffix, flyTag, flyCls);
-      logBatter(side, idx, flyTag);
+    if(!ctx.isSacFly && !ctx.isSacBunt) ctx.h.go++;
+    var goTag, goCls;
+    if(ctx.isSacBunt){
+      goTag = 'SAC'; goCls = 't-sac';
     } else {
-      if(!isSacFly && !isSacBunt) h.go++;
-      var goTag, goCls;
-      if(isSacBunt){
-        goTag = 'SAC';
-        goCls = 't-sac';
-      } else {
-        goTag = ttInfo ? 'G' + outState.fielder + '-' + outState.throwTo : 'G' + outState.fielder;
-        goCls = 't-go';
-      }
-      if(ttInfo){
-        addLog(nm + ' — ' + sacPrefix + 'groundout ' + outState.fielder + '-' + outState.throwTo + ' (' + fInfo.pos + ' to ' + ttInfo.pos + ')' + dpSuffix, goTag, goCls);
-      } else {
-        addLog(nm + ' — ' + sacPrefix + 'groundout ' + outState.fielder + ' (' + fInfo.pos + ')' + dpSuffix, goTag, goCls);
-      }
-      logBatter(side, idx, goTag);
+      goTag = ctx.ttInfo ? 'G' + outState.fielder + '-' + outState.throwTo : 'G' + outState.fielder;
+      goCls = 't-go';
     }
+    var goDesc = ctx.ttInfo
+      ? outState.fielder + '-' + outState.throwTo + ' (' + ctx.fInfo.pos + ' to ' + ctx.ttInfo.pos + ')'
+      : outState.fielder + ' (' + ctx.fInfo.pos + ')';
+    addLog(ctx.nm + ' — ' + sacPrefix + 'groundout ' + goDesc + dpSuffix, goTag, goCls);
+    logBatter(ctx.side, ctx.idx, goTag);
+  }
 
-    // Sac fly: score runner from 3B if occupied
-    if(isSacFly && baseOcc(2)){
-      var scoredRunner = G.bases[2];
-      creditRun(side, scoredRunner);
-      creditRBI(side, 1);
-      G.bases[2] = null;
-      G.rhe[side][0]++;
-      G.scores[side][G.inning - 1] = (G.scores[side][G.inning - 1] || 0) + 1;
-      addPitcherStat(fielding(), 'r');
-      addLog((scoredRunner || 'Runner') + ' scores on sac fly', 'Run', 't-run');
-      renderBases();
-      renderScore();
+  // ── Runners advance / score, based on out type
+  if(ctx.isSacFly){
+    // Sac fly: runner on 3B scores
+    if(_scoreRunnerFrom3B(ctx.side, 'scores on sac fly')){
+      renderBases(); renderScore();
     }
-
-    // Sac bunt: advance all runners 1 base
-    if(isSacBunt){
-      var sacRuns = advanceRunners(side, 1);
-      if(sacRuns > 0){
-        creditRBI(side, sacRuns);
-        addLog(sacRuns + ' run' + (sacRuns > 1 ? 's' : '') + ' score on sac bunt', 'Run', 't-run');
-      }
-      renderBases();
-      renderScore();
+  } else if(ctx.isSacBunt){
+    // Sac bunt: all runners advance one base
+    var sacRuns = advanceRunners(ctx.side, 1);
+    if(sacRuns > 0){
+      creditRBI(ctx.side, sacRuns);
+      addLog(sacRuns + ' run' + (sacRuns > 1 ? 's' : '') + ' score on sac bunt', 'Run', 't-run');
     }
-
-    // Run scores on groundout/flyout (RBI groundout — runner scores from 3B, no sac credit)
-    if(outState.runScores && !isSacFly && !isSacBunt && baseOcc(2)){
-      var goRunner = G.bases[2];
-      creditRun(side, goRunner);
-      creditRBI(side, 1);
-      G.bases[2] = null;
-      G.rhe[side][0]++;
-      G.scores[side][G.inning - 1] = (G.scores[side][G.inning - 1] || 0) + 1;
-      addPitcherStat(fielding(), 'r');
-      addLog((goRunner || 'Runner') + ' scores from 3B (RBI)', 'Run', 't-run');
-      renderBases();
-      renderScore();
-    }
-
-    addPitch(fielding());
-    var walkoff = checkWalkoff();
-    var innOver = addOut();
-    // Add extra outs for DP/TP (stop if inning already flipped)
-    if(!innOver && (outState.multiOut === 'dp' || outState.multiOut === 'tp')){
-      innOver = addOut();
-      if(!innOver && outState.multiOut === 'tp') innOver = addOut();
-    }
-    renderLineup(side);
-    if(!innOver && !walkoff){
-      nextBatter(side);
-    } else if(innOver){
-      advanceBatterSilent(side);
+    renderBases(); renderScore();
+  } else if(outState.runScores && baseOcc(2)){
+    // RBI groundout/flyout — runner scores from 3B with no sac credit
+    if(_scoreRunnerFrom3B(ctx.side, 'scores from 3B (RBI)')){
+      renderBases(); renderScore();
     }
   }
 
-  // Reset out-panel for next play
+  _finishAtBat(ctx.side);
+}
+
+function recordOut(){
+  if(!outState.type || !outState.fielder) return;
+  saveState();
+
+  var ctx = _buildOutCtx();
+
+  if(outState.type === 'error'){
+    _applyError(ctx);
+  } else if(outState.type === 'fc'){
+    _applyFieldersChoice(ctx);
+  } else {
+    _applyRecordedOut(ctx);
+  }
+
   resetOutState();
 }
 
@@ -2202,9 +2323,21 @@ function loadTodaysGame(gameIdx){
 
   // Confirm if there's existing game data
   if(G.log.length > 0){
-    if(!confirm('Load this game? Your current scorecard will be reset.')) return;
+    showConfirm({
+      title:'Replace current game?',
+      message:'Load this game? Your current scorecard will be reset.',
+      confirmLabel:'Load',
+      cancelLabel:'Cancel',
+      tone:'warn'
+    }).then(function(ok){
+      if(ok) _doLoadTodaysGame(game);
+    });
+    return;
   }
+  _doLoadTodaysGame(game);
+}
 
+function _doLoadTodaysGame(game){
   // Save current game to its slot before loading a new one
   var activeId = gmGetActiveId();
   if(activeId && G.log.length > 0){
@@ -3048,10 +3181,22 @@ function editScore(side, idx, evt){
   inp.value = curVal;
   inp.min = '0';
   inp.max = '99';
+  // inputmode hint helps iOS show a numeric keypad without the full number-row
+  inp.setAttribute('inputmode', 'numeric');
   cell.textContent = '';
   cell.appendChild(inp);
-  inp.focus();
-  inp.select();
+
+  // Defer focus to the next frame so iOS Safari has settled any existing
+  // virtual-keyboard focus transition from a previously-active input.
+  // Focusing synchronously after appendChild can race on iOS and leave the
+  // input mounted but un-focused.
+  var raf = window.requestAnimationFrame || function(cb){ return setTimeout(cb, 0); };
+  raf(function(){
+    // Guard against the cell being torn down between frames (e.g., a re-render).
+    if(!inp.isConnected) return;
+    inp.focus();
+    inp.select();
+  });
 
   function commit(){
     var v = inp.value.trim();
@@ -3779,29 +3924,37 @@ function buildPrintBoxScore(){
 }
 
 function resetGame(){
-  if(!confirm('Reset the entire game? All data will be cleared.')) return;
+  showConfirm({
+    title:'Reset game?',
+    message:'Reset the entire game? All data will be cleared.',
+    confirmLabel:'Reset',
+    cancelLabel:'Keep playing',
+    tone:'danger'
+  }).then(function(ok){
+    if(!ok) return;
 
-  // Save the current game to its slot before resetting
-  var activeId = gmGetActiveId();
-  if(activeId && G.log.length > 0){
-    gmSaveToSlot(activeId);
-  }
+    // Save the current game to its slot before resetting
+    var activeId = gmGetActiveId();
+    if(activeId && G.log.length > 0){
+      gmSaveToSlot(activeId);
+    }
 
-  resetGameSilent();
+    resetGameSilent();
 
-  // Start a new game slot
-  var newId = gmGenId();
-  gmSetActiveId(newId);
+    // Start a new game slot
+    var newId = gmGenId();
+    gmSetActiveId(newId);
 
-  var undoBtn = document.getElementById('undoBtn');
-  if(undoBtn) undoBtn.disabled = true;
+    var undoBtn = document.getElementById('undoBtn');
+    if(undoBtn) undoBtn.disabled = true;
 
-  var hitErrBtn = document.getElementById('hitErrToggle');
-  if(hitErrBtn) hitErrBtn.className = 'hit-err-toggle';
-  var hitErrHint = document.getElementById('hitErrHint');
-  if(hitErrHint) hitErrHint.textContent = '';
+    var hitErrBtn = document.getElementById('hitErrToggle');
+    if(hitErrBtn) hitErrBtn.className = 'hit-err-toggle';
+    var hitErrHint = document.getElementById('hitErrHint');
+    if(hitErrHint) hitErrHint.textContent = '';
 
-  init();
+    init();
+  });
 }
 
 var MLB_TEAMS = [
@@ -4014,33 +4167,7 @@ function loadFromStorage(){
     if(!raw) return false;
     var payload = JSON.parse(raw);
     if(!payload || !payload.G) return false;
-    G = payload.G;
-    // Ensure batterLog exists (backward compat with old saves)
-    if(!G.batterLog) G.batterLog = { home: {}, away: {} };
-    // Ensure all hit keys exist on lineup slots and subs (backward compat)
-    var defaultHitKeys = Object.keys(mkHits());
-    ['home','away'].forEach(function(side){
-      G.lineup[side].forEach(function(sl){
-        defaultHitKeys.forEach(function(k){ if(sl.hits[k] === undefined) sl.hits[k] = 0; });
-        sl.subs.forEach(function(sub){
-          if(!sub.hits) sub.hits = mkHits();
-          defaultHitKeys.forEach(function(k){ if(sub.hits[k] === undefined) sub.hits[k] = 0; });
-        });
-      });
-    });
-    // Migrate old boolean bases to new null/string format
-    if(G.bases){
-      for(var bi=0;bi<3;bi++){
-        if(G.bases[bi] === true) G.bases[bi] = '?';
-        else if(G.bases[bi] === false) G.bases[bi] = null;
-      }
-    }
-    // Ensure notes object exists (backward compat)
-    if(!G.notes) G.notes = mkNotes();
-    // Ensure ABS challenge tracking exists (backward compat)
-    if(!G.abs) G.abs = {home:{challenged:0,overturned:0}, away:{challenged:0,overturned:0}};
-    if(!G.abs.home) G.abs.home = {challenged:0,overturned:0};
-    if(!G.abs.away) G.abs.away = {challenged:0,overturned:0};
+    G = migrateGame(payload.G);
     // Restore outState
     if(payload.outState){
       outState.type = payload.outState.type || null;
@@ -4182,28 +4309,7 @@ function gmLoadFromSlot(id){
     if(!payload || !payload.G) return false;
 
     // Restore using the same logic as loadFromStorage
-    G = payload.G;
-    if(!G.batterLog) G.batterLog = { home: {}, away: {} };
-    var defaultHitKeys = Object.keys(mkHits());
-    ['home','away'].forEach(function(side){
-      G.lineup[side].forEach(function(sl){
-        defaultHitKeys.forEach(function(k){ if(sl.hits[k] === undefined) sl.hits[k] = 0; });
-        sl.subs.forEach(function(sub){
-          if(!sub.hits) sub.hits = mkHits();
-          defaultHitKeys.forEach(function(k){ if(sub.hits[k] === undefined) sub.hits[k] = 0; });
-        });
-      });
-    });
-    if(G.bases){
-      for(var bi=0;bi<3;bi++){
-        if(G.bases[bi] === true) G.bases[bi] = '?';
-        else if(G.bases[bi] === false) G.bases[bi] = null;
-      }
-    }
-    if(!G.notes) G.notes = mkNotes();
-    if(!G.abs) G.abs = {home:{challenged:0,overturned:0}, away:{challenged:0,overturned:0}};
-    if(!G.abs.home) G.abs.home = {challenged:0,overturned:0};
-    if(!G.abs.away) G.abs.away = {challenged:0,overturned:0};
+    G = migrateGame(payload.G);
     if(payload.outState){
       Object.assign(outState, payload.outState);
       if(outState.sacType === undefined) outState.sacType = null;
@@ -4396,7 +4502,7 @@ function gmLoadGame(id){
     closeGameManager();
     kbFlash('Game loaded', '#185FA5');
   } else {
-    alert('Could not load this game. The save data may be corrupted.');
+    showAlert({ title:'Load failed', message:'Could not load this game. The save data may be corrupted.', tone:'danger' });
   }
 }
 
@@ -4407,10 +4513,18 @@ function gmConfirmDelete(id){
     if(index[i].id === id){ g = index[i]; break; }
   }
   var label = g ? (g.away + ' @ ' + g.home + (g.date ? ' (' + g.date + ')' : '')) : 'this game';
-  if(!confirm('Delete ' + label + '? This cannot be undone.')) return;
-  gmDeleteSlot(id);
-  renderGameManagerContent();
-  kbFlash('Game deleted', '#E24B4A');
+  showConfirm({
+    title:'Delete game?',
+    message:'Delete ' + label + '? This cannot be undone.',
+    confirmLabel:'Delete',
+    cancelLabel:'Keep',
+    tone:'danger'
+  }).then(function(ok){
+    if(!ok) return;
+    gmDeleteSlot(id);
+    renderGameManagerContent();
+    kbFlash('Game deleted', '#E24B4A');
+  });
 }
 
 // ── Auto-assign active ID on first load ──
@@ -4518,7 +4632,7 @@ function renderWeatherBtns(){
 }
 
 function saveNotes(){
-  if(!G.notes) G.notes = {};
+  if(!G.notes) G.notes = mkNotes();
   G.notes.date = (document.getElementById('giDate') || {}).value || '';
   G.notes.firstPitch = (document.getElementById('giFirstPitch') || {}).value || '';
   G.notes.venue = (document.getElementById('giVenue') || {}).value || '';
@@ -4536,7 +4650,7 @@ function saveNotes(){
 }
 
 function restoreNotes(){
-  if(!G.notes) G.notes = {date:'',firstPitch:'',venue:'',attendance:'',weather:'',temp:'',windSpeed:'',windDir:'',umpHP:'',ump1B:'',ump2B:'',ump3B:'',gameType:'',text:''};
+  if(!G.notes) G.notes = mkNotes();
   var n = G.notes;
   var el;
   el = document.getElementById('giDate'); if(el) el.value = n.date || '';
@@ -4666,97 +4780,176 @@ function importJSON(evt){
 
   var reader = new FileReader();
   reader.onload = function(e){
+    var payload;
     try {
-      var payload = JSON.parse(e.target.result);
-
-      // Validate basic structure
-      if(!payload || !payload.G){
-        alert('Invalid scorecard file — missing game data.');
-        return;
-      }
-      if(!payload.G.lineup || !payload.G.scores){
-        alert('Invalid scorecard file — incomplete game state.');
-        return;
-      }
-
-      // Confirm if there's existing game data
-      if(G.log.length > 0){
-        if(!confirm('Load this game file? Your current scorecard will be replaced.')) return;
-      }
-
-      // Save current game before importing
-      var activeId = gmGetActiveId();
-      if(activeId && G.log.length > 0){
-        gmSaveToSlot(activeId);
-      }
-
-      // Assign a new slot for the imported game
-      var newId = gmGenId();
-      gmSetActiveId(newId);
-
-      // Load the game state
-      G = payload.G;
-
-      // Run the same backward compat migrations as loadFromStorage
-      if(!G.batterLog) G.batterLog = { home: {}, away: {} };
-      if(!G.notes) G.notes = mkNotes();
-      if(!G.abs) G.abs = {home:{challenged:0,overturned:0}, away:{challenged:0,overturned:0}};
-      if(!G.abs.home) G.abs.home = {challenged:0,overturned:0};
-      if(!G.abs.away) G.abs.away = {challenged:0,overturned:0};
-      var defaultHitKeys = Object.keys(mkHits());
-      ['home','away'].forEach(function(side){
-        G.lineup[side].forEach(function(sl){
-          defaultHitKeys.forEach(function(k){ if(sl.hits[k] === undefined) sl.hits[k] = 0; });
-          sl.subs.forEach(function(sub){
-            if(!sub.hits) sub.hits = mkHits();
-            defaultHitKeys.forEach(function(k){ if(sub.hits[k] === undefined) sub.hits[k] = 0; });
-          });
-        });
-      });
-      if(G.bases){
-        for(var bi=0;bi<3;bi++){
-          if(G.bases[bi] === true) G.bases[bi] = '?';
-          else if(G.bases[bi] === false) G.bases[bi] = null;
-        }
-      }
-
-      // Restore outState
-      if(payload.outState){
-        Object.assign(outState, payload.outState);
-        if(outState.sacType === undefined) outState.sacType = null;
-      } else {
-        resetOutState();
-      }
-
-      // Restore hitWithErr
-      hitWithErr = !!(payload.hitWithErr);
-
-      // Clear undo history (doesn't make sense to carry over from file)
-      HISTORY = [];
-      var undoBtn = document.getElementById('undoBtn');
-      if(undoBtn) undoBtn.disabled = true;
-
-      // Set team dropdowns
-      if(payload.teamAway){
-        document.getElementById('teamAway').value = payload.teamAway;
-      }
-      if(payload.teamHome){
-        document.getElementById('teamHome').value = payload.teamHome;
-      }
-      onTeamChange();
-      renderAll();
-      saveToStorage();
-
-      var awayLabel = payload.teamAway || 'Away';
-      var homeLabel = payload.teamHome || 'Home';
-      addLog('Loaded from file: ' + awayLabel + ' vs ' + homeLabel, 'Game', 't-info');
-      kbFlash('Game loaded', '#185FA5');
-
+      payload = JSON.parse(e.target.result);
     } catch(err){
-      alert('Could not read scorecard file.\n\n' + (err.message || 'Unknown error'));
+      showAlert({ title:'Could not read file', message:(err.message || 'The file is not valid JSON.'), tone:'danger' });
+      return;
     }
+
+    // Validate basic structure
+    if(!payload || !payload.G){
+      showAlert({ title:'Invalid file', message:'Scorecard file is missing game data.', tone:'danger' });
+      return;
+    }
+    if(!payload.G.lineup || !payload.G.scores){
+      showAlert({ title:'Invalid file', message:'Scorecard file has incomplete game state.', tone:'danger' });
+      return;
+    }
+
+    // Confirm if there's existing game data
+    if(G.log.length > 0){
+      showConfirm({
+        title:'Replace current game?',
+        message:'Load this game file? Your current scorecard will be replaced.',
+        confirmLabel:'Load',
+        cancelLabel:'Cancel',
+        tone:'warn'
+      }).then(function(ok){
+        if(ok) _applyImportedPayload(payload);
+      });
+      return;
+    }
+    _applyImportedPayload(payload);
   };
   reader.readAsText(file);
+}
+
+function _applyImportedPayload(payload){
+  // Save current game before importing
+  var activeId = gmGetActiveId();
+  if(activeId && G.log.length > 0){
+    gmSaveToSlot(activeId);
+  }
+
+  // Assign a new slot for the imported game
+  var newId = gmGenId();
+  gmSetActiveId(newId);
+
+  // Load the game state
+  G = migrateGame(payload.G);
+
+  // Restore outState
+  if(payload.outState){
+    Object.assign(outState, payload.outState);
+    if(outState.sacType === undefined) outState.sacType = null;
+  } else {
+    resetOutState();
+  }
+
+  // Restore hitWithErr
+  hitWithErr = !!(payload.hitWithErr);
+
+  // Clear undo history (doesn't make sense to carry over from file)
+  HISTORY = [];
+  var undoBtn = document.getElementById('undoBtn');
+  if(undoBtn) undoBtn.disabled = true;
+
+  // Set team dropdowns
+  if(payload.teamAway){
+    document.getElementById('teamAway').value = payload.teamAway;
+  }
+  if(payload.teamHome){
+    document.getElementById('teamHome').value = payload.teamHome;
+  }
+  onTeamChange();
+  renderAll();
+  saveToStorage();
+
+  var awayLabel = payload.teamAway || 'Away';
+  var homeLabel = payload.teamHome || 'Home';
+  addLog('Loaded from file: ' + awayLabel + ' vs ' + homeLabel, 'Game', 't-info');
+  kbFlash('Game loaded', '#185FA5');
+}
+
+// ── Custom confirm / alert modals ──
+// Replaces native alert()/confirm() which steal focus and look jarring on iOS.
+// showConfirm returns Promise<boolean>; showAlert returns Promise<void>.
+// opts: { title, message, confirmLabel, cancelLabel, tone: 'warn'|'danger'|'info' }
+
+function _cfClose(overlay, resolve, value){
+  if(!overlay || !overlay.parentNode) return;
+  document.removeEventListener('keydown', overlay._kbHandler, true);
+  overlay.parentNode.removeChild(overlay);
+  if(resolve) resolve(value);
+}
+
+function _cfBuild(opts, onResolve){
+  var tone = opts.tone || 'warn';
+  var icon = tone === 'danger' ? '⚠' : tone === 'info' ? 'ⓘ' : '?';
+  var title = esc(opts.title || '');
+  var message = esc(opts.message || '').replace(/\n/g, '<br>');
+  var confirmLabel = esc(opts.confirmLabel || 'OK');
+  var cancelLabel = opts.cancelLabel === null ? null : esc(opts.cancelLabel || 'Cancel');
+  var confirmClass = tone === 'danger' ? 'danger' : 'primary';
+
+  var overlay = document.createElement('div');
+  overlay.className = 'cf-overlay';
+
+  var html = '<div class="cf-modal" role="dialog" aria-modal="true">';
+  if(title){
+    html += '<div class="cf-hdr">'
+      + '<div class="cf-icon ' + tone + '">' + icon + '</div>'
+      + '<div class="cf-title">' + title + '</div>'
+      + '</div>';
+  }
+  html += '<div class="cf-body' + (title ? ' with-icon' : '') + '">' + message + '</div>';
+  html += '<div class="cf-btns">';
+  if(cancelLabel !== null){
+    html += '<button type="button" class="cf-btn" data-cf="cancel">' + cancelLabel + '</button>';
+  }
+  html += '<button type="button" class="cf-btn ' + confirmClass + '" data-cf="confirm">' + confirmLabel + '</button>';
+  html += '</div></div>';
+  overlay.innerHTML = html;
+
+  overlay.addEventListener('click', function(e){
+    if(e.target === overlay){
+      // Backdrop click = cancel (or OK if alert-only)
+      _cfClose(overlay, onResolve, cancelLabel === null ? true : false);
+    } else if(e.target.dataset && e.target.dataset.cf){
+      _cfClose(overlay, onResolve, e.target.dataset.cf === 'confirm');
+    }
+  });
+
+  overlay._kbHandler = function(e){
+    if(e.key === 'Escape'){
+      e.preventDefault(); e.stopPropagation();
+      _cfClose(overlay, onResolve, cancelLabel === null ? true : false);
+    } else if(e.key === 'Enter'){
+      e.preventDefault(); e.stopPropagation();
+      _cfClose(overlay, onResolve, true);
+    }
+  };
+  document.addEventListener('keydown', overlay._kbHandler, true);
+
+  document.body.appendChild(overlay);
+
+  // Focus the primary button for keyboard users
+  setTimeout(function(){
+    var btn = overlay.querySelector('[data-cf="confirm"]');
+    if(btn) btn.focus();
+  }, 0);
+
+  return overlay;
+}
+
+function showConfirm(opts){
+  return new Promise(function(resolve){
+    _cfBuild(opts || {}, resolve);
+  });
+}
+
+function showAlert(opts){
+  // opts can be a string for convenience
+  if(typeof opts === 'string') opts = { message: opts };
+  opts = opts || {};
+  opts.cancelLabel = null;
+  opts.confirmLabel = opts.confirmLabel || 'OK';
+  opts.tone = opts.tone || 'info';
+  return new Promise(function(resolve){
+    _cfBuild(opts, function(){ resolve(); });
+  });
 }
 
 // ── Keyboard shortcuts ──
