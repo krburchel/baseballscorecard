@@ -205,10 +205,24 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .btn.ball { border-color:var(--green); color:var(--green); }
 .btn.strike { border-color:var(--red); color:var(--red); }
 .btn.foul { border-color:var(--purple); color:var(--purple); }
+/* Primary count buttons — ball/strike/foul are tapped constantly during a
+   game, so they get a bigger tap target and more visual weight. */
+.btn.big { padding:10px 16px; font-size:15px; font-weight:700; border-width:1.5px; flex:1; min-width:64px; }
+.btn.big:active { transform:scale(.97); }
+.btn.big.ball { background:var(--gl); }
+.btn.big.strike { background:var(--rl); }
+.btn.big.foul { background:var(--pl); }
+@media(prefers-color-scheme: dark){
+  .btn.big.ball { background:rgba(43,196,142,.12); }
+  .btn.big.strike { background:rgba(240,96,96,.12); }
+  .btn.big.foul { background:rgba(123,115,224,.12); }
+}
 
 /* inning ctrl */
 .inn-ctrl { display:flex; align-items:center; gap:8px; }
-.inn-num { font-size:24px; font-weight:600; }
+.inn-num { font-size:24px; font-weight:600; cursor:pointer; user-select:none; border-radius:4px; padding:0 4px; transition:background .1s; }
+.inn-num:hover { background:var(--header-bg); }
+.inn-num:active { background:var(--bl); }
 .half-pill { font-size:11px; padding:2px 8px; border-radius:20px; font-weight:600; }
 .half-top { background:var(--bl); color:var(--blue); }
 .half-bot { background:var(--al); color:var(--amber); }
@@ -363,7 +377,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .p-dot { width:8px; height:8px; border-radius:50%; background:var(--blue); flex-shrink:0; }
 .p-dot.hidden { background:transparent; }
 .p-name { flex:1; font-size:13px; background:transparent; border:none; color:var(--text); font-family:inherit; }
-.pc { font-size:13px; font-weight:600; min-width:28px; text-align:right; }
+.pc { font-size:13px; font-weight:600; min-width:28px; text-align:right; transition:color .15s; }
+/* Pitch count milestones — subtle warning/over-limit coloring */
+.pc.warn { color:var(--amber); }
+.pc.over { color:var(--red); }
 .padj { display:flex; gap:3px; }
 .pb { width:22px; height:22px; border:1px solid var(--border); border-radius:4px; background:transparent; font-size:14px; cursor:pointer; display:flex; align-items:center; justify-content:center; color:var(--muted); line-height:1; }
 .pb:hover { background:var(--header-bg); }
@@ -663,10 +680,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .atbat-pitcher { font-size:12px; font-weight:600; color:var(--text); white-space:nowrap; }
 .atbat-pc { font-size:11px; color:var(--muted); }
 .atbat-ondeck { font-size:11px; color:var(--muted); flex-shrink:0; }
+.atbat-inhole { font-size:11px; color:var(--muted); flex-shrink:0; opacity:.75; }
 @media(max-width:480px){
   .atbat-bar { padding:6px 10px; gap:6px; }
   .atbat-name { font-size:13px; }
   .atbat-sep { display:none; }
+  .atbat-inhole { display:none; }
 }
 </style>
 </head>
@@ -692,6 +711,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     </div>
     <div class="hdr-btns">
       <button class="today-btn" id="todayBtn" onclick="showTodaysGames()">📅 Today</button>
+      <button class="reset-btn" id="refreshLineupsBtn" onclick="refreshLineups()" title="Re-fetch today's lineups (updates empty slots only)">🔄</button>
       <button class="reset-btn" id="undoBtn" onclick="undoAction()" disabled>↩ Undo</button>
       <button class="reset-btn" onclick="resetGame()">Reset</button>
       <button class="reset-btn" id="kbHelpBtn" onclick="toggleKBHelp()" title="Keyboard shortcuts (?)">⌨</button>
@@ -725,7 +745,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       <div class="label">Inning</div>
       <div class="inn-ctrl">
         <button class="arr" onclick="changeInning(-1)">&#8249;</button>
-        <span class="inn-num" id="innNum">1</span>
+        <span class="inn-num" id="innNum" onclick="scrollToCurrentInning()" title="Tap to jump to current inning in the score strip">1</span>
         <button class="arr" onclick="changeInning(1)">&#8250;</button>
         <span class="half-pill" id="halfPill">Top</span>
       </div>
@@ -765,9 +785,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         <div class="foul-note" id="foulNote"></div>
       </div>
       <div class="btns">
-        <button class="btn ball" onclick="addBall()">Ball</button>
-        <button class="btn strike" onclick="addStrike()">Strike</button>
-        <button class="btn foul" onclick="addFoul()">Foul</button>
+        <button class="btn big ball" onclick="addBall()">Ball</button>
+        <button class="btn big strike" onclick="addStrike()">Strike</button>
+        <button class="btn big foul" onclick="addFoul()">Foul</button>
         <button class="btn" onclick="clearCount()">Clear</button>
         <button class="btn abs-btn" onclick="toggleABSPicker()">ABS</button>
       </div>
@@ -794,13 +814,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       </div>
       <div class="runner-labels" id="runnerLabels"></div>
       <div style="border-top:1px solid var(--border);margin-top:8px;padding-top:8px">
-        <div class="label" style="margin-bottom:5px">Stolen bases / wild pitch / passed ball / balk</div>
+        <div class="label" style="margin-bottom:5px">Stolen bases / wild pitch / passed ball / balk / defensive error</div>
         <div class="btns" id="brBtns">
           <button class="btn" style="border-color:#185FA5;color:#185FA5" onclick="startBRAction('sb')">SB</button>
           <button class="btn" style="border-color:#BA7517;color:#BA7517" onclick="startBRAction('cs')">CS</button>
           <button class="btn" style="border-color:#993C1D;color:#993C1D" onclick="startBRAction('wp')">WP</button>
           <button class="btn" style="border-color:#993C1D;color:#993C1D" onclick="startBRAction('pb')">PB</button>
           <button class="btn" style="border-color:#534AB7;color:#534AB7" onclick="recordBalk()">BLK</button>
+          <button class="btn" style="border-color:#E24B4A;color:#E24B4A" onclick="startDefError()" title="Charge an error to a fielder (not a batter-reaches-on-error)">E</button>
         </div>
         <div id="brPicker" style="display:none"></div>
       </div>
@@ -1211,9 +1232,11 @@ function renderAtBatBar(){
   var pTeamName = team(fSide);
   var pLogo = TEAM_LOGOS[pTeamName] || '';
 
-  // On-deck batter
+  // On-deck (next batter) and in-the-hole (batter after on-deck)
   var onDeckIdx = (bIdx + 1) % 9;
   var onDeckName = curName(bSide, onDeckIdx);
+  var inHoleIdx = (bIdx + 2) % 9;
+  var inHoleName = curName(bSide, inHoleIdx);
 
   // Count display
   var countHtml = '<span class="atbat-count-b">' + G.balls + '</span>'
@@ -1247,8 +1270,9 @@ function renderAtBatBar(){
   html += '<span class="atbat-pc">' + pitcher.pitches + 'P</span>';
   html += '</div>';
 
-  // On deck
+  // On deck + in the hole
   html += '<span class="atbat-ondeck">On deck: ' + esc(shortName(onDeckName)) + '</span>';
+  html += '<span class="atbat-inhole">In hole: ' + esc(shortName(inHoleName)) + '</span>';
 
   el.innerHTML = html;
 }
@@ -1281,9 +1305,32 @@ function activePIdx(side){
 }
 function addPitch(side){
   var idx = activePIdx(side);
-  G.pitchers[side][idx].pitches++;
+  var pp = G.pitchers[side][idx];
+  var prev = pp.pitches;
+  pp.pitches++;
+  var n = pp.pitches;
   var el = document.getElementById(side + 'pc' + idx);
-  if(el) el.textContent = G.pitchers[side][idx].pitches;
+  if(el){
+    el.textContent = n;
+    el.className = 'pc' + pitchCountClass(n);
+  }
+  // Cross-threshold heads-up toast. Only fires on the upward crossing edge so
+  // undo + redo or manual adjustment doesn't nag. Uses the pitcher's name if
+  // set, otherwise a generic label.
+  if(prev < 75 && n >= 75 && n < 100){
+    kbFlash((pp.name || 'Pitcher') + ' — 75 pitches', '#BA7517');
+  } else if(prev < 100 && n >= 100){
+    kbFlash((pp.name || 'Pitcher') + ' — 100 pitches', '#E24B4A');
+  }
+}
+
+// Returns a CSS class suffix (empty, ' warn', or ' over') based on pitch count.
+// Starters typically land ~85-100 pitches; crossing 75 is a useful heads-up
+// and 100+ is the standard "watch out" threshold.
+function pitchCountClass(n){
+  if(n >= 100) return ' over';
+  if(n >= 75)  return ' warn';
+  return '';
 }
 function addPitcherStat(side, stat){
   var idx = activePIdx(side);
@@ -1765,6 +1812,135 @@ function recordIBB(){
   if(!checkWalkoff()){
     nextBatter(side);
   }
+}
+
+// ── Defensive error (charge E to a fielder, optional runner advance) ──
+// This is distinct from the batter-reaches-on-error flow in the Out panel.
+// Use this when an error happens on a play that isn't an at-bat outcome —
+// e.g. throwing error on a pickoff, dropped relay, botched rundown, etc.
+// Flow: pick fielder (1-9) → (if runners) pick advance action → execute.
+
+var _deState = null; // { fielder: number } while mid-flow
+
+function startDefError(){
+  _deState = {};
+  var picker = document.getElementById('brPicker');
+  if(!picker) return;
+
+  var html = '<div class="br-picker-inner">';
+  html += '<div class="br-picker-title">Which fielder made the error?</div>';
+  html += '<div class="br-picker-btns">';
+  FIELDERS.forEach(function(f){
+    html += '<button class="br-pick" onclick="defErrorFielderPicked(' + f.num + ')">'
+      + f.num + ' · ' + f.pos + '</button>';
+  });
+  html += '<button class="br-pick-cancel" onclick="cancelDefError()">Cancel</button>';
+  html += '</div></div>';
+  picker.innerHTML = html;
+  picker.style.display = '';
+}
+
+function cancelDefError(){
+  _deState = null;
+  cancelBRPicker();
+}
+
+function defErrorFielderPicked(fielderNum){
+  _deState = _deState || {};
+  _deState.fielder = fielderNum;
+
+  // Find runners on base
+  var runners = [];
+  for(var i = 0; i < 3; i++){
+    if(baseOcc(i)) runners.push(i);
+  }
+
+  // No runners → record the error with no advance and finish
+  if(runners.length === 0){
+    defErrorExecute('none', -1);
+    return;
+  }
+
+  // Runners on base → ask what the advance looks like
+  var picker = document.getElementById('brPicker');
+  if(!picker){ defErrorExecute('none', -1); return; }
+
+  var fInfo = FIELDERS.filter(function(f){ return f.num === fielderNum; })[0];
+  var fLabel = fielderNum + ' (' + fInfo.pos + ')';
+
+  var html = '<div class="br-picker-inner">';
+  html += '<div class="br-picker-title">E' + fLabel + ' — how do runners move?</div>';
+  html += '<div class="br-picker-btns">';
+  html += '<button class="br-pick" onclick="defErrorExecute(\'none\',-1)">No advance</button>';
+  html += '<button class="br-pick" style="border-color:var(--blue);color:var(--blue)" onclick="defErrorExecute(\'all\',-1)">All advance 1</button>';
+  // Only offer "pick runner" when there are multiple runners; otherwise it collapses to "single advance"
+  if(runners.length === 1){
+    var bi = runners[0];
+    var labels = ['1B','2B','3B'];
+    html += '<button class="br-pick" onclick="defErrorExecute(\'one\',' + bi + ')">Advance ' + labels[bi] + '</button>';
+  } else {
+    runners.forEach(function(bi){
+      var rName = typeof G.bases[bi] === 'string' && G.bases[bi] !== '?' ? shortName(G.bases[bi]) : '';
+      var labels = ['1B','2B','3B'];
+      var label = labels[bi] + (rName ? ' · ' + esc(rName) : '');
+      html += '<button class="br-pick" onclick="defErrorExecute(\'one\',' + bi + ')">Advance ' + label + '</button>';
+    });
+  }
+  html += '<button class="br-pick-cancel" onclick="cancelDefError()">Cancel</button>';
+  html += '</div></div>';
+  picker.innerHTML = html;
+  picker.style.display = '';
+}
+
+// advType: 'none' (no advance) | 'all' (all runners +1) | 'one' (single runner +1, scoring from 3B)
+// baseIdx: only relevant for 'one' (which base the advancing runner starts on)
+function defErrorExecute(advType, baseIdx){
+  if(!_deState || !_deState.fielder){ cancelDefError(); return; }
+  var fielderNum = _deState.fielder;
+  cancelBRPicker();
+  saveState();
+
+  var fSide = fielding();
+  var bSide = batting();
+  var fInfo = FIELDERS.filter(function(f){ return f.num === fielderNum; })[0];
+  var fLabel = 'E' + fielderNum;
+
+  // Charge the error to the fielding team
+  G.rhe[fSide][2]++;
+
+  // Apply the advance action, logging each piece
+  if(advType === 'all'){
+    var runs = advanceRunners(bSide, 1);
+    addLog(fLabel + ' — ' + fInfo.pos + ' error, all runners advance', fLabel, 't-err');
+    if(runs > 0){
+      addLog(runs + ' run' + (runs > 1 ? 's' : '') + ' score on error', 'Run', 't-run');
+    }
+  } else if(advType === 'one' && baseIdx >= 0 && baseOcc(baseIdx)){
+    var labels = ['1B','2B','3B'];
+    var runner = G.bases[baseIdx];
+    if(baseIdx === 2){
+      // Scores from 3B
+      creditRun(bSide, runner);
+      G.rhe[bSide][0]++;
+      G.scores[bSide][G.inning - 1] = (G.scores[bSide][G.inning - 1] || 0) + 1;
+      addPitcherStat(fSide, 'r');
+      G.bases[2] = null;
+      addLog(fLabel + ' — ' + fInfo.pos + ' error, ' + (runner || 'runner') + ' scores from 3B', fLabel, 't-err');
+    } else {
+      G.bases[baseIdx + 1] = G.bases[baseIdx];
+      G.bases[baseIdx] = null;
+      addLog(fLabel + ' — ' + fInfo.pos + ' error, ' + (runner || 'runner') + ' advances (' + labels[baseIdx] + ' → ' + labels[baseIdx+1] + ')', fLabel, 't-err');
+    }
+  } else {
+    // No advance — just the bookkeeping error
+    addLog(fLabel + ' — ' + fInfo.pos + ' error (no advance)', fLabel, 't-err');
+  }
+
+  _deState = null;
+  renderBases();
+  renderScore();
+  renderLineup(bSide);
+  saveToStorage();
 }
 
 function recordBalk(){
@@ -2443,6 +2619,132 @@ function findPlayerPos(side, name){
   if(!roster || !roster.length) return null;
   var match = roster.filter(function(r){ return r.name === name; })[0];
   return match ? match.pos : null;
+}
+
+// Returns true if this lineup slot has any recorded in-game activity that we
+// should never overwrite (any hit/out/AB credited, or any sub brought in).
+// Used by refreshLineups to preserve slots that already have stats attached.
+function slotHasActivity(sl){
+  if(!sl) return false;
+  if(sl.subs && sl.subs.length > 0) return true;
+  if(sl.hits){
+    for(var k in sl.hits){
+      if(sl.hits[k] > 0) return true;
+    }
+  }
+  return false;
+}
+
+// Re-fetch today's schedule and diff-apply any lineup changes to the current
+// teams. Skips slots that already have in-game activity, so mid-game scratches
+// handled via the Sub button are never clobbered. Useful for pre-first-pitch
+// scratches when the lineup card changes between when you pulled it and when
+// the game actually starts.
+function refreshLineups(){
+  var awayName = document.getElementById('teamAway').value;
+  var homeName = document.getElementById('teamHome').value;
+  if(!awayName || awayName === '— Select Team —' || !homeName || homeName === '— Select Team —'){
+    kbFlash('Select both teams first', '#BA7517');
+    return;
+  }
+
+  var btn = document.getElementById('refreshLineupsBtn');
+  if(btn){ btn.disabled = true; btn.textContent = '⏳'; }
+
+  var today = new Date();
+  var dateStr = today.getFullYear() + '-'
+    + String(today.getMonth() + 1).padStart(2, '0') + '-'
+    + String(today.getDate()).padStart(2, '0');
+
+  fetch('https://statsapi.mlb.com/api/v1/schedule?date=' + dateStr + '&sportId=1&hydrate=lineups,probablePitcher')
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      var games = (data.dates && data.dates[0] && data.dates[0].games) || [];
+      // Match by team names — order-sensitive so double-headers with flipped home/away resolve correctly
+      var game = games.filter(function(g){
+        var aN = TEAM_NAMES[g.teams.away.team.id] || g.teams.away.team.name;
+        var hN = TEAM_NAMES[g.teams.home.team.id] || g.teams.home.team.name;
+        return aN === awayName && hN === homeName;
+      })[0];
+
+      if(!game){
+        kbFlash('Game not in today\'s schedule', '#BA7517');
+        return;
+      }
+
+      var changes = applyLineupDiff(game, 'away') + applyLineupDiff(game, 'home');
+      var pChanges = applyPitcherDiff(game, 'away') + applyPitcherDiff(game, 'home');
+
+      if(changes === 0 && pChanges === 0){
+        kbFlash('No lineup changes', '#185FA5');
+      } else {
+        var parts = [];
+        if(changes > 0) parts.push(changes + ' lineup change' + (changes > 1 ? 's' : ''));
+        if(pChanges > 0) parts.push(pChanges + ' pitcher change' + (pChanges > 1 ? 's' : ''));
+        kbFlash(parts.join(', ') + ' applied', '#1D9E75');
+        addLog('Refreshed lineups from MLB (' + parts.join(', ') + ')', 'Lineup', 't-info');
+        saveToStorage();
+      }
+    })
+    .catch(function(err){
+      kbFlash('Refresh failed — check connection', '#E24B4A');
+    })
+    .then(function(){
+      if(btn){ btn.disabled = false; btn.textContent = '🔄'; }
+    });
+}
+
+// Apply lineup diff for one side. Returns number of slots changed.
+function applyLineupDiff(game, side){
+  var lineups = game.lineups;
+  if(!lineups) return 0;
+  var batters = side === 'away' ? lineups.awayPlayers : lineups.homePlayers;
+  if(!batters || !batters.length) return 0;
+
+  var changed = 0;
+  for(var i = 0; i < Math.min(batters.length, 9); i++){
+    var player = batters[i];
+    if(!player) continue;
+    var apiName = player.fullName || '';
+    if(!apiName) continue;
+
+    var sl = G.lineup[side][i];
+    // Preserve any slot that already has in-game activity
+    if(slotHasActivity(sl)) continue;
+    // Skip if name already matches
+    if(sl.name === apiName) continue;
+
+    sl.name = apiName;
+    var pos = findPlayerPos(side, apiName);
+    if(pos) sl.pos = pos;
+    changed++;
+  }
+  if(changed > 0) renderLineup(side);
+  // Stash for position backfill once roster loads (matches populateLineupFromGame behavior)
+  if(changed > 0){
+    window._pendingLineupGame = window._pendingLineupGame || {};
+    window._pendingLineupGame[side] = game;
+  }
+  return changed;
+}
+
+// Apply probable-pitcher diff. Only updates pitchers with 0 pitches thrown so
+// far, so a pitcher who's already been in the game isn't renamed out from
+// under you. Returns number of pitcher slots changed.
+function applyPitcherDiff(game, side){
+  var teamData = side === 'away' ? game.teams.away : game.teams.home;
+  if(!teamData || !teamData.probablePitcher) return 0;
+  var apiName = teamData.probablePitcher.fullName;
+  if(!apiName) return 0;
+
+  // Only touch pitcher slot 0 (the probable starter) if they haven't thrown.
+  var p = G.pitchers[side][0];
+  if(!p || p.pitches > 0) return 0;
+  if(p.name === apiName) return 0;
+
+  p.name = apiName;
+  renderPitchers(side);
+  return 1;
 }
 
 // Called after roster finishes loading to backfill positions
@@ -3233,6 +3535,23 @@ function setInning(n){
   renderInn();
 }
 
+// Scroll the score strip so the currently-active inning is visible.
+// Handy in extras (10+ innings push the active cell off-screen) and after
+// scrolling back to review an earlier inning.
+function scrollToCurrentInning(){
+  var strip = document.querySelector('.score-strip');
+  if(!strip) return;
+  var activeCell = strip.querySelector('th.active-inn');
+  if(!activeCell) return;
+  try {
+    activeCell.scrollIntoView({ behavior:'smooth', inline:'center', block:'nearest' });
+  } catch(e){
+    // Older browsers without smooth-scroll option fall back to instant.
+    activeCell.scrollIntoView();
+  }
+  haptic(5);
+}
+
 function changeInning(d){
   saveState();
   G.inning = Math.max(1, Math.min(G.totalInnings, G.inning + d));
@@ -3778,7 +4097,7 @@ function renderPitchers(side){
     } else {
       html+='<input class="p-name" value="'+esc(p.name)+'" placeholder="Pitcher '+(i+1)+'" data-action="set-p-name" data-side="'+side+'" data-pidx="'+i+'" />';
     }
-    html+='<span class="pc" id="'+side+'pc'+i+'">'+p.pitches+'</span>';
+    html+='<span class="pc'+pitchCountClass(p.pitches)+'" id="'+side+'pc'+i+'">'+p.pitches+'</span>';
     var stats='<div class="p-stats">';
     if(p.k>0)  stats+='<span class="pstat pstat-k">'+p.k+'K</span>';
     if(p.bb>0) stats+='<span class="pstat pstat-bb">'+p.bb+'BB</span>';
@@ -3793,7 +4112,12 @@ function renderPitchers(side){
 }
 function adj(side, i, d){
   G.pitchers[side][i].pitches = Math.max(0, G.pitchers[side][i].pitches + d);
-  document.getElementById(side + 'pc' + i).textContent = G.pitchers[side][i].pitches;
+  var n = G.pitchers[side][i].pitches;
+  var el = document.getElementById(side + 'pc' + i);
+  if(el){
+    el.textContent = n;
+    el.className = 'pc' + pitchCountClass(n);
+  }
 }
 
 function addPitcher(side){
