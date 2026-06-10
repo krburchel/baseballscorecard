@@ -697,7 +697,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 <body>
 <div class="app">
 
-  <div class="kb-flash" id="kbFlash"></div>
+  <div class="kb-flash" id="kbFlash" role="status" aria-live="polite"></div>
 
 <div class="print-header" id="printHeader">⚾ Official Game Scorecard</div>
 <div class="print-sub" id="printSub"></div>
@@ -716,12 +716,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     </div>
     <div class="hdr-btns">
       <button class="today-btn" id="todayBtn" onclick="showTodaysGames()">📅 Today</button>
-      <button class="reset-btn" id="refreshLineupsBtn" onclick="refreshLineups()" title="Re-fetch today's lineups (updates empty slots only)">🔄</button>
+      <button class="reset-btn" id="refreshLineupsBtn" onclick="refreshLineups()" title="Re-fetch today's lineups (updates empty slots only)" aria-label="Refresh lineups">🔄</button>
       <button class="reset-btn" id="undoBtn" onclick="undoAction()" disabled>↩ Undo</button>
       <button class="reset-btn" onclick="resetGame()">Reset</button>
-      <button class="reset-btn" id="kbHelpBtn" onclick="toggleKBHelp()" title="Keyboard shortcuts (?)">⌨</button>
+      <button class="reset-btn" id="kbHelpBtn" onclick="toggleKBHelp()" title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">⌨</button>
       <div class="save-menu-wrap">
-        <button class="pdf-btn" onclick="toggleSaveMenu()" id="saveMenuBtn">💾 Save ▾</button>
+        <button class="pdf-btn" onclick="toggleSaveMenu()" id="saveMenuBtn" aria-haspopup="true">💾 Save ▾</button>
         <div class="save-menu" id="saveMenu">
           <button class="save-menu-item" onclick="showGameManager(); closeSaveMenu()">📋 My Games</button>
           <button class="save-menu-item" onclick="exportPDF(); closeSaveMenu()">🖨 Export PDF</button>
@@ -749,9 +749,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <div class="card">
       <div class="label">Inning</div>
       <div class="inn-ctrl">
-        <button class="arr" onclick="changeInning(-1)">&#8249;</button>
+        <button class="arr" onclick="changeInning(-1)" aria-label="Previous inning">&#8249;</button>
         <span class="inn-num" id="innNum" onclick="scrollToCurrentInning()" title="Tap to jump to current inning in the score strip">1</span>
-        <button class="arr" onclick="changeInning(1)">&#8250;</button>
+        <button class="arr" onclick="changeInning(1)" aria-label="Next inning">&#8250;</button>
         <span class="half-pill" id="halfPill">Top</span>
       </div>
       <button class="half-tog" onclick="toggleHalf()">Switch half</button>
@@ -1108,7 +1108,7 @@ function migrateGame(g){
 
   return g;
 }
-function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;'); }
 function posOpts(sel){ return POSITIONS.map(function(p){ return '<option value="'+p+'"'+(p===sel?' selected':'')+'>'+p+'</option>'; }).join(''); }
 
 // Returns the hits object for whoever is currently active in a lineup slot
@@ -2389,10 +2389,11 @@ function showTodaysGames(){
   overlay.id = 'gamesOverlay';
   overlay.onclick = function(e){ if(e.target === overlay) closeTodaysGames(); };
   overlay.innerHTML = '<div class="games-modal">'
-    + '<div class="games-modal-hdr"><h3>📅 Today\'s Games</h3><button class="games-modal-close" onclick="closeTodaysGames()">&times;</button></div>'
+    + '<div class="games-modal-hdr"><h3>📅 Today\'s Games</h3><button class="games-modal-close" onclick="closeTodaysGames()" aria-label="Close">&times;</button></div>'
     + '<div class="games-modal-body"><div class="games-loading">Loading today\'s schedule…</div></div>'
     + '</div>';
   document.body.appendChild(overlay);
+  focusModalClose(overlay, '.games-modal-close');
 
   var today = new Date();
   var dateStr = today.getFullYear() + '-'
@@ -2957,7 +2958,7 @@ function showInningPopover(innIdx, evt){
   var awayName = team('away');
   var homeName = team('home');
 
-  var html = '<button class="inn-popover-close" onclick="hideInningPopover()">&times;</button>';
+  var html = '<button class="inn-popover-close" onclick="hideInningPopover()" aria-label="Close">&times;</button>';
   html += '<div class="inn-popover-title">Inning ' + innNum + '</div>';
 
   if(topBatters.length > 0){
@@ -4704,6 +4705,13 @@ function showGameManager(){
 
   renderGameManagerContent(overlay);
   document.body.appendChild(overlay);
+  focusModalClose(overlay, '.gm-close');
+}
+
+// Move keyboard/screen-reader focus into a freshly opened modal
+function focusModalClose(overlay, sel){
+  var btn = overlay.querySelector(sel);
+  if(btn) btn.focus();
 }
 
 function closeGameManager(){
@@ -4719,7 +4727,7 @@ function renderGameManagerContent(overlay){
   var activeId = gmGetActiveId();
 
   var html = '<div class="gm-modal">';
-  html += '<div class="gm-hdr"><h3>📋 My Games</h3><button class="gm-close" onclick="closeGameManager()">&times;</button></div>';
+  html += '<div class="gm-hdr"><h3>📋 My Games</h3><button class="gm-close" onclick="closeGameManager()" aria-label="Close">&times;</button></div>';
 
   // Action buttons
   html += '<div class="gm-actions">';
@@ -5082,8 +5090,6 @@ function exportJSON(){
   };
 
   var json = JSON.stringify(payload, null, 2);
-  var blob = new Blob([json], {type: 'application/json'});
-  var url = URL.createObjectURL(blob);
 
   // Build descriptive filename
   var parts = [];
@@ -5098,6 +5104,30 @@ function exportJSON(){
   }
   var filename = (parts.length ? parts.join('_vs_') : 'scorecard') + '_' + datePart + '.json';
 
+  // On touch devices, use the native share sheet (AirDrop, Files, …) —
+  // anchor downloads are unreliable in installed home-screen apps.
+  // Desktop keeps the plain file download.
+  if('ontouchend' in document && navigator.canShare){
+    try {
+      var file = new File([json], filename, {type: 'application/json'});
+      if(navigator.canShare({files: [file]})){
+        navigator.share({files: [file]})
+          .then(function(){ kbFlash('Game saved', '#1D9E75'); })
+          .catch(function(err){
+            // AbortError = user dismissed the sheet; anything else, fall back
+            if(!err || err.name !== 'AbortError') _downloadJSON(json, filename);
+          });
+        return;
+      }
+    } catch(e){}
+  }
+  _downloadJSON(json, filename);
+  kbFlash('Game saved', '#1D9E75');
+}
+
+function _downloadJSON(json, filename){
+  var blob = new Blob([json], {type: 'application/json'});
+  var url = URL.createObjectURL(blob);
   var a = document.createElement('a');
   a.href = url;
   a.download = filename;
@@ -5105,8 +5135,6 @@ function exportJSON(){
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
-
-  kbFlash('Game saved', '#1D9E75');
 }
 
 // ── JSON import ──
@@ -5316,9 +5344,15 @@ function isEditing(){
 document.addEventListener('keydown', function(e){
   // Don't intercept when typing in inputs/selects
   if(isEditing()) return;
-  // Don't intercept if a modal is open
-  if(document.getElementById('gamesOverlay')) return;
-  if(document.getElementById('kbOverlay')) return;
+  // Don't intercept if a modal is open (except Escape to close it)
+  if(document.getElementById('gamesOverlay')){
+    if(e.key === 'Escape') closeTodaysGames();
+    return;
+  }
+  if(document.getElementById('kbOverlay')){
+    if(e.key === 'Escape') closeKBHelp();
+    return;
+  }
   if(document.getElementById('gmOverlay')){
     if(e.key === 'Escape') closeGameManager();
     return;
@@ -5377,7 +5411,7 @@ function toggleKBHelp(){
   overlay.onclick = function(e){ if(e.target === overlay) closeKBHelp(); };
 
   var html = '<div class="kb-modal">'
-    + '<div class="kb-modal-hdr"><h3>⌨ Keyboard Shortcuts</h3><button class="kb-modal-close" onclick="closeKBHelp()">&times;</button></div>'
+    + '<div class="kb-modal-hdr"><h3>⌨ Keyboard Shortcuts</h3><button class="kb-modal-close" onclick="closeKBHelp()" aria-label="Close">&times;</button></div>'
     + '<div class="kb-modal-body">';
 
   html += '<div class="kb-section"><div class="kb-section-title">Pitch Count</div>'
@@ -5416,6 +5450,7 @@ function toggleKBHelp(){
   html += '</div></div>';
   overlay.innerHTML = html;
   document.body.appendChild(overlay);
+  focusModalClose(overlay, '.kb-modal-close');
 }
 
 function closeKBHelp(){
