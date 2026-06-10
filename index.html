@@ -7,6 +7,11 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="Scorecard" />
 <meta name="mobile-web-app-capable" content="yes" />
+<meta name="description" content="Digital baseball scorecard for tracking plays, lineups, and stats in real time." />
+<meta name="theme-color" content="#1D9E75" />
+<link rel="manifest" href="manifest.json" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png" />
 <title>Baseball Scorecard</title>
 <style>
 /* ── Reset & base ── */
@@ -2783,7 +2788,7 @@ function fetchRoster(side, teamName) {
   ROSTER_LOADING[side] = true;
   ROSTERS[side] = [];
   renderLineup(side); // show loading state
-  fetch('https://statsapi.mlb.com/api/v1/teams/'+teamId+'/roster?rosterType=40Man&season=2026')
+  fetch('https://statsapi.mlb.com/api/v1/teams/'+teamId+'/roster?rosterType=40Man&season='+new Date().getFullYear())
     .then(function(r){ return r.json(); })
     .then(function(data){
       ROSTERS[side] = (data.roster||[]).map(function(p){
@@ -5509,6 +5514,11 @@ function init(){
   restoreNotes();
 }
 init();
+
+// Offline support: cache the app so it opens with no signal (e.g. at the ballpark).
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js').catch(function(){});
+}
 </script>
 </body>
 </html>
