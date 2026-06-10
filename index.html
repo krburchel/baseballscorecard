@@ -4487,7 +4487,18 @@ function _doSave(){
       teamHome: document.getElementById('teamHome').value
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-  } catch(e){}
+  } catch(e){ warnSaveFailed(); }
+  syncWakeLock();
+}
+
+// Storage writes fail silently (quota, private mode) — surface it so a
+// 3-hour game doesn't vanish on reload. Throttled: saves fire constantly.
+var _lastSaveWarn = 0;
+function warnSaveFailed(){
+  var now = Date.now();
+  if(now - _lastSaveWarn < 5000) return;
+  _lastSaveWarn = now;
+  kbFlash('Save failed — storage full?', '#E24B4A');
 }
 
 function loadFromStorage(){
@@ -4579,11 +4590,12 @@ function gmCurrentSummary(){
 
 // Build the full payload to store for a game slot
 function gmBuildPayload(){
+  // No undo history in saved slots: it's ~30 full-game snapshots per save
+  // and only meaningful for the active game (autosave keeps it).
   return {
     G: G,
     outState: outState,
     hitWithErr: hitWithErr,
-    history: HISTORY,
     teamAway: document.getElementById('teamAway').value,
     teamHome: document.getElementById('teamHome').value
   };
@@ -4593,7 +4605,7 @@ function gmBuildPayload(){
 function gmSaveToSlot(id){
   try {
     localStorage.setItem(GM_GAME_PREFIX + id, JSON.stringify(gmBuildPayload()));
-  } catch(e){}
+  } catch(e){ warnSaveFailed(); }
   // Update the index entry
   var index = gmGetIndex();
   var summary = gmCurrentSummary();
@@ -4903,7 +4915,7 @@ _doSave = function(){
   if(activeId){
     try {
       localStorage.setItem(GM_GAME_PREFIX + activeId, JSON.stringify(gmBuildPayload()));
-    } catch(e){}
+    } catch(e){ warnSaveFailed(); }
   }
 };
 
@@ -5490,6 +5502,32 @@ function setupFielderDelegation(){
   });
 }
 
+// ── Screen wake lock: keep the screen on while a game is being scored ──
+// (iOS Safari 16.4+; silently does nothing where unsupported)
+var _wakeLock = null;
+function acquireWakeLock(){
+  if(!('wakeLock' in navigator)) return;
+  if(document.visibilityState !== 'visible') return;
+  if(_wakeLock) return;
+  navigator.wakeLock.request('screen').then(function(lock){
+    _wakeLock = lock;
+    lock.addEventListener('release', function(){ _wakeLock = null; });
+  }).catch(function(){ _wakeLock = null; });
+}
+function releaseWakeLock(){
+  if(_wakeLock){ _wakeLock.release().catch(function(){}); _wakeLock = null; }
+}
+// Hold the lock while the game is live, drop it once it's final.
+// Called from _doSave, which runs after every state change.
+function syncWakeLock(){
+  if(isGameOver()) releaseWakeLock();
+  else acquireWakeLock();
+}
+// The OS releases the lock whenever the app is backgrounded; re-acquire on return.
+document.addEventListener('visibilitychange', function(){
+  if(document.visibilityState === 'visible') syncWakeLock();
+});
+
 function init(){
   populateTeamDropdowns();
   // Set up event delegation (once — containers are stable, only innerHTML changes)
@@ -5512,6 +5550,7 @@ function init(){
   renderAll();
   autoFillDate();
   restoreNotes();
+  syncWakeLock();
 }
 init();
 
