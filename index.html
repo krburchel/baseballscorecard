@@ -60,17 +60,19 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 
 /* ── Layout ── */
 .app { max-width: 960px; margin: 0 auto; padding: 14px; }
-.header { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; gap:10px; flex-wrap:wrap; }
-.team-names { display:flex; gap:8px; flex:1; min-width:200px; align-items:center; }
-.team-picker { display:flex; align-items:center; gap:7px; flex:1; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:4px 8px; }
+.header { display:flex; flex-direction:column; align-items:stretch; margin-bottom:12px; gap:8px; }
+.team-names { display:flex; gap:8px; align-items:center; min-width:0; }
+.team-picker { display:flex; align-items:center; gap:7px; flex:1; min-width:0; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:4px 8px; }
 .team-logo { width:32px; height:32px; object-fit:contain; flex-shrink:0; display:none; }
 .team-logo.visible { display:block; }
 .team-input { flex:1; padding:4px 2px; border:none; border-radius:0; font-size:13px; font-weight:600; background:transparent; color:var(--text); cursor:pointer; outline:none; min-width:0; }
 .vs { font-size:12px; color:var(--muted); align-self:center; }
-.hdr-btns { display:flex; gap:8px; }
+.hdr-btns { display:flex; gap:8px; align-items:center; }
+.hdr-spacer { flex:1; }
 .reset-btn { padding:6px 14px; border:1px solid var(--border); border-radius:var(--radius); background:transparent; color:var(--muted); font-size:13px; cursor:pointer; }
-.extra-inn-btn { font-size:12px; padding:3px 12px; border:1px solid var(--blue); border-radius:6px; background:transparent; color:var(--blue); cursor:pointer; font-weight:600; }
-.extra-inn-btn:hover { background:var(--bl); }
+.add-inn-cell { width:28px; padding:0 2px!important; }
+.add-inn { width:22px; height:22px; border:1px dashed var(--border); border-radius:5px; background:transparent; color:var(--muted); font-size:14px; line-height:1; cursor:pointer; }
+.add-inn:hover { border-color:var(--blue); color:var(--blue); background:var(--bl); }
 #undoBtn:not(:disabled) { border-color:var(--amber); color:var(--amber); }
 #undoBtn:not(:disabled):hover { background:var(--al); }
 .pdf-btn { padding:6px 16px; border:none; border-radius:var(--radius); background:var(--blue); color:#fff; font-size:13px; font-weight:600; cursor:pointer; }
@@ -81,11 +83,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 
 /* save/load dropdown menu */
 .save-menu-wrap { position:relative; }
-.save-menu { display:none; position:absolute; top:100%; right:0; margin-top:4px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); box-shadow:0 4px 16px rgba(0,0,0,.12); min-width:180px; z-index:50; overflow:hidden; }
+.save-menu { display:none; position:absolute; top:100%; right:0; margin-top:4px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); box-shadow:0 4px 16px rgba(0,0,0,.12); min-width:220px; z-index:50; overflow:hidden; }
 .save-menu.open { display:block; }
 .save-menu-item { display:block; width:100%; padding:9px 14px; font-size:13px; border:none; background:transparent; color:var(--text); cursor:pointer; text-align:left; font-family:inherit; }
 .save-menu-item:hover { background:var(--header-bg); }
 .save-menu-item + .save-menu-item { border-top:1px solid var(--border); }
+.save-menu-sep { height:4px; background:var(--header-bg); border-top:1px solid var(--border); }
+.save-menu-sep + .save-menu-item { border-top:1px solid var(--border); }
+.save-menu-danger { color:var(--red); }
+.save-menu-key { float:right; font-size:11px; color:var(--muted); border:1px solid var(--border); border-radius:4px; padding:0 5px; }
 .save-menu-hint { display:block; font-size:11px; color:var(--muted); margin-top:2px; }
 .save-menu-hint:empty { display:none; }
 .backup-nudge { display:flex; align-items:center; gap:8px; flex-wrap:wrap; background:var(--al); border:1px solid var(--ac); border-radius:var(--radius); padding:8px 10px 8px 12px; margin-bottom:10px; font-size:13px; color:var(--text); }
@@ -616,7 +622,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   .hdr-btns, .half-tog, .btns, .action-row, .add-p, .padj,
   .set-btn, .sub-btn, .sub-form,
   .pdf-btn, .reset-btn, .out-card, #kbHelpBtn,
-  .kb-flash, .extra-inn-btn, .runner-labels, .rp-overlay,
+  .kb-flash, .add-inn-cell, .runner-labels, .rp-overlay,
   .abs-picker, .abs-tally, .abs-btn, .atbat-bar, .backup-nudge { display:none!important; }
   .cf-overlay { display:none!important; }
   /* score strip */
@@ -793,12 +799,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     </div>
     <div class="hdr-btns">
       <button class="today-btn" id="todayBtn" onclick="showTodaysGames()">📅 Today</button>
-      <button class="reset-btn" id="refreshLineupsBtn" onclick="refreshLineups()" title="Re-fetch today's lineups (updates empty slots only)" aria-label="Refresh lineups">🔄</button>
+      <span class="hdr-spacer"></span>
       <button class="reset-btn" id="undoBtn" onclick="undoAction()" disabled>↩ Undo</button>
-      <button class="reset-btn" onclick="resetGame()">Reset</button>
-      <button class="reset-btn" id="kbHelpBtn" onclick="toggleKBHelp()" title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">⌨</button>
       <div class="save-menu-wrap">
-        <button class="pdf-btn" onclick="toggleSaveMenu()" id="saveMenuBtn" aria-haspopup="true">💾 Save ▾</button>
+        <button class="pdf-btn" onclick="toggleSaveMenu()" id="saveMenuBtn" aria-haspopup="true">☰ Menu</button>
         <div class="save-menu" id="saveMenu">
           <button class="save-menu-item" onclick="showGameManager(); closeSaveMenu()">📋 My Games</button>
           <button class="save-menu-item" onclick="exportPDF(); closeSaveMenu()">🖨 Export PDF</button>
@@ -806,6 +810,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
           <button class="save-menu-item" onclick="triggerImport(); closeSaveMenu()">📂 Load game file</button>
           <button class="save-menu-item" onclick="closeSaveMenu(); backupAllGames()">🗄 Back up all games<span class="save-menu-hint" id="backupHint"></span></button>
           <button class="save-menu-item" onclick="triggerImport(); closeSaveMenu()">♻️ Restore from backup</button>
+          <div class="save-menu-sep" role="separator"></div>
+          <button class="save-menu-item" id="refreshLineupsBtn" onclick="closeSaveMenu(); refreshLineups()" title="Re-fetch today's lineups (updates empty slots only)">🔄 Refresh lineups</button>
+          <button class="save-menu-item" id="kbHelpBtn" onclick="closeSaveMenu(); toggleKBHelp()">⌨ Keyboard shortcuts <span class="save-menu-key">?</span></button>
+          <div class="save-menu-sep" role="separator"></div>
+          <button class="save-menu-item save-menu-danger" onclick="closeSaveMenu(); resetGame()">Reset game…</button>
         </div>
       </div>
       <input type="file" id="jsonFileInput" accept=".json,.scorecard" style="display:none" onchange="importJSON(event)" />
@@ -815,9 +824,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   <!-- Score strip -->
   <div class="score-strip">
     <table class="score-table" id="scoreTable"></table>
-    <div style="text-align:center;padding:4px 0 6px;">
-      <button class="extra-inn-btn" onclick="addExtraInning()">+ Extra inning</button>
-    </div>
   </div>
 
   <!-- Current at-bat bar -->
@@ -2939,7 +2945,7 @@ function refreshLineups(){
   }
 
   var btn = document.getElementById('refreshLineupsBtn');
-  if(btn){ btn.disabled = true; btn.textContent = '⏳'; }
+  if(btn){ btn.disabled = true; btn.textContent = '⏳ Refreshing lineups…'; }
 
   var today = new Date();
   var dateStr = today.getFullYear() + '-'
@@ -2980,7 +2986,7 @@ function refreshLineups(){
       kbFlash('Refresh failed — check connection', '#E24B4A');
     })
     .then(function(){
-      if(btn){ btn.disabled = false; btn.textContent = '🔄'; }
+      if(btn){ btn.disabled = false; btn.textContent = '🔄 Refresh lineups'; }
     });
 }
 
@@ -4167,6 +4173,7 @@ function renderScore(){
     var dotHint = hasData ? '<span style="display:block;width:4px;height:4px;border-radius:50%;background:var(--blue);margin:2px auto 0;"></span>' : '';
     hdr += '<th id="h' + i + '" class="inning-cell' + (G.inning === i ? ' active-inn' : '') + '" onclick="setInning(' + i + ');showInningPopover(' + (i - 1) + ',event)">' + i + dotHint + '</th>';
   }
+  hdr += '<th class="add-inn-cell"><button class="add-inn" onclick="addExtraInning()" title="Add an extra inning" aria-label="Add an extra inning">+</button></th>';
   hdr += '<th>R</th><th>H</th><th>E</th></tr></thead>';
   // Body rows
   var body = '<tbody>';
@@ -4179,6 +4186,7 @@ function renderScore(){
       var a = (G.inning - 1) === i ? 'active-inn' : '';
       c += '<td class="inning-cell ' + a + '" onclick="editScore(\'' + side + '\',' + i + ',event)">' + (v === null ? '' : v) + '</td>';
     }
+    c += '<td class="add-inn-cell"></td>';
     c += '<td class="total-cell">' + G.rhe[side][0] + '</td>';
     c += '<td class="total-cell">' + G.rhe[side][1] + '</td>';
     c += '<td class="total-cell">' + G.rhe[side][2] + '</td>';
