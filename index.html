@@ -376,7 +376,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .hbrbi { background:var(--al); color:var(--amber); }
 
 /* pitchers */
-.prow { display:flex; align-items:center; gap:8px; padding:7px 12px; border-bottom:1px solid var(--border); cursor:pointer; }
+.prow { display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding:7px 12px; border-bottom:1px solid var(--border); cursor:pointer; }
+.p-line:empty { display:none; }
+.p-line { order:1; flex-basis:100%; font-size:11px; color:var(--muted); padding-left:16px; margin-top:-3px; font-variant-numeric:tabular-nums; }
 .prow:last-child { border-bottom:none; }
 .prow.active-p { background:var(--bl); }
 .p-dot { width:8px; height:8px; border-radius:50%; background:var(--blue); flex-shrink:0; }
@@ -395,11 +397,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .ph { padding:8px 12px; background:var(--header-bg); display:flex; justify-content:space-between; align-items:center; font-size:13px; font-weight:600; border-bottom:1px solid var(--border); }
 .ph-hint { font-size:11px; color:var(--muted); font-style:italic; }
 .p-name-sel { flex:1; font-size:13px; padding:3px 4px; border:1px solid var(--border); border-radius:6px; background:var(--surface); color:var(--text); font-family:inherit; min-width:60px; }
-.p-stats { display:flex; gap:4px; flex-shrink:0; }
-.pstat { font-size:10px; padding:2px 5px; border-radius:3px; font-weight:600; }
-.pstat-k  { background:var(--rl); color:var(--red); }
-.pstat-bb { background:var(--gl); color:var(--teal); }
-.pstat-r  { background:var(--bl); color:var(--blue); }
 
 /* log */
 .log-panel { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
@@ -543,6 +540,42 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .cf-btn.danger { background:var(--red); border-color:var(--red); color:#fff; }
 .cf-btn.danger:hover { filter:brightness(1.08); background:var(--red); }
 
+/* ── Scorecard grid ── */
+.scorecard-wrap { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin-bottom:14px; }
+.sc-tabs { display:flex; gap:4px; padding:6px 8px; background:var(--header-bg); border-bottom:1px solid var(--border); }
+.sc-tab { font:inherit; font-size:12px; font-weight:600; padding:4px 10px; border-radius:6px; border:1px solid var(--border); background:var(--surface); color:var(--muted); cursor:pointer; }
+.sc-tab.sel { background:var(--blue); border-color:var(--blue); color:#fff; }
+.sc-scroll { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+.sc-table { display:none; border-collapse:collapse; font-variant-numeric:tabular-nums; }
+.sc-table.sc-active { display:table; }
+.sc-print-hdr { display:none; }
+.sc-table th, .sc-table td { border:1px solid var(--border); text-align:center; font-size:11px; }
+.sc-table thead th { background:var(--header-bg); color:var(--muted); font-weight:600; padding:4px 2px; }
+.sc-table tr > :first-child { border-left:none; }
+.sc-name { position:sticky; left:0; z-index:1; background:var(--surface); text-align:left!important; padding:3px 8px; min-width:120px; max-width:150px; }
+.sc-table thead .sc-name { background:var(--header-bg); }
+.sc-pname { font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sc-ppos { font-size:10px; color:var(--muted); margin-left:4px; font-weight:500; }
+.sc-psub { font-size:10px; color:var(--teal); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sc-cell { width:52px; min-width:52px; height:52px; padding:2px; vertical-align:top; }
+.sc-cell.sc-cur { background:var(--bl); }
+.sc-pa { position:relative; width:46px; height:46px; margin:0 auto; }
+.sc-pa + .sc-pa { border-top:1px dashed var(--border); }
+.sc-dia { display:block; width:100%; height:100%; }
+.sc-dia-bg { fill:none; stroke:var(--border); stroke-width:1; }
+.sc-scored .sc-dia-bg { fill:var(--gl); stroke:var(--green); }
+.sc-path { stroke:var(--green); stroke-width:3; stroke-linecap:round; }
+.sc-res { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:var(--text); }
+.sc-res.sc-hit { color:var(--teal); }
+.sc-res.sc-k { color:var(--red); }
+.sc-res.sc-walk { color:var(--blue); }
+.sc-res.sc-err { color:var(--amber); }
+.sc-outn { position:absolute; top:0; right:0; width:14px; height:14px; border:1px solid var(--red); border-radius:50%; color:var(--red); font-size:9px; font-weight:700; line-height:12px; text-align:center; background:var(--surface); }
+.sc-tot { min-width:30px; padding:3px 4px; font-weight:600; }
+.sc-tot-first { border-left:2px solid var(--border)!important; }
+.sc-table tfoot td { background:var(--header-bg); padding:3px 2px; font-weight:600; color:var(--text); }
+.sc-table tfoot .sc-name { background:var(--header-bg); font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; }
+
 /* ═══════════════════════════════════════════════
    PRINT / PDF STYLES
 ═══════════════════════════════════════════════ */
@@ -640,6 +673,19 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   .print-boxscore td:first-child { text-align:left; font-weight:600; padding-left:6px; }
   .print-boxscore .bs-team-hdr { background:#f0efe8!important; -webkit-print-color-adjust:exact; print-color-adjust:exact; font-weight:700; text-align:left!important; padding:3px 6px; font-size:10px; }
   .print-boxscore .bs-totals td { font-weight:700; border-top:2px solid #333; }
+
+  /* ── Scorecard grid on print: both teams, no tabs ── */
+  .scorecard-wrap { border:none; border-radius:0; overflow:visible; }
+  .sc-tabs { display:none!important; }
+  .sc-scroll { overflow:visible; }
+  .sc-table { display:table!important; width:100%; margin-bottom:8px; page-break-inside:avoid; }
+  .sc-print-hdr { display:table-caption; caption-side:top; text-align:left; font-weight:700; font-size:11px; padding:2px 0; }
+  .sc-table th, .sc-table td { border-color:#999; }
+  .sc-table thead th, .sc-table tfoot td, .sc-name { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  .sc-cell { width:auto; min-width:0; }
+  .sc-pa { width:38px; height:38px; }
+  .sc-cell.sc-cur { background:none!important; }
+  .sc-scored .sc-dia-bg, .sc-path, .sc-outn { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
 
   /* print header */
   .print-header { display:block!important; }
@@ -996,6 +1042,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     </div>
   </div>
 
+  <!-- Scorecard grid -->
+  <div class="sec-title">Scorecard</div>
+  <div class="scorecard-wrap" id="scorecard"></div>
+
   <!-- Pitchers -->
   <div class="sec-title">Pitchers</div>
   <div class="lineup-grid">
@@ -1029,7 +1079,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 var POSITIONS = ['—','P','C','1B','2B','3B','SS','LF','CF','RF','DH','PH','PR','IF','OF'];
 function mkHits(){ return {s:0,d:0,t:0,hr:0,kl:0,ks:0,fo:0,go:0,sb:0,cs:0,err:0,hbp:0,bb:0,sf:0,sac:0,fc:0,ibb:0,wp:0,r:0,rbi:0}; }
 function mkSlot(){ return {name:'',pos:'—',hits:mkHits(),subs:[],pending:false}; }
-function mkPitcher(){ return {name:'',pitches:0,k:0,bb:0,r:0,active:true}; }
+function mkPitcher(){ return {name:'',pitches:0,balls:0,outs:0,h:0,r:0,er:0,bb:0,k:0,hr:0,active:true}; }
 function mkNotes(){ return {date:'',firstPitch:'',venue:'',attendance:'',weather:'',temp:'',windSpeed:'',windDir:'',umpHP:'',ump1B:'',ump2B:'',ump3B:'',gameType:'',text:''}; }
 function mkGame(){
   return {
@@ -1043,6 +1093,7 @@ function mkGame(){
     pitchers:{home:[mkPitcher()], away:[mkPitcher()]},
     log:[],
     batterLog:{home:{}, away:{}},
+    pas:[],
     notes:mkNotes(),
     abs:{home:{challenged:0,overturned:0}, away:{challenged:0,overturned:0}}
   };
@@ -1097,6 +1148,42 @@ function migrateGame(g){
     });
   }
 
+  // v4 → v5: fuller pitching lines. Runs from older saves are assumed earned.
+  var defaultPitcherKeys = Object.keys(mkPitcher());
+  if(g.pitchers){
+    ['home','away'].forEach(function(side){
+      (g.pitchers[side] || []).forEach(function(p){
+        if(!p) return;
+        if(p.er === undefined) p.er = p.r || 0;
+        defaultPitcherKeys.forEach(function(k){
+          if(p[k] === undefined) p[k] = 0;
+        });
+      });
+    });
+  }
+
+  // v4 → v5: per-PA records for the scorecard grid. Rebuild what we can from
+  // batterLog (result + inning only — base paths and out numbers weren't kept).
+  if(!g.pas){
+    g.pas = [];
+    ['away','home'].forEach(function(side){
+      var log = (g.batterLog && g.batterLog[side]) || {};
+      Object.keys(log).forEach(function(key){
+        var half = key[0] === 'T' ? 'top' : 'bot';
+        var inn = parseInt(key.slice(1), 10);
+        (log[key] || []).forEach(function(entry){
+          var cut = entry.lastIndexOf(' — ');
+          if(cut < 0) return;
+          var slot = _slotForName(g, side, entry.slice(0, cut));
+          if(slot < 0) return;
+          var res = entry.slice(cut + 3);
+          g.pas.push({side:side, slot:slot, inn:inn, half:half, res:res,
+            reached:paReachFor(res), out:0, pIdx:0, unearned:res[0] === 'E'});
+        });
+      });
+    });
+  }
+
   // Very early saves stored bases as booleans; now we store runner names
   // (string) or null. Normalize either way.
   if(g.bases){
@@ -1107,6 +1194,19 @@ function migrateGame(g){
   }
 
   return g;
+}
+// Lineup slot for a player name (starter or any sub) in game g, or -1.
+function _slotForName(g, side, name){
+  var lu = g.lineup && g.lineup[side];
+  if(!lu || !name) return -1;
+  for(var i = 0; i < lu.length; i++){
+    if(!lu[i]) continue;
+    if((lu[i].name || 'Batter ' + (i + 1)) === name) return i;
+    for(var s = 0; s < (lu[i].subs || []).length; s++){
+      if((lu[i].subs[s].name || 'Sub') === name) return i;
+    }
+  }
+  return -1;
 }
 function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;'); }
 function posOpts(sel){ return POSITIONS.map(function(p){ return '<option value="'+p+'"'+(p===sel?' selected':'')+'>'+p+'</option>'; }).join(''); }
@@ -1139,11 +1239,78 @@ function findRunnerSlot(side, runnerName){
   return -1;
 }
 
-// Credit a run scored to the runner who crossed home plate.
+// Credit a run scored to the runner who crossed home plate, and charge it to
+// the pitcher who put that runner on base (inherited runners stay with the
+// pitcher who allowed them).
 // runnerName: the name string from the base, or null/unknown.
-function creditRun(side, runnerName){
+// unearned: true when the run scored because of an error or passed ball.
+function creditRun(side, runnerName, unearned){
   var slot = findRunnerSlot(side, runnerName);
   if(slot >= 0) activeHits(side, slot).r++;
+  var pa = paForRunner(side, runnerName);
+  if(pa) pa.reached = 4;
+  chargeRun(pa, unearned);
+}
+
+// Charge one run to the responsible pitcher. pa is the scoring runner's plate
+// appearance (null when unknown → the current pitcher takes it).
+function chargeRun(pa, unearned){
+  var fSide = fielding();
+  var staff = G.pitchers[fSide];
+  var pIdx = pa && pa.pIdx < staff.length ? pa.pIdx : activePIdx(fSide);
+  var p = staff[pIdx];
+  p.r++;
+  if(!unearned && !(pa && pa.unearned)) p.er++;
+  renderPitchers(fSide);
+}
+
+// ── Plate appearances (scorecard grid) ──
+// One record per PA in G.pas:
+//   {side, slot, inn, half, res, reached, out, pIdx, unearned, outOnBases}
+// reached: 0 = retired at the plate, 1-3 = furthest base, 4 = scored.
+// out: which out of the half-inning (1-3) this player made, 0 if none.
+var PA_OUT_RE = /^(K|ꓘ|F\d|G\d|SF|SAC|Out)/;
+function paIsOut(res){ return PA_OUT_RE.test(res); }
+function paIsHit(res){ return /^(1B|2B|3B|HR)/.test(res); }
+function paReachFor(res){
+  if(paIsOut(res)) return 0;
+  if(/^HR/.test(res)) return 4;
+  if(/^3B/.test(res)) return 3;
+  if(/^2B/.test(res)) return 2;
+  return 1; // 1B, BB, IBB, HBP, E#, FC
+}
+
+// The plate appearance a runner is currently on base from (this half-inning).
+function paForRunner(side, runnerName){
+  var slot = findRunnerSlot(side, runnerName);
+  if(slot < 0) return null;
+  for(var i = G.pas.length - 1; i >= 0; i--){
+    var pa = G.pas[i];
+    if(pa.inn !== G.inning || pa.half !== G.half) break;
+    if(pa.side === side && pa.slot === slot){
+      return (pa.reached >= 1 && pa.reached <= 3 && !pa.out) ? pa : null;
+    }
+  }
+  return null;
+}
+
+// Mark a baserunner as retired. Call BEFORE the matching addOut() so the out
+// number is right and the half-inning hasn't flipped yet.
+function paRunnerOut(side, runnerName, outNum){
+  var pa = paForRunner(side, runnerName);
+  if(!pa) return;
+  pa.out = Math.min(3, outNum || G.outs + 1);
+  pa.outOnBases = true;
+}
+
+// Bases carry runner names; push each runner's PA out to the base they're on.
+// Called from renderBases, which runs after every base change.
+function syncPaBases(){
+  var side = batting();
+  for(var i = 0; i < 3; i++){
+    var pa = paForRunner(side, G.bases[i]);
+    if(pa && pa.reached < i + 1) pa.reached = i + 1;
+  }
 }
 
 // Credit RBI(s) to the current batter.
@@ -1179,7 +1346,8 @@ function undoAction(){
   if(!HISTORY.length) return;
   closeRunnerPicker(); // dismiss picker if open mid-hit
   var snapshot = JSON.parse(HISTORY.pop());
-  G = snapshot.G;
+  // Snapshots restored from storage may predate the current schema
+  G = migrateGame(snapshot.G);
   // Restore outState if it was saved, otherwise reset it
   if(snapshot.outState){
     Object.assign(outState, snapshot.outState);
@@ -1319,6 +1487,7 @@ function addPitch(side){
     el.textContent = n;
     el.className = 'pc' + pitchCountClass(n);
   }
+  schedulePitchLines();
   // Cross-threshold heads-up toast. Only fires on the upward crossing edge so
   // undo + redo or manual adjustment doesn't nag. Uses the pitcher's name if
   // set, otherwise a generic label.
@@ -1336,6 +1505,29 @@ function pitchCountClass(n){
   if(n >= 100) return ' over';
   if(n >= 75)  return ' warn';
   return '';
+}
+// Track balls per pitcher; strikes = pitches − balls (balls in play count as strikes).
+function addPitcherBall(side, d){
+  var p = G.pitchers[side][activePIdx(side)];
+  p.balls = Math.max(0, (p.balls || 0) + d);
+  schedulePitchLines();
+}
+
+// Refresh just the stat lines (not the whole panel) — this runs on every pitch.
+var _pitchLinesScheduled = false;
+function schedulePitchLines(){
+  if(_pitchLinesScheduled) return;
+  _pitchLinesScheduled = true;
+  var schedule = window.requestAnimationFrame || function(cb){ return setTimeout(cb, 0); };
+  schedule(function(){
+    _pitchLinesScheduled = false;
+    ['home','away'].forEach(function(side){
+      G.pitchers[side].forEach(function(p, i){
+        var el = document.getElementById(side + 'pl' + i);
+        if(el) el.innerHTML = pitchingLine(p);
+      });
+    });
+  });
 }
 function addPitcherStat(side, stat){
   var idx = activePIdx(side);
@@ -1661,7 +1853,6 @@ function executeBRAction(type, baseIdx){
       creditRun(side, runnerName);
       G.rhe[side][0]++;
       G.scores[side][G.inning - 1] = (G.scores[side][G.inning - 1] || 0) + 1;
-      addPitcherStat(fielding(), 'r');
       G.bases[2] = null;
       addLog((typeof runnerName === 'string' && runnerName !== '?' ? runnerName : nm) + ' — steals home!', 'SB', 't-sb');
       renderScore();
@@ -1685,6 +1876,7 @@ function executeBRAction(type, baseIdx){
       activeHits(side, idx).cs++;
     }
     var csFrom = labels[baseIdx];
+    paRunnerOut(side, csRunner);
     G.bases[baseIdx] = null;
     addLog((typeof csRunner === 'string' && csRunner !== '?' ? csRunner : nm) + ' — caught stealing (' + csFrom + ')', 'CS', 't-cs');
     addOut();
@@ -1695,6 +1887,7 @@ function executeBRAction(type, baseIdx){
     // Wild pitch: advance runner(s). Counts as a pitch.
     activeHits(side, idx).wp++;
     addPitch(fielding());
+    addPitcherBall(fielding(), 1);
     if(baseIdx === -1){
       // No runners, just the event
       addLog('Wild pitch — charged to ' + team(fielding()) + ' pitcher', 'WP', 't-wp');
@@ -1713,7 +1906,6 @@ function executeBRAction(type, baseIdx){
         creditRun(side, wpRunner);
         G.rhe[side][0]++;
         G.scores[side][G.inning - 1] = (G.scores[side][G.inning - 1] || 0) + 1;
-        addPitcherStat(fielding(), 'r');
         G.bases[2] = null;
         addLog('Wild pitch — runner scores from 3B', 'WP', 't-wp');
         renderScore();
@@ -1733,7 +1925,7 @@ function executeBRAction(type, baseIdx){
     if(baseIdx === -1){
       addLog('Passed ball — E charged to ' + team(fSide) + ' C', 'PB', 't-pb');
     } else if(baseIdx === -2){
-      var pbRuns = advanceRunners(side, 1);
+      var pbRuns = advanceRunners(side, 1, true);
       addLog('Passed ball — all runners advance', 'PB', 't-pb');
       if(pbRuns > 0){
         addLog(pbRuns + ' run' + (pbRuns > 1 ? 's' : '') + ' score on passed ball', 'Run', 't-run');
@@ -1741,10 +1933,9 @@ function executeBRAction(type, baseIdx){
     } else {
       var pbRunner = G.bases[baseIdx] || '?';
       if(baseIdx === 2){
-        creditRun(side, pbRunner);
+        creditRun(side, pbRunner, true);
         G.rhe[side][0]++;
         G.scores[side][G.inning - 1] = (G.scores[side][G.inning - 1] || 0) + 1;
-        addPitcherStat(fielding(), 'r');
         G.bases[2] = null;
         addLog('Passed ball — runner scores from 3B', 'PB', 't-pb');
       } else {
@@ -1767,6 +1958,7 @@ function recordHBP(){
   var nm = curName(side, idx);
   activeHits(side, idx).hbp++;
   addPitch(fielding());
+  addPitcherBall(fielding(), 1);
   addLog(nm + ' — hit by pitch', 'HBP', 't-hbp');
   logBatter(side, idx, 'HBP');
 
@@ -1915,7 +2107,7 @@ function defErrorExecute(advType, baseIdx){
 
   // Apply the advance action, logging each piece
   if(advType === 'all'){
-    var runs = advanceRunners(bSide, 1);
+    var runs = advanceRunners(bSide, 1, true);
     addLog(fLabel + ' — ' + fInfo.pos + ' error, all runners advance', fLabel, 't-err');
     if(runs > 0){
       addLog(runs + ' run' + (runs > 1 ? 's' : '') + ' score on error', 'Run', 't-run');
@@ -1925,10 +2117,9 @@ function defErrorExecute(advType, baseIdx){
     var runner = G.bases[baseIdx];
     if(baseIdx === 2){
       // Scores from 3B
-      creditRun(bSide, runner);
+      creditRun(bSide, runner, true);
       G.rhe[bSide][0]++;
       G.scores[bSide][G.inning - 1] = (G.scores[bSide][G.inning - 1] || 0) + 1;
-      addPitcherStat(fSide, 'r');
       G.bases[2] = null;
       addLog(fLabel + ' — ' + fInfo.pos + ' error, ' + (runner || 'runner') + ' scores from 3B', fLabel, 't-err');
     } else {
@@ -2219,7 +2410,6 @@ function _scoreRunnerFrom3B(side, label){
   G.bases[2] = null;
   G.rhe[side][0]++;
   G.scores[side][G.inning - 1] = (G.scores[side][G.inning - 1] || 0) + 1;
-  addPitcherStat(fielding(), 'r');
   addLog((runner || 'Runner') + ' ' + label, 'Run', 't-run');
   return 1;
 }
@@ -2250,8 +2440,17 @@ function _applyError(ctx){
   var tag = 'E' + outState.fielder;
   addLog(ctx.nm + ' reached on ' + tag + ' — ' + ctx.fInfo.pos + ' error', tag, 't-err');
   logBatter(ctx.side, ctx.idx, tag);
+  addPitch(fielding());
+  // Batter takes 1B; forced runners move up. Runs that score are unearned
+  // and no RBI is credited on an error.
+  var runs = forceAdvance(ctx.side, ctx.nm, true);
+  if(runs > 0) addLog(runs + ' run' + (runs > 1 ? 's' : '') + ' score on error', 'Run', 't-run');
+  G.balls = 0; G.strikes = 0; G.fouls = 0;
+  renderCount();
+  renderBases();
+  renderScore();
   renderLineup(ctx.side);
-  nextBatter(ctx.side);
+  if(!checkWalkoff()) nextBatter(ctx.side);
 }
 
 // Fielder's choice — batter to 1B, lead runner retired.
@@ -2265,14 +2464,18 @@ function _applyFieldersChoice(ctx){
   logBatter(ctx.side, ctx.idx, fcTag);
   addPitch(fielding());
 
-  // Out recorded before we move the batter to 1B
+  // Retire the lead (most advanced) runner, then place batter on 1B.
+  // The runner's PA is marked before addOut so the out number is right.
+  var leadIdx = -1;
+  for(var bi = 2; bi >= 0; bi--){
+    if(baseOcc(bi)){ leadIdx = bi; break; }
+  }
+  if(leadIdx >= 0) paRunnerOut(ctx.side, G.bases[leadIdx]);
+
   var walkoff = checkWalkoff();
   var innOver = addOut();
 
-  // Retire the lead (most advanced) runner, then place batter on 1B
-  for(var bi = 2; bi >= 0; bi--){
-    if(baseOcc(bi)){ G.bases[bi] = null; break; }
-  }
+  if(leadIdx >= 0) G.bases[leadIdx] = null;
   G.bases[0] = ctx.nm;
 
   renderBases();
@@ -2287,6 +2490,7 @@ function _applyFieldersChoice(ctx){
 // Flyout / groundout (including sac fly, sac bunt, RBI groundout, DP, TP).
 function _applyRecordedOut(ctx){
   var dpSuffix = outState.multiOut === 'dp' ? ' (DP)' : outState.multiOut === 'tp' ? ' (TP)' : '';
+  var outsOnPlay = outState.multiOut === 'dp' ? 2 : outState.multiOut === 'tp' ? 3 : 1;
   var sacPrefix = ctx.isSacFly ? 'SF — ' : ctx.isSacBunt ? 'SAC — ' : '';
 
   if(ctx.isSacFly) ctx.h.sf++;
@@ -2298,7 +2502,7 @@ function _applyRecordedOut(ctx){
     var flyTag = ctx.isSacFly ? 'SF' + outState.fielder : 'F' + outState.fielder;
     var flyCls = ctx.isSacFly ? 't-sf' : 't-fo';
     addLog(ctx.nm + ' — ' + sacPrefix + 'flyout ' + outState.fielder + ' (' + ctx.fInfo.pos + ')' + dpSuffix, flyTag, flyCls);
-    logBatter(ctx.side, ctx.idx, flyTag);
+    logBatter(ctx.side, ctx.idx, flyTag, outsOnPlay);
   } else {
     if(!ctx.isSacFly && !ctx.isSacBunt) ctx.h.go++;
     var goTag, goCls;
@@ -2312,7 +2516,7 @@ function _applyRecordedOut(ctx){
       ? outState.fielder + '-' + outState.throwTo + ' (' + ctx.fInfo.pos + ' to ' + ctx.ttInfo.pos + ')'
       : outState.fielder + ' (' + ctx.fInfo.pos + ')';
     addLog(ctx.nm + ' — ' + sacPrefix + 'groundout ' + goDesc + dpSuffix, goTag, goCls);
-    logBatter(ctx.side, ctx.idx, goTag);
+    logBatter(ctx.side, ctx.idx, goTag, outsOnPlay);
   }
 
   // ── Runners advance / score, based on out type
@@ -2334,6 +2538,19 @@ function _applyRecordedOut(ctx){
     if(_scoreRunnerFrom3B(ctx.side, 'scores from 3B (RBI)')){
       renderBases(); renderScore();
     }
+  }
+
+  // DP/TP: the other out(s) are runners. Retire them starting from 1B (the
+  // force), before the batter, so a 6-4-3 reads runner = out 1, batter = out 2.
+  if(outsOnPlay > 1){
+    var retired = 0;
+    for(var bi = 0; bi < 3 && retired < outsOnPlay - 1; bi++){
+      if(!baseOcc(bi)) continue;
+      retired++;
+      paRunnerOut(ctx.side, G.bases[bi], G.outs + retired);
+      G.bases[bi] = null;
+    }
+    renderBases();
   }
 
   _finishAtBat(ctx.side);
@@ -2871,6 +3088,7 @@ function confirmSub(side,i,subType){
 }
 
 function renderLineup(side){
+  scheduleScorecardRender();
   var panel=document.getElementById(side+'Lineup');
   var ab=side==='home'?G.homeBatter:G.awayBatter;
   var hasRoster = ROSTERS[side].length > 0;
@@ -2936,11 +3154,173 @@ function setAtBat(side, i){
 // ── Per-inning batter tracking ──
 // Records which batters had plate appearances in each half-inning.
 // Key format: "T1", "B1", "T2", "B2", etc.
-function logBatter(side, batterIdx, result){
+// outsOnPlay: total outs the play makes (DP=2, TP=3); the batter is credited
+// with the last of them, as on a standard 6-4-3.
+function logBatter(side, batterIdx, result, outsOnPlay){
   var key = (G.half === 'top' ? 'T' : 'B') + G.inning;
   if(!G.batterLog[side][key]) G.batterLog[side][key] = [];
   var nm = curName(side, batterIdx);
   G.batterLog[side][key].push(nm + ' — ' + result);
+
+  var isOut = paIsOut(result);
+  G.pas.push({
+    side: side, slot: batterIdx, inn: G.inning, half: G.half, res: result,
+    reached: paReachFor(result),
+    out: isOut ? Math.min(3, G.outs + (outsOnPlay || 1)) : 0,
+    pIdx: activePIdx(side === 'home' ? 'away' : 'home'),
+    unearned: result[0] === 'E'
+  });
+  scheduleScorecardRender();
+}
+
+// ── Scorecard grid ──
+// Batters down, innings across; one diamond per plate appearance.
+// Follows the batting team each half-inning; tapping a tab overrides until the
+// next half starts.
+var scView = null, _scHalfSeen = null;
+var _scRenderScheduled = false;
+function scheduleScorecardRender(){
+  if(_scRenderScheduled) return;
+  _scRenderScheduled = true;
+  var schedule = window.requestAnimationFrame || function(cb){ return setTimeout(cb, 0); };
+  schedule(function(){
+    _scRenderScheduled = false;
+    renderScorecard();
+  });
+}
+
+function setScorecardView(side){
+  scView = side;
+  _scHalfSeen = G.inning + G.half; // stick with this tab until the half changes
+  renderScorecard();
+  haptic(5);
+}
+
+// Display notation for a stored result: "G6-3" → "6-3", "G3" → "3U", "FC6-4" → "FC"
+function paLabel(res){
+  var m = /^G(\d)-(\d)$/.exec(res);
+  if(m) return m[1] + '-' + m[2];
+  m = /^G(\d)$/.exec(res);
+  if(m) return m[1] + 'U';
+  if(/^FC/.test(res)) return 'FC';
+  if(res === '1B+E' || res === '2B+E' || res === '3B+E' || res === 'HR+E') return res.slice(0, 2);
+  return res;
+}
+function paLabelClass(res){
+  if(paIsHit(res)) return ' sc-hit';
+  if(res === 'K' || res === 'ꓘ') return ' sc-k';
+  if(res === 'BB' || res === 'IBB' || res === 'HBP') return ' sc-walk';
+  if(res[0] === 'E') return ' sc-err';
+  return '';
+}
+
+// Corners of the diamond: home → 1B → 2B → 3B → home
+var SC_PTS = [[20,37],[37,20],[20,3],[3,20],[20,37]];
+function paCellHtml(pa){
+  var svg = '<svg class="sc-dia" viewBox="0 0 40 40" aria-hidden="true">'
+    + '<polygon class="sc-dia-bg" points="20,37 37,20 20,3 3,20"/>';
+  for(var k = 0; k < pa.reached && k < 4; k++){
+    svg += '<line class="sc-path" x1="' + SC_PTS[k][0] + '" y1="' + SC_PTS[k][1]
+      + '" x2="' + SC_PTS[k+1][0] + '" y2="' + SC_PTS[k+1][1] + '"/>';
+  }
+  svg += '</svg>';
+  var label = paLabel(pa.res);
+  var desc = label + (pa.reached === 4 ? ', scored' : pa.reached > 0 ? ', reached ' + ['','1st','2nd','3rd'][pa.reached] : '')
+    + (pa.out ? ', out ' + pa.out + (pa.outOnBases ? ' on the bases' : '') : '');
+  return '<div class="sc-pa' + (pa.reached === 4 ? ' sc-scored' : '') + '" title="' + esc(desc) + '">'
+    + svg
+    + '<span class="sc-res' + paLabelClass(pa.res) + '">' + esc(label) + '</span>'
+    + (pa.out ? '<span class="sc-outn">' + pa.out + '</span>' : '')
+    + '</div>';
+}
+
+// Same at-bat definition as the printed box score
+function abFor(h){ return h.s + h.d + h.t + h.hr + h.kl + h.ks + h.fo + h.go + h.fc; }
+
+function scorecardTableHtml(side){
+  var n = G.totalInnings;
+  var bySlotInn = {};
+  G.pas.forEach(function(pa){
+    if(pa.side !== side) return;
+    var key = pa.slot + '-' + pa.inn;
+    (bySlotInn[key] = bySlotInn[key] || []).push(pa);
+  });
+  var batSide = batting();
+  var curIdx = abIdx(side);
+
+  var html = '<table class="sc-table' + (side === scView ? ' sc-active' : '') + '">';
+  html += '<caption class="sc-print-hdr">' + esc(team(side)) + '</caption>';
+  html += '<thead><tr><th class="sc-name">' + esc(team(side)) + '</th>';
+  for(var c = 1; c <= n; c++) html += '<th>' + c + '</th>';
+  html += '<th class="sc-tot sc-tot-first">AB</th><th class="sc-tot">R</th><th class="sc-tot">H</th><th class="sc-tot">RBI</th></tr></thead><tbody>';
+
+  for(var i = 0; i < 9; i++){
+    var sl = G.lineup[side][i];
+    html += '<tr><td class="sc-name"><div class="sc-pname">' + esc(sl.name || 'Batter ' + (i + 1))
+      + (sl.pos && sl.pos !== '—' ? '<span class="sc-ppos">' + esc(sl.pos) + '</span>' : '') + '</div>';
+    sl.subs.forEach(function(sub){
+      html += '<div class="sc-psub">↳ ' + esc(sub.name || 'Sub') + ' <span class="sc-ppos">'
+        + esc(sub.subType === 'pr' ? 'PR' : sub.pos) + ' ' + (sub.half === 'top' ? 'T' : 'B') + sub.inning + '</span></div>';
+    });
+    html += '</td>';
+    for(var c = 1; c <= n; c++){
+      var cur = side === batSide && i === curIdx && c === G.inning;
+      html += '<td class="sc-cell' + (cur ? ' sc-cur' : '') + '">';
+      (bySlotInn[i + '-' + c] || []).forEach(function(pa){ html += paCellHtml(pa); });
+      html += '</td>';
+    }
+    var t = {ab:0, r:0, h:0, rbi:0};
+    [sl.hits].concat(sl.subs.map(function(sub){ return sub.hits || mkHits(); })).forEach(function(h){
+      t.ab += abFor(h); t.r += h.r || 0; t.h += h.s + h.d + h.t + h.hr; t.rbi += h.rbi || 0;
+    });
+    html += '<td class="sc-tot sc-tot-first">' + t.ab + '</td><td class="sc-tot">' + t.r + '</td><td class="sc-tot">' + t.h + '</td><td class="sc-tot">' + t.rbi + '</td></tr>';
+  }
+  html += '</tbody>';
+
+  // Per-inning R / H / LOB. LOB only once that half-inning is over.
+  var half = side === 'away' ? 'top' : 'bot';
+  var final = G.log.some(function(l){ return l.tag === 'Final'; });
+  var hits = [], lob = [], hTot = 0, lobTot = 0;
+  for(var c = 1; c <= n; c++){
+    var inHalf = G.pas.filter(function(pa){ return pa.side === side && pa.inn === c; });
+    var h = inHalf.filter(function(pa){ return paIsHit(pa.res); }).length;
+    var done = final || c < G.inning || (c === G.inning && half === 'top' && G.half === 'bot');
+    var l = inHalf.filter(function(pa){ return pa.reached >= 1 && pa.reached <= 3 && !pa.out; }).length;
+    hits.push(inHalf.length ? h : '');
+    lob.push(done && inHalf.length ? l : '');
+    hTot += h;
+    if(done) lobTot += l;
+  }
+  html += '<tfoot>';
+  html += '<tr><td class="sc-name">Runs</td>' + G.scores[side].slice(0, n).map(function(v){ return '<td>' + (v === null ? '' : v) + '</td>'; }).join('')
+    + '<td class="sc-tot sc-tot-first" colspan="4">' + G.rhe[side][0] + '</td></tr>';
+  html += '<tr><td class="sc-name">Hits</td>' + hits.map(function(v){ return '<td>' + v + '</td>'; }).join('')
+    + '<td class="sc-tot sc-tot-first" colspan="4">' + hTot + '</td></tr>';
+  html += '<tr><td class="sc-name">Left on base</td>' + lob.map(function(v){ return '<td>' + v + '</td>'; }).join('')
+    + '<td class="sc-tot sc-tot-first" colspan="4">' + lobTot + '</td></tr>';
+  html += '</tfoot></table>';
+  return html;
+}
+
+function renderScorecard(){
+  _scRenderScheduled = false;
+  var wrap = document.getElementById('scorecard');
+  if(!wrap) return;
+  var halfKey = G.inning + G.half;
+  if(_scHalfSeen !== halfKey || !scView){ _scHalfSeen = halfKey; scView = batting(); }
+
+  var html = '<div class="sc-tabs" role="tablist">';
+  ['away','home'].forEach(function(side){
+    html += '<button class="sc-tab' + (side === scView ? ' sel' : '') + '" role="tab" aria-selected="' + (side === scView)
+      + '" onclick="setScorecardView(\'' + side + '\')">' + esc(team(side)) + '</button>';
+  });
+  html += '</div><div class="sc-scroll">' + scorecardTableHtml('away') + scorecardTableHtml('home') + '</div>';
+
+  // Keep horizontal scroll position across re-renders
+  var oldScroll = wrap.querySelector('.sc-scroll');
+  var left = oldScroll ? oldScroll.scrollLeft : 0;
+  wrap.innerHTML = html;
+  wrap.querySelector('.sc-scroll').scrollLeft = left;
 }
 
 function showInningPopover(innIdx, evt){
@@ -3034,6 +3414,7 @@ function advanceBatterSilent(side){
 function manualOut(){
   saveState();
   var side = batting();
+  logBatter(side, abIdx(side), 'Out');
   var innOver = addOut();
   if(!innOver){
     nextBatter(side);
@@ -3056,7 +3437,8 @@ function toggleHitErr(){
 // advanceRunners: move all runners forward by `bases` positions.
 // Any runner pushed past 3B scores a run. Batter placed on the given base.
 // Returns the number of runs scored by runners (not counting the batter).
-function advanceRunners(side, bases){
+// unearned: true when the advance came on an error / passed ball.
+function advanceRunners(side, bases, unearned){
   var runs = 0;
   // Work from 3B → 1B so we don't overwrite
   var newBases = [null, null, null];
@@ -3065,7 +3447,7 @@ function advanceRunners(side, bases){
       var newPos = i + bases; // 0-indexed: 0=1B, 1=2B, 2=3B, 3+=scores
       if(newPos >= 3){
         runs++;
-        creditRun(side, G.bases[i]); // credit R to the runner who scored
+        creditRun(side, G.bases[i], unearned); // credit R to the runner who scored
       } else {
         newBases[newPos] = G.bases[i]; // carry runner name
       }
@@ -3077,9 +3459,6 @@ function advanceRunners(side, bases){
   if(runs > 0){
     G.rhe[side][0] += runs;
     G.scores[side][G.inning - 1] = (G.scores[side][G.inning - 1] || 0) + runs;
-    for(var r = 0; r < runs; r++){
-      addPitcherStat(fielding(), 'r');
-    }
   }
   return runs;
 }
@@ -3087,17 +3466,16 @@ function advanceRunners(side, bases){
 // forceAdvance: for walks/HBP/IBB — only advance runners who are forced.
 // Batter goes to 1B; runners on consecutive bases from 1B are pushed forward.
 // Returns the number of runs scored.
-function forceAdvance(side, batterName){
+function forceAdvance(side, batterName, unearned){
   var runs = 0;
   // Check how far the force chain goes
   if(baseOcc(0)){ // 1B occupied — force chain starts
     if(baseOcc(1)){ // 2B also occupied
       if(baseOcc(2)){ // bases loaded — 3B scores
         runs++;
-        creditRun(side, G.bases[2]); // credit R to runner from 3B
+        creditRun(side, G.bases[2], unearned); // credit R to runner from 3B
         G.rhe[side][0]++;
         G.scores[side][G.inning - 1] = (G.scores[side][G.inning - 1] || 0) + 1;
-        addPitcherStat(fielding(), 'r');
       }
       G.bases[2] = G.bases[1]; // 2B → 3B (carry name)
     }
@@ -3136,6 +3514,8 @@ function recordHit(b){
   }
 
   addPitch(fielding());
+  addPitcherStat(fielding(), 'h');
+  if(b === 4) addPitcherStat(fielding(), 'hr');
   addLog(logText, logTag, logCls);
   logBatter(side, idx, logTag);
 
@@ -3153,9 +3533,7 @@ function recordHit(b){
     creditRBI(side, runsScored);
     G.rhe[side][0] += runsScored;
     G.scores[side][G.inning - 1] = (G.scores[side][G.inning - 1] || 0) + runsScored;
-    for(var ri = 0; ri < runsScored; ri++){
-      addPitcherStat(fielding(), 'r');
-    }
+    chargeRun(G.pas[G.pas.length - 1]); // the batter's own run
     addLog(runsScored + ' run' + (runsScored > 1 ? 's' : '') + ' score', 'Run', 't-run');
     G.bases = [null, null, null];
     finishHit(side, nm, b);
@@ -3341,6 +3719,7 @@ function rpConfirm(){
     } else if(r.dest === -1){
       // Out on bases
       outsOnBases++;
+      paRunnerOut(side, r.name, G.outs + outsOnBases);
     } else if(r.dest >= 0 && r.dest <= 2){
       // On a base
       newBases[r.dest] = r.name;
@@ -3357,9 +3736,6 @@ function rpConfirm(){
     creditRBI(side, runs); // batter's hit drove in the runs
     G.rhe[side][0] += runs;
     G.scores[side][G.inning - 1] = (G.scores[side][G.inning - 1] || 0) + runs;
-    for(var r2 = 0; r2 < runs; r2++){
-      addPitcherStat(fielding(), 'r');
-    }
     addLog(runs + ' run' + (runs > 1 ? 's' : '') + ' score', 'Run', 't-run');
   }
 
@@ -3441,6 +3817,7 @@ function recordKO(type){
   }
 }
 function renderScore(){
+  scheduleScorecardRender();
   var n = G.totalInnings;
   var tbl = document.getElementById('scoreTable');
   // Header row — clicking sets the inning AND shows the batter popover
@@ -3615,6 +3992,7 @@ function addBall(){
   if(G.balls >= 4) return;
   saveState();
   addPitch(fielding());
+  addPitcherBall(fielding(), 1);
   G.balls++;
   addLog('Ball ' + G.balls, 'Ball', 't-ball');
 
@@ -3647,18 +4025,10 @@ function addBall(){
   renderCount();
 }
 function addStrike(){
+  // Strike three is a strikeout — record it as one so the batter, pitcher and
+  // scorecard all get the K. (Use the K / backwards-K buttons to pick looking.)
+  if(G.strikes>=2){ recordKO('swinging'); return; }
   saveState(); addPitch(fielding());
-  if(G.strikes>=2){
-    var side = batting();
-    addLog('Strike 3','Out','t-out');
-    var innOver = addOut();
-    if(!innOver){
-      nextBatter(side);
-    } else {
-      advanceBatterSilent(side);
-    }
-    return;
-  }
   G.strikes++;
   addLog('Strike ' + G.strikes, 'K', 't-k');
   renderCount();
@@ -3815,6 +4185,7 @@ function absConfirm(){
       // Remove 1 ball, add 1 strike
       if(G.balls > 0) G.balls--;
       if(G.strikes < 2) G.strikes++;
+      addPitcherBall(fielding(), -1);
       addLog('Count adjusted: ball → strike (' + G.balls + '-' + G.strikes + ')', 'ABS', 't-abs');
     } else {
       // Strike call overturned → should be ball
@@ -3825,6 +4196,7 @@ function absConfirm(){
         // This is tricky — for simplicity just note it
       }
       G.balls++;
+      addPitcherBall(fielding(), 1);
       addLog('Count adjusted: strike → ball (' + G.balls + '-' + G.strikes + ')', 'ABS', 't-abs');
 
       // Check if the added ball caused a walk (ball 4)
@@ -3932,6 +4304,10 @@ function checkWalkoff(){
 function addOut(){
   if(G.outs>=3) G.outs=0;
   G.outs++;
+  // Credit the out to the pitcher on the mound (drives IP)
+  var outSide = fielding();
+  G.pitchers[outSide][activePIdx(outSide)].outs++;
+  renderPitchers(outSide);
   addLog('Out — '+G.outs,'Out','t-out');
   if(G.outs===3){
     addLog('3 outs — inning over','Inn','t-info');
@@ -4041,12 +4417,14 @@ function addRun(){
   G.rhe[side][0]++;
   G.scores[side][G.inning - 1] = (G.scores[side][G.inning - 1] || 0) + 1;
   addLog('Run scored — ' + team(side) + ' ' + G.rhe[side][0], 'Run', 't-run');
-  addPitcherStat(fielding(), 'r');
+  chargeRun(null);
   renderScore();
   checkWalkoff();
 }
 
 function renderBases(){
+  syncPaBases();
+  scheduleScorecardRender();
   [1, 2, 3].forEach(function(b){
     document.getElementById('base' + b).className = 'base base-' + b + 'b' + (baseOcc(b - 1) ? ' on' : '');
   });
@@ -4104,18 +4482,26 @@ function renderPitchers(side){
       html+='<input class="p-name" value="'+esc(p.name)+'" placeholder="Pitcher '+(i+1)+'" data-action="set-p-name" data-side="'+side+'" data-pidx="'+i+'" />';
     }
     html+='<span class="pc'+pitchCountClass(p.pitches)+'" id="'+side+'pc'+i+'">'+p.pitches+'</span>';
-    var stats='<div class="p-stats">';
-    if(p.k>0)  stats+='<span class="pstat pstat-k">'+p.k+'K</span>';
-    if(p.bb>0) stats+='<span class="pstat pstat-bb">'+p.bb+'BB</span>';
-    if(p.r>0)  stats+='<span class="pstat pstat-r">'+p.r+'R</span>';
-    stats+='</div>';
-    html+=stats;
+    html+='<div class="p-line" id="'+side+'pl'+i+'">'+pitchingLine(p)+'</div>';
     html+='<div class="padj"><button class="pb" data-action="adj-p" data-side="'+side+'" data-pidx="'+i+'" data-dir="-1">−</button><button class="pb" data-action="adj-p" data-side="'+side+'" data-pidx="'+i+'" data-dir="1">+</button></div>';
     html+='</div>';
   });
   html+='<div class="add-p" data-action="add-p" data-side="'+side+'"><span style="font-size:16px;margin-right:4px">+</span>Add pitcher</div>';
   panel.innerHTML=html;
 }
+// Innings pitched in baseball notation: 17 outs → "5.2"
+function fmtIP(outs){ return Math.floor(outs / 3) + '.' + (outs % 3); }
+function pitchStrikes(p){ return Math.max(0, p.pitches - (p.balls || 0)); }
+
+// "5.2 IP · 4 H · 2 R · 1 ER · 1 BB · 7 K · 1 HR · 88-57"
+function pitchingLine(p){
+  if(!p.pitches && !p.outs) return '';
+  var parts = [fmtIP(p.outs) + ' IP', p.h + ' H', p.r + ' R', p.er + ' ER', p.bb + ' BB', p.k + ' K'];
+  if(p.hr > 0) parts.push(p.hr + ' HR');
+  parts.push('<span title="Pitches-strikes">' + p.pitches + '-' + pitchStrikes(p) + '</span>');
+  return parts.join(' · ');
+}
+
 function adj(side, i, d){
   G.pitchers[side][i].pitches = Math.max(0, G.pitchers[side][i].pitches + d);
   var n = G.pitchers[side][i].pitches;
@@ -4124,6 +4510,7 @@ function adj(side, i, d){
     el.textContent = n;
     el.className = 'pc' + pitchCountClass(n);
   }
+  schedulePitchLines();
 }
 
 function addPitcher(side){
@@ -4171,6 +4558,7 @@ function exportPDF(){
 
   // Build box score table
   buildPrintBoxScore();
+  renderScorecard();
 
   window.print();
 
@@ -4239,13 +4627,13 @@ function buildPrintBoxScore(){
 
     // Pitching line
     html += '<table style="margin-bottom:10px">';
-    html += '<tr><td class="bs-team-hdr" colspan="7">' + logo + tName + ' — Pitching</td></tr>';
-    html += '<tr><th style="text-align:left;padding-left:6px;min-width:100px">Pitcher</th><th>Pitches</th><th>K</th><th>BB</th><th>R</th></tr>';
+    html += '<tr><td class="bs-team-hdr" colspan="9">' + logo + tName + ' — Pitching</td></tr>';
+    html += '<tr><th style="text-align:left;padding-left:6px;min-width:100px">Pitcher</th><th>IP</th><th>H</th><th>R</th><th>ER</th><th>BB</th><th>K</th><th>HR</th><th>P-S</th></tr>';
     G.pitchers[side].forEach(function(p){
       var pName = p.name || '—';
       var activeMarker = p.active ? ' ●' : '';
       html += '<tr><td style="text-align:left;padding-left:6px">' + esc(pName) + activeMarker + '</td>';
-      html += '<td>'+p.pitches+'</td><td>'+p.k+'</td><td>'+p.bb+'</td><td>'+p.r+'</td></tr>';
+      html += '<td>'+fmtIP(p.outs)+'</td><td>'+p.h+'</td><td>'+p.r+'</td><td>'+p.er+'</td><td>'+p.bb+'</td><td>'+p.k+'</td><td>'+p.hr+'</td><td>'+p.pitches+'-'+pitchStrikes(p)+'</td></tr>';
     });
     html += '</table>';
   });
