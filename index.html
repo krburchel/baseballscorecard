@@ -570,6 +570,19 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .sc-cell.sc-cur { background:var(--bl); }
 .sc-pa { position:relative; width:46px; height:46px; margin:0 auto; }
 .sc-pa + .sc-pa { border-top:1px dashed var(--border); }
+.sc-pa[role=button] { cursor:pointer; border-radius:4px; }
+.sc-pa[role=button]:hover, .sc-pa[role=button]:focus-visible { background:var(--header-bg); outline:none; }
+.pe-field { margin-bottom:10px; }
+.pe-label { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin-bottom:5px; }
+.pe-fielders { display:flex; align-items:center; gap:8px; margin-top:6px; font-size:12px; color:var(--muted); }
+.pe-fielders input { width:90px; padding:6px 8px; font:inherit; font-size:13px; border:1.5px solid var(--border); border-radius:6px; background:var(--surface); color:var(--text); }
+.pe-preview { font-size:12px; color:var(--muted); margin-top:6px; }
+.pe-preview b { color:var(--text); }
+.pe-note { font-size:11px; color:var(--muted); line-height:1.4; margin-top:10px; }
+.pe-actions { display:flex; gap:6px; margin-top:12px; }
+.pe-actions .rp-confirm { margin-top:0; flex:1; }
+.pe-remove { padding:9px 12px; font-size:13px; font-weight:600; border:1.5px solid var(--red); border-radius:8px; background:transparent; color:var(--red); cursor:pointer; }
+.pe-cancel { padding:9px 12px; font-size:13px; font-weight:500; border:1px solid var(--border); border-radius:8px; background:transparent; color:var(--muted); cursor:pointer; }
 .sc-dia { display:block; width:100%; height:100%; }
 .sc-dia-bg { fill:none; stroke:var(--border); stroke-width:1; }
 .sc-scored .sc-dia-bg { fill:var(--gl); stroke:var(--green); }
@@ -694,6 +707,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   .sc-cell { width:auto; min-width:0; }
   .sc-pa { width:38px; height:38px; }
   .sc-cell.sc-cur { background:none!important; }
+  .sc-pa[role=button] { background:none!important; }
   .sc-scored .sc-dia-bg, .sc-path, .sc-outn { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
 
   /* print header */
@@ -3177,6 +3191,7 @@ function logBatter(side, batterIdx, result, outsOnPlay){
     reached: paReachFor(result),
     out: isOut ? Math.min(3, G.outs + (outsOnPlay || 1)) : 0,
     pIdx: activePIdx(side === 'home' ? 'away' : 'home'),
+    who: G.lineup[side][batterIdx].subs.length - 1, // -1 = starter, else sub index
     unearned: result[0] === 'E'
   });
   scheduleScorecardRender();
@@ -3236,7 +3251,8 @@ function paCellHtml(pa){
   var label = paLabel(pa.res);
   var desc = label + (pa.reached === 4 ? ', scored' : pa.reached > 0 ? ', reached ' + ['','1st','2nd','3rd'][pa.reached] : '')
     + (pa.out ? ', out ' + pa.out + (pa.outOnBases ? ' on the bases' : '') : '');
-  return '<div class="sc-pa' + (pa.reached === 4 ? ' sc-scored' : '') + '" title="' + esc(desc) + '">'
+  return '<div class="sc-pa' + (pa.reached === 4 ? ' sc-scored' : '') + '" role="button" tabindex="0" data-pa="' + G.pas.indexOf(pa)
+    + '" title="' + esc(desc) + ' — tap to edit" aria-label="' + esc(desc) + ', edit">'
     + svg
     + '<span class="sc-res' + paLabelClass(pa.res) + '">' + esc(label) + '</span>'
     + (pa.out ? '<span class="sc-outn">' + pa.out + '</span>' : '')
@@ -3315,6 +3331,7 @@ function renderScorecard(){
   _scRenderScheduled = false;
   var wrap = document.getElementById('scorecard');
   if(!wrap) return;
+  setupScorecardDelegation();
   var halfKey = G.inning + G.half;
   if(_scHalfSeen !== halfKey || !scView){ _scHalfSeen = halfKey; scView = batting(); }
 
@@ -3330,6 +3347,272 @@ function renderScorecard(){
   var left = oldScroll ? oldScroll.scrollLeft : 0;
   wrap.innerHTML = html;
   wrap.querySelector('.sc-scroll').scrollLeft = left;
+}
+
+// ── Scorecard cell editor ──
+// Corrects a recorded plate appearance after the fact: the result (batter,
+// pitcher and team hit/error totals follow), how far the runner got, and the
+// out number. It deliberately doesn't replay the game — runners on base, the
+// current outs and runs stay as they are.
+
+// Result "types" offered in the editor. fielders: true → needs a fielder string.
+var PE_TYPES = [
+  {t:'1B'}, {t:'2B'}, {t:'3B'}, {t:'HR'},
+  {t:'BB'}, {t:'IBB'}, {t:'HBP'},
+  {t:'K'}, {t:'ꓘ', label:'ꓘ'},
+  {t:'F', label:'Fly', fielders:true}, {t:'G', label:'Ground', fielders:true},
+  {t:'SF', fielders:true}, {t:'SAC'}, {t:'FC', fielders:true}, {t:'E', fielders:true},
+  {t:'Out'}
+];
+
+// Split a stored result into editor parts: "G6-3" → {t:'G', f:'6-3'}, "1B+E" → {t:'1B', plusE:true}
+function peParse(res){
+  var m = /^(1B|2B|3B|HR)(\+E)?$/.exec(res);
+  if(m) return {t:m[1], f:'', plusE:!!m[2]};
+  m = /^(SF|FC|F|G|E)([\d-]*)$/.exec(res);
+  if(m) return {t:m[1], f:m[2], plusE:false};
+  return {t:res, f:'', plusE:false};
+}
+function peCompose(st){
+  var type = PE_TYPES.filter(function(x){ return x.t === st.t; })[0];
+  if(type && type.fielders) return st.t + (st.f || '').replace(/[^\d-]/g, '');
+  if(/^(1B|2B|3B|HR)$/.test(st.t) && st.plusE) return st.t + '+E';
+  return st.t;
+}
+
+// The batter / pitcher / team counters a result contributes to
+function paStatKeys(res){
+  var k = {bat:[], pit:[], teamHit:false, teamErr:false};
+  var hit = /^(1B|2B|3B|HR)/.exec(res);
+  if(hit){
+    k.bat.push({'1B':'s','2B':'d','3B':'t','HR':'hr'}[hit[1]]);
+    k.pit.push('h'); k.teamHit = true;
+    if(hit[1] === 'HR') k.pit.push('hr');
+    if(/\+E$/.test(res)){ k.bat.push('err'); k.teamErr = true; }
+  }
+  else if(res === 'K'){ k.bat.push('ks'); k.pit.push('k'); }
+  else if(res === 'ꓘ'){ k.bat.push('kl'); k.pit.push('k'); }
+  else if(res === 'BB'){ k.bat.push('bb'); k.pit.push('bb'); }
+  else if(res === 'IBB'){ k.bat.push('ibb'); k.pit.push('bb'); }
+  else if(res === 'HBP') k.bat.push('hbp');
+  else if(/^SF/.test(res)) k.bat.push('sf');
+  else if(res === 'SAC') k.bat.push('sac');
+  else if(/^FC/.test(res)) k.bat.push('fc');
+  else if(/^E/.test(res)){ k.bat.push('err'); k.teamErr = true; }
+  else if(/^F\d/.test(res)) k.bat.push('fo');
+  else if(/^G\d/.test(res)) k.bat.push('go');
+  return k;
+}
+
+// Hits object of the player who batted in this PA (starter or a sub).
+// PAs recorded before `who` existed: the last sub in by that half-inning.
+function paHits(pa){
+  var sl = G.lineup[pa.side][pa.slot];
+  var who = pa.who;
+  if(who === undefined){
+    var at = pa.inn * 2 + (pa.half === 'bot' ? 1 : 0);
+    who = -1;
+    sl.subs.forEach(function(sub, si){
+      if(sub.inning * 2 + (sub.half === 'bot' ? 1 : 0) <= at) who = si;
+    });
+  }
+  var p = who >= 0 ? sl.subs[who] : null;
+  return p ? (p.hits = p.hits || mkHits()) : sl.hits;
+}
+
+// Add (sign = 1) or remove (sign = -1) a PA's result from every counter.
+function applyPaStats(pa, sign){
+  var k = paStatKeys(pa.res);
+  var h = paHits(pa);
+  k.bat.forEach(function(key){ h[key] = Math.max(0, (h[key] || 0) + sign); });
+  var fSide = pa.side === 'home' ? 'away' : 'home';
+  var p = G.pitchers[fSide][pa.pIdx] || G.pitchers[fSide][0];
+  k.pit.forEach(function(key){ p[key] = Math.max(0, (p[key] || 0) + sign); });
+  if(k.teamHit) G.rhe[pa.side][1] = Math.max(0, G.rhe[pa.side][1] + sign);
+  if(k.teamErr) G.rhe[fSide][2] = Math.max(0, G.rhe[fSide][2] + sign);
+}
+
+// Keep the inning popover's batter list in step: entries are pushed in the
+// same order as G.pas, so match by position within the half-inning.
+function paBatterLogIdx(pa){
+  var n = 0;
+  for(var i = 0; i < G.pas.length && G.pas[i] !== pa; i++){
+    var q = G.pas[i];
+    if(q.side === pa.side && q.inn === pa.inn && q.half === pa.half) n++;
+  }
+  return n;
+}
+
+var _peState = null; // {idx, t, f, plusE, reached, out}
+
+function openPaEditor(idx){
+  var pa = G.pas[idx];
+  if(!pa) return;
+  var parts = peParse(pa.res);
+  _peState = {idx:idx, t:parts.t, f:parts.f, plusE:parts.plusE, reached:pa.reached, out:pa.out || 0};
+  renderPaEditor();
+}
+
+function closePaEditor(){
+  _peState = null;
+  var el = document.getElementById('peOverlay');
+  if(el) el.remove();
+}
+
+function peSet(field, val){
+  if(!_peState) return;
+  var wasOut = paIsOut(peCompose(_peState));
+  _peState[field] = val;
+  if(field === 't'){
+    // Follow the new result with sensible defaults; still adjustable below.
+    var res = peCompose(_peState), isOut = paIsOut(res);
+    if(isOut && !wasOut){ _peState.reached = 0; }
+    else if(!isOut && wasOut){ _peState.reached = paReachFor(res); _peState.out = 0; }
+  }
+  renderPaEditor();
+  haptic(5);
+}
+
+function peFieldersInput(el){
+  if(!_peState) return;
+  _peState.f = el.value.replace(/[^\d-]/g, '');
+  var prev = document.getElementById('pePreview');
+  if(prev) prev.innerHTML = 'Scored as <b>' + esc(paLabel(peCompose(_peState))) + '</b>';
+}
+
+function renderPaEditor(){
+  if(!_peState) return;
+  var st = _peState, pa = G.pas[st.idx];
+  var ov = document.getElementById('peOverlay');
+  var refocus = document.activeElement && document.activeElement.id === 'peFielders';
+  if(!ov){
+    ov = document.createElement('div');
+    ov.className = 'rp-overlay';
+    ov.id = 'peOverlay';
+    ov.addEventListener('click', function(e){ if(e.target === ov) closePaEditor(); });
+    document.body.appendChild(ov);
+  }
+  var who = curNameForPa(pa);
+  var type = PE_TYPES.filter(function(x){ return x.t === st.t; })[0];
+  var isHit = /^(1B|2B|3B|HR)$/.test(st.t);
+
+  var html = '<div class="rp-modal" role="dialog" aria-modal="true" aria-labelledby="peTitle">';
+  html += '<div class="rp-hdr"><h3 id="peTitle">' + esc(who) + ' <span class="rp-hdr-sub">— ' + (pa.half === 'top' ? 'Top' : 'Bottom') + ' ' + pa.inn + '</span></h3>'
+    + '<button class="inn-popover-close" style="position:static" onclick="closePaEditor()" aria-label="Close">&times;</button></div>';
+  html += '<div class="rp-body">';
+
+  html += '<div class="pe-field"><div class="pe-label">Result</div><div class="rp-opts">';
+  PE_TYPES.forEach(function(x){
+    html += '<button class="rp-opt' + (st.t === x.t ? ' sel' : '') + '" onclick="peSet(\'t\',\'' + x.t + '\')">' + esc(x.label || x.t) + '</button>';
+  });
+  html += '</div>';
+  if(type && type.fielders){
+    html += '<div class="pe-fielders"><label for="peFielders">Fielders</label><input id="peFielders" inputmode="numeric" placeholder="' + (st.t === 'G' || st.t === 'FC' ? 'e.g. 6-3' : 'e.g. 8') + '" value="' + esc(st.f) + '" oninput="peFieldersInput(this)" onkeydown="if(event.key===\'Escape\'){event.preventDefault();closePaEditor();}else if(event.key===\'Enter\'){event.preventDefault();savePaEditor();}" /></div>';
+  }
+  if(isHit){
+    html += '<div class="pe-fielders"><button class="rp-opt' + (st.plusE ? ' sel' : '') + '" onclick="peSet(\'plusE\',' + !st.plusE + ')">+ error on the play</button></div>';
+  }
+  html += '<div class="pe-preview" id="pePreview">Scored as <b>' + esc(paLabel(peCompose(st))) + '</b></div></div>';
+
+  html += '<div class="pe-field"><div class="pe-label">Got to</div><div class="rp-opts">';
+  ['Didn\'t reach','1st','2nd','3rd','Scored'].forEach(function(lbl, r){
+    html += '<button class="rp-opt' + (st.reached === r ? (r === 4 ? ' sel-score' : ' sel') : '') + '" onclick="peSet(\'reached\',' + r + ')">' + lbl + '</button>';
+  });
+  html += '</div></div>';
+
+  html += '<div class="pe-field"><div class="pe-label">Out number</div><div class="rp-opts">';
+  ['None','1','2','3'].forEach(function(lbl, o){
+    html += '<button class="rp-opt' + (st.out === o ? (o ? ' sel-out' : ' sel') : '') + '" onclick="peSet(\'out\',' + o + ')">' + lbl + '</button>';
+  });
+  html += '</div></div>';
+
+  html += '<div class="pe-note">Updates the scorecard and the batter/pitcher stats. Runners, outs and runs aren\'t replayed — fix those on the field or with Undo.</div>';
+  html += '<div class="pe-actions"><button class="pe-remove" onclick="removePaFromEditor()">Remove</button>'
+    + '<button class="pe-cancel" onclick="closePaEditor()">Cancel</button>'
+    + '<button class="rp-confirm" onclick="savePaEditor()">Save</button></div>';
+  html += '</div></div>';
+  ov.innerHTML = html;
+
+  var f = document.getElementById('peFielders');
+  if(refocus && f){ f.focus(); f.setSelectionRange(f.value.length, f.value.length); }
+}
+
+function savePaEditor(){
+  if(!_peState) return;
+  var st = _peState, pa = G.pas[st.idx];
+  var newRes = peCompose(st);
+  var type = PE_TYPES.filter(function(x){ return x.t === st.t; })[0];
+  if(type && type.fielders && !st.f){
+    var f = document.getElementById('peFielders');
+    if(f) f.focus();
+    kbFlash('Enter the fielder(s), e.g. ' + (st.t === 'G' ? '6-3' : '8'), '#BA7517');
+    return;
+  }
+  saveState();
+  var oldRes = pa.res;
+  if(newRes !== oldRes){
+    var bi = paBatterLogIdx(pa);
+    applyPaStats(pa, -1);
+    pa.res = newRes;
+    pa.unearned = newRes[0] === 'E';
+    applyPaStats(pa, 1);
+    var key = (pa.half === 'top' ? 'T' : 'B') + pa.inn;
+    var list = G.batterLog[pa.side][key];
+    if(list && list[bi] !== undefined){
+      var cut = list[bi].lastIndexOf(' — ');
+      if(cut >= 0) list[bi] = list[bi].slice(0, cut + 3) + newRes;
+    }
+  }
+  pa.reached = st.reached;
+  pa.out = st.out;
+  if(!st.out) pa.outOnBases = false;
+  else if(!paIsOut(newRes)) pa.outOnBases = true;
+
+  addLog('Scorecard edit: ' + curNameForPa(pa) + ' (' + (pa.half === 'top' ? 'T' : 'B') + pa.inn + ') '
+    + (newRes !== oldRes ? paLabel(oldRes) + ' → ' + paLabel(newRes) : paLabel(newRes) + ' — bases/out corrected'), 'Edit', 't-info');
+  closePaEditor();
+  renderAll();
+  saveToStorage();
+}
+
+function removePaFromEditor(){
+  if(!_peState) return;
+  var idx = _peState.idx, pa = G.pas[idx];
+  saveState();
+  applyPaStats(pa, -1);
+  var bi = paBatterLogIdx(pa);
+  var key = (pa.half === 'top' ? 'T' : 'B') + pa.inn;
+  var list = G.batterLog[pa.side][key];
+  if(list && list[bi] !== undefined) list.splice(bi, 1);
+  G.pas.splice(idx, 1);
+  addLog('Scorecard edit: removed ' + curNameForPa(pa) + ' ' + paLabel(pa.res) + ' (' + (pa.half === 'top' ? 'T' : 'B') + pa.inn + ')', 'Edit', 't-info');
+  closePaEditor();
+  renderAll();
+  saveToStorage();
+}
+
+function curNameForPa(pa){
+  var sl = G.lineup[pa.side][pa.slot];
+  var h = paHits(pa);
+  for(var si = 0; si < sl.subs.length; si++){ if(sl.subs[si].hits === h) return sl.subs[si].name || 'Sub'; }
+  return sl.name || 'Batter ' + (pa.slot + 1);
+}
+
+// One delegated listener for every cell (the grid re-renders constantly)
+function setupScorecardDelegation(){
+  var wrap = document.getElementById('scorecard');
+  if(!wrap || wrap._peBound) return;
+  wrap._peBound = true;
+  function open(e){
+    var cell = e.target.closest && e.target.closest('.sc-pa[data-pa]');
+    if(!cell) return false;
+    openPaEditor(parseInt(cell.dataset.pa, 10));
+    return true;
+  }
+  wrap.addEventListener('click', open);
+  wrap.addEventListener('keydown', function(e){
+    if((e.key === 'Enter' || e.key === ' ') && open(e)) e.preventDefault();
+  });
 }
 
 function showInningPopover(innIdx, evt){
@@ -5776,6 +6059,10 @@ document.addEventListener('keydown', function(e){
   }
   if(document.getElementById('gmOverlay')){
     if(e.key === 'Escape') closeGameManager();
+    return;
+  }
+  if(document.getElementById('peOverlay')){
+    if(e.key === 'Escape') closePaEditor();
     return;
   }
   // If runner placement picker is open, only allow Escape (auto-advance)
