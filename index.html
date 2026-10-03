@@ -3789,13 +3789,16 @@ function closeRunnerPicker(){
   var overlay = document.getElementById('rpOverlay');
   if(overlay) overlay.remove();
 }
-function recordKO(type){
-  saveState();
+// opts.noSave: caller already took the undo snapshot.
+// opts.noPitch: the pitch was already counted (ABS overturn of a ball).
+function recordKO(type, opts){
+  opts = opts || {};
+  if(!opts.noSave) saveState();
   var side = batting();
   var idx = abIdx(side);
   var nm = curName(side, idx);
   var h = activeHits(side, idx);
-  addPitch(fielding());
+  if(!opts.noPitch) addPitch(fielding());
   addPitcherStat(fielding(), 'k');
   if(type === 'looking'){
     h.kl++;
@@ -3988,10 +3991,12 @@ function renderInn(){
   }
 }
 
-function addBall(){
+// opts: same as recordKO.
+function addBall(opts){
+  opts = opts || {};
   if(G.balls >= 4) return;
-  saveState();
-  addPitch(fielding());
+  if(!opts.noSave) saveState();
+  if(!opts.noPitch) addPitch(fielding());
   addPitcherBall(fielding(), 1);
   G.balls++;
   addLog('Ball ' + G.balls, 'Ball', 't-ball');
@@ -4024,11 +4029,14 @@ function addBall(){
   }
   renderCount();
 }
-function addStrike(){
+// opts: same as recordKO.
+function addStrike(opts){
   // Strike three is a strikeout — record it as one so the batter, pitcher and
   // scorecard all get the K. (Use the K / backwards-K buttons to pick looking.)
-  if(G.strikes>=2){ recordKO('swinging'); return; }
-  saveState(); addPitch(fielding());
+  if(G.strikes>=2){ recordKO('swinging', opts); return; }
+  opts = opts || {};
+  if(!opts.noSave) saveState();
+  if(!opts.noPitch) addPitch(fielding());
   G.strikes++;
   addLog('Strike ' + G.strikes, 'K', 't-k');
   renderCount();
@@ -4154,15 +4162,35 @@ function absSetResult(result){
   haptic();
 }
 
+// If the challenged pitch is the one that just ended the last plate appearance
+// (ball four → walk, strike three → strikeout), return the undo snapshot from
+// right before that pitch; otherwise null. Count 0-0 with that PA on top means
+// no pitch has been thrown to the next batter, so the challenge must be about it.
+function _absEndingPitchSnapshot(callType){
+  if(G.balls || G.strikes || !HISTORY.length || !G.pas.length) return null;
+  var last = G.pas[G.pas.length - 1];
+  var ended = callType === 'ball' ? last.res === 'BB' : (last.res === 'K' || last.res === 'ꓘ');
+  if(!ended) return null;
+  var snap = JSON.parse(HISTORY[HISTORY.length - 1]);
+  if(!snap.G || !snap.G.pas || snap.G.pas.length !== G.pas.length - 1) return null;
+  return snap;
+}
+
 function absConfirm(){
   if(!absState.callType || !absState.result) return;
-  saveState();
 
-  var side = absState.side || batting();
-  var idx = abIdx(side);
-  var nm = curName(side, idx);
+  var side = absState.side || batting(); // team that challenged
   var overturned = absState.result === 'overturned';
   var callType = absState.callType;
+  var rewind = overturned ? _absEndingPitchSnapshot(callType) : null;
+
+  // One undo snapshot covers the whole challenge (including any rewind)
+  saveState();
+  if(rewind){
+    closeRunnerPicker();
+    G = migrateGame(rewind.G);
+    if(rewind.outState) Object.assign(outState, rewind.outState);
+  }
 
   // Ensure abs tracking exists (backward compat)
   if(!G.abs) G.abs = {home:{challenged:0,overturned:0}, away:{challenged:0,overturned:0}};
@@ -4171,73 +4199,45 @@ function absConfirm(){
   G.abs[side].challenged++;
   if(overturned) G.abs[side].overturned++;
 
-  // Build log text
+  var bSide = batting();
+  var nm = curName(bSide, abIdx(bSide));
   var callLabel = callType === 'ball' ? 'ball' : 'strike';
   var newCall = callType === 'ball' ? 'strike' : 'ball';
   var resultLabel = overturned ? 'OVERTURNED → ' + newCall : 'UPHELD';
-
   addLog(nm + ' (' + team(side) + ') ABS challenge: ' + callLabel + ' call — ' + resultLabel, 'ABS', 't-abs');
 
-  // If overturned, adjust the count
   if(overturned){
+    // After a rewind the pitch hasn't been counted yet; otherwise it has, and
+    // only the call changes.
+    var opts = { noSave: true, noPitch: !rewind };
     if(callType === 'ball'){
-      // Ball call overturned → should be strike
-      // Remove 1 ball, add 1 strike
-      if(G.balls > 0) G.balls--;
-      if(G.strikes < 2) G.strikes++;
-      addPitcherBall(fielding(), -1);
-      addLog('Count adjusted: ball → strike (' + G.balls + '-' + G.strikes + ')', 'ABS', 't-abs');
+      // Ball → strike. Strike three is a called strikeout.
+      if(!rewind){
+        if(G.balls > 0) G.balls--;
+        addPitcherBall(fielding(), -1);
+      }
+      if(G.strikes >= 2){
+        recordKO('looking', opts);
+      } else {
+        addStrike(opts);
+        addLog('Count adjusted: ball → strike (' + G.balls + '-' + G.strikes + ')', 'ABS', 't-abs');
+      }
     } else {
-      // Strike call overturned → should be ball
-      // Remove 1 strike, add 1 ball
-      if(G.strikes > 0) G.strikes--;
-      else if(G.fouls > 0 && G.strikes === 0){
-        // Edge: if strike was from a foul that pushed to strike 2, just remove the foul effect
-        // This is tricky — for simplicity just note it
-      }
-      G.balls++;
-      addPitcherBall(fielding(), 1);
-      addLog('Count adjusted: strike → ball (' + G.balls + '-' + G.strikes + ')', 'ABS', 't-abs');
-
-      // Check if the added ball caused a walk (ball 4)
-      if(G.balls >= 4){
-        activeHits(side, idx).bb++;
-        addLog('Walk (via ABS challenge)', 'Walk', 't-ball');
-        logBatter(side, idx, 'BB');
-        addPitcherStat(fielding(), 'bb');
-        var bnm = curName(side, idx);
-        var runs = forceAdvance(side, bnm);
-        if(runs > 0){
-          creditRBI(side, runs);
-          addLog(runs + ' run' + (runs > 1 ? 's' : '') + ' score', 'Run', 't-run');
-        }
-        renderBases();
-        renderScore();
-        G.balls = 0; G.strikes = 0; G.fouls = 0;
-        renderCount();
-        renderLineup(side);
-        if(!checkWalkoff()){
-          nextBatter(side);
-        }
-        // Close picker and done
-        absState.open = false;
-        absState.side = null;
-        absState.callType = null;
-        absState.result = null;
-        renderABSPicker();
-        saveToStorage();
-        return;
-      }
+      // Strike → ball. Ball four is a walk (addBall handles it).
+      if(!rewind && G.strikes > 0) G.strikes--;
+      var walked = G.balls >= 3;
+      addBall(opts);
+      if(!walked) addLog('Count adjusted: strike → ball (' + G.balls + '-' + G.strikes + ')', 'ABS', 't-abs');
     }
-    renderCount();
   }
 
-  // Close picker
   absState.open = false;
   absState.side = null;
   absState.callType = null;
   absState.result = null;
   renderABSPicker();
+  if(rewind) renderAll();
+  else renderCount();
   saveToStorage();
 }
 
