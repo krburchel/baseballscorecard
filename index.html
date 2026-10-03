@@ -545,6 +545,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .sc-tabs { display:flex; gap:4px; padding:6px 8px; background:var(--header-bg); border-bottom:1px solid var(--border); }
 .sc-tab { font:inherit; font-size:12px; font-weight:600; padding:4px 10px; border-radius:6px; border:1px solid var(--border); background:var(--surface); color:var(--muted); cursor:pointer; }
 .sc-tab.sel { background:var(--blue); border-color:var(--blue); color:#fff; }
+.sc-tabs { align-items:center; }
+.sc-tab { display:inline-flex; align-items:center; gap:5px; }
+.sc-tab-logo { width:16px; height:16px; object-fit:contain; }
+.sc-tab.sel .sc-tab-logo { background:#fff; border-radius:3px; padding:1px; }
+.sc-hdr-logo { width:16px; height:16px; object-fit:contain; vertical-align:middle; margin-right:5px; }
+.ps-badge { margin-left:auto; display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--text); white-space:nowrap; }
+.ps-badge img { width:24px; height:24px; object-fit:contain; background:#fff; border-radius:4px; padding:2px; }
+.print-header .ps-badge { margin:0 0 4px; font-size:13px; }
+.print-header .ps-badge img { width:30px; height:30px; }
 .sc-scroll { overflow-x:auto; -webkit-overflow-scrolling:touch; }
 .sc-table { display:none; border-collapse:collapse; font-variant-numeric:tabular-nums; }
 .sc-table.sc-active { display:table; }
@@ -3249,8 +3258,8 @@ function scorecardTableHtml(side){
   var curIdx = abIdx(side);
 
   var html = '<table class="sc-table' + (side === scView ? ' sc-active' : '') + '">';
-  html += '<caption class="sc-print-hdr">' + esc(team(side)) + '</caption>';
-  html += '<thead><tr><th class="sc-name">' + esc(team(side)) + '</th>';
+  html += '<caption class="sc-print-hdr">' + teamLogoImg(side, 'sc-hdr-logo') + esc(team(side)) + '</caption>';
+  html += '<thead><tr><th class="sc-name">' + teamLogoImg(side, 'sc-hdr-logo') + esc(team(side)) + '</th>';
   for(var c = 1; c <= n; c++) html += '<th>' + c + '</th>';
   html += '<th class="sc-tot sc-tot-first">AB</th><th class="sc-tot">R</th><th class="sc-tot">H</th><th class="sc-tot">RBI</th></tr></thead><tbody>';
 
@@ -3312,9 +3321,9 @@ function renderScorecard(){
   var html = '<div class="sc-tabs" role="tablist">';
   ['away','home'].forEach(function(side){
     html += '<button class="sc-tab' + (side === scView ? ' sel' : '') + '" role="tab" aria-selected="' + (side === scView)
-      + '" onclick="setScorecardView(\'' + side + '\')">' + esc(team(side)) + '</button>';
+      + '" onclick="setScorecardView(\'' + side + '\')">' + teamLogoImg(side, 'sc-tab-logo') + esc(team(side)) + '</button>';
   });
-  html += '</div><div class="sc-scroll">' + scorecardTableHtml('away') + scorecardTableHtml('home') + '</div>';
+  html += postseasonBadge() + '</div><div class="sc-scroll">' + scorecardTableHtml('away') + scorecardTableHtml('home') + '</div>';
 
   // Keep horizontal scroll position across re-renders
   var oldScroll = wrap.querySelector('.sc-scroll');
@@ -4525,7 +4534,8 @@ function exportPDF(){
   var home = document.getElementById('teamHome').value || 'Home';
   var awayLogo = TEAM_LOGOS[away] ? '<img src="'+TEAM_LOGOS[away]+'" style="width:36px;height:36px;object-fit:contain;vertical-align:middle;margin-right:8px;" />' : '';
   var homeLogo = TEAM_LOGOS[home] ? '<img src="'+TEAM_LOGOS[home]+'" style="width:36px;height:36px;object-fit:contain;vertical-align:middle;margin-left:8px;" />' : '';
-  document.getElementById('printHeader').innerHTML = awayLogo + away + ' vs ' + home + homeLogo;
+  var badge = postseasonBadge();
+  document.getElementById('printHeader').innerHTML = (badge ? '<div>' + badge + '</div>' : '') + awayLogo + away + ' vs ' + home + homeLogo;
 
   // Build subheader: score, date, venue
   var subParts = [];
@@ -4702,6 +4712,28 @@ function populateTeamDropdowns() {
   var homeEl = document.getElementById('teamHome');
   awayEl.innerHTML = buildTeamOptions('— Select Team —');
   homeEl.innerHTML = buildTeamOptions('— Select Team —');
+}
+
+// Postseason badge per game type. MLB doesn't publish the round-specific event
+// logos on its CDN, so pair the league logo with the round name.
+var MLB_LEAGUE_LOGO = 'https://www.mlbstatic.com/team-logos/league-on-light/';
+var POSTSEASON = {
+  wild: { label:'Wild Card',    logo: MLB_LEAGUE_LOGO + '1.svg' },
+  alds: { label:'ALDS',         logo: MLB_LEAGUE_LOGO + '103.svg' },
+  alcs: { label:'ALCS',         logo: MLB_LEAGUE_LOGO + '103.svg' },
+  nlds: { label:'NLDS',         logo: MLB_LEAGUE_LOGO + '104.svg' },
+  nlcs: { label:'NLCS',         logo: MLB_LEAGUE_LOGO + '104.svg' },
+  ws:   { label:'World Series', logo: MLB_LEAGUE_LOGO + '1.svg' }
+};
+function postseasonBadge(){
+  var ps = POSTSEASON[G.notes && G.notes.gameType];
+  if(!ps) return '';
+  var yr = (G.notes.date || '').slice(0, 4) || String(new Date().getFullYear());
+  return '<span class="ps-badge"><img src="' + ps.logo + '" alt="" />' + yr + ' ' + ps.label + '</span>';
+}
+function teamLogoImg(side, cls){
+  var url = TEAM_LOGOS[team(side)];
+  return url ? '<img class="' + cls + '" src="' + url + '" alt="" />' : '';
 }
 
 var TEAM_LOGOS = {
@@ -5370,6 +5402,7 @@ function renderWeatherBtns(){
 
 function saveNotes(){
   if(!G.notes) G.notes = mkNotes();
+  scheduleScorecardRender(); // postseason badge follows game type
   G.notes.date = (document.getElementById('giDate') || {}).value || '';
   G.notes.firstPitch = (document.getElementById('giFirstPitch') || {}).value || '';
   G.notes.venue = (document.getElementById('giVenue') || {}).value || '';
