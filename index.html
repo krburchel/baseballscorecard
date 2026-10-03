@@ -86,6 +86,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .save-menu-item { display:block; width:100%; padding:9px 14px; font-size:13px; border:none; background:transparent; color:var(--text); cursor:pointer; text-align:left; font-family:inherit; }
 .save-menu-item:hover { background:var(--header-bg); }
 .save-menu-item + .save-menu-item { border-top:1px solid var(--border); }
+.save-menu-hint { display:block; font-size:11px; color:var(--muted); margin-top:2px; }
+.save-menu-hint:empty { display:none; }
+.backup-nudge { display:flex; align-items:center; gap:8px; flex-wrap:wrap; background:var(--al); border:1px solid var(--ac); border-radius:var(--radius); padding:8px 10px 8px 12px; margin-bottom:10px; font-size:13px; color:var(--text); }
+.backup-nudge[hidden] { display:none; }
+.bn-text { flex:1; min-width:160px; }
+.bn-go { padding:6px 12px; font:inherit; font-size:13px; font-weight:600; border:none; border-radius:6px; background:var(--amber); color:#fff; cursor:pointer; }
+.bn-x { padding:4px 8px; font-size:16px; line-height:1; border:none; background:transparent; color:var(--muted); cursor:pointer; }
 
 /* ── Game manager modal ── */
 .gm-overlay { position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:200; display:flex; align-items:center; justify-content:center; padding:16px; }
@@ -610,7 +617,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   .set-btn, .sub-btn, .sub-form,
   .pdf-btn, .reset-btn, .out-card, #kbHelpBtn,
   .kb-flash, .extra-inn-btn, .runner-labels, .rp-overlay,
-  .abs-picker, .abs-tally, .abs-btn, .atbat-bar { display:none!important; }
+  .abs-picker, .abs-tally, .abs-btn, .atbat-bar, .backup-nudge { display:none!important; }
   .cf-overlay { display:none!important; }
   /* score strip */
   .score-strip { border:1.5px solid #333; border-radius:0; margin-bottom:6px; }
@@ -796,6 +803,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
           <button class="save-menu-item" onclick="exportPDF(); closeSaveMenu()">🖨 Export PDF</button>
           <button class="save-menu-item" onclick="exportJSON(); closeSaveMenu()">📁 Save game file</button>
           <button class="save-menu-item" onclick="triggerImport(); closeSaveMenu()">📂 Load game file</button>
+          <button class="save-menu-item" onclick="closeSaveMenu(); backupAllGames()">🗄 Back up all games<span class="save-menu-hint" id="backupHint"></span></button>
+          <button class="save-menu-item" onclick="triggerImport(); closeSaveMenu()">♻️ Restore from backup</button>
         </div>
       </div>
       <input type="file" id="jsonFileInput" accept=".json,.scorecard" style="display:none" onchange="importJSON(event)" />
@@ -811,6 +820,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   </div>
 
   <!-- Current at-bat bar -->
+  <div class="backup-nudge" id="backupNudge" role="status" hidden></div>
   <div class="atbat-bar" id="atbatBar"></div>
 
   <!-- Game state -->
@@ -5621,6 +5631,7 @@ function gmEnsureActiveId(){
 var _origDoSave = _doSave;
 _doSave = function(){
   _origDoSave();
+  renderBackupNudge();
   // Also update the active game slot
   var activeId = gmGetActiveId();
   if(activeId){
@@ -5762,6 +5773,7 @@ function toggleSaveMenu(){
   var isOpen = menu.classList.contains('open');
   menu.classList.toggle('open', !isOpen);
   if(!isOpen){
+    renderBackupHint();
     // Close on outside click
     setTimeout(function(){
       document.addEventListener('click', closeSaveMenuOutside);
@@ -5808,25 +5820,33 @@ function exportJSON(){
   }
   var filename = (parts.length ? parts.join('_vs_') : 'scorecard') + '_' + datePart + '.json';
 
-  // On touch devices, use the native share sheet (AirDrop, Files, …) —
-  // anchor downloads are unreliable in installed home-screen apps.
-  // Desktop keeps the plain file download.
+  shareOrDownloadJSON(json, filename, function(){ kbFlash('Game saved', '#1D9E75'); });
+}
+
+// On touch devices, use the native share sheet (AirDrop, Files, …) —
+// anchor downloads are unreliable in installed home-screen apps.
+// Desktop keeps the plain file download. onDone runs once the file has been
+// handed off (not if the share sheet is dismissed).
+function shareOrDownloadJSON(json, filename, onDone){
   if('ontouchend' in document && navigator.canShare){
     try {
       var file = new File([json], filename, {type: 'application/json'});
       if(navigator.canShare({files: [file]})){
         navigator.share({files: [file]})
-          .then(function(){ kbFlash('Game saved', '#1D9E75'); })
+          .then(function(){ if(onDone) onDone(); })
           .catch(function(err){
             // AbortError = user dismissed the sheet; anything else, fall back
-            if(!err || err.name !== 'AbortError') _downloadJSON(json, filename);
+            if(!err || err.name !== 'AbortError'){
+              _downloadJSON(json, filename);
+              if(onDone) onDone();
+            }
           });
         return;
       }
     } catch(e){}
   }
   _downloadJSON(json, filename);
-  kbFlash('Game saved', '#1D9E75');
+  if(onDone) onDone();
 }
 
 function _downloadJSON(json, filename){
@@ -5858,6 +5878,12 @@ function importJSON(evt){
       payload = JSON.parse(e.target.result);
     } catch(err){
       showAlert({ title:'Could not read file', message:(err.message || 'The file is not valid JSON.'), tone:'danger' });
+      return;
+    }
+
+    // A full backup (every game) rather than a single game file
+    if(payload && payload.kind === 'scorecard-backup'){
+      restoreBackup(payload);
       return;
     }
 
@@ -5934,6 +5960,169 @@ function _applyImportedPayload(payload){
   var homeLabel = payload.teamHome || 'Home';
   addLog('Loaded from file: ' + awayLabel + ' vs ' + homeLabel, 'Game', 't-info');
   kbFlash('Game loaded', '#185FA5');
+}
+
+// ── Backup all games ──
+// One file with every game in My Games (the current game is saved there
+// first). Restoring merges: games already on this device are left alone.
+// The reminder compares each game's fingerprint (plays/status/score) with
+// what the last backup contained.
+var BK_KEY = 'baseball_scorecard_backup';
+var BK_STALE_MS = 7 * 24 * 3600 * 1000;
+var BK_SNOOZE_MS = 24 * 3600 * 1000;
+
+function bkState(){
+  var st = null;
+  try { st = JSON.parse(localStorage.getItem(BK_KEY) || 'null'); } catch(e){}
+  st = st || {};
+  st.sigs = st.sigs || {};
+  st.nudged = st.nudged || {};
+  return st;
+}
+function bkSaveState(st){
+  try { localStorage.setItem(BK_KEY, JSON.stringify(st)); } catch(e){}
+}
+function bkSignature(e){ return [e.plays, e.status, e.awayScore, e.homeScore].join('|'); }
+
+// Every game with plays, the current one summarized from live state
+function bkGames(){
+  var activeId = gmGetActiveId();
+  var sawActive = false, list = [];
+  gmGetIndex().forEach(function(e){
+    if(e.id === activeId){ sawActive = true; e = Object.assign({}, e, gmCurrentSummary()); }
+    if(e.plays > 0) list.push(e);
+  });
+  // A first game on a fresh install has no slot yet — still counts
+  if(!sawActive && G.log.length > 0) list.push(Object.assign({id: activeId || '(current)'}, gmCurrentSummary()));
+  return list;
+}
+function bkUnbacked(){
+  var st = bkState();
+  return bkGames().filter(function(e){ return st.sigs[e.id] !== bkSignature(e); });
+}
+
+function backupAllGames(){
+  // Flush autosave and make sure the current game is in My Games
+  clearTimeout(_saveTimer);
+  _doSave();
+  var activeId = gmGetActiveId();
+  if(G.log.length > 0){
+    // Fresh installs have no active slot until a reset; give it one so this
+    // game is in the backup and autosave keeps that slot current from now on.
+    if(!activeId){ activeId = gmGenId(); gmSetActiveId(activeId); }
+    gmSaveToSlot(activeId);
+  }
+
+  var games = [];
+  gmGetIndex().forEach(function(e){
+    var raw = null;
+    try { raw = localStorage.getItem(GM_GAME_PREFIX + e.id); } catch(x){}
+    if(!raw) return;
+    try { games.push({ id: e.id, meta: e, payload: JSON.parse(raw) }); } catch(x){}
+  });
+  if(!games.length){
+    showAlert({ title:'Nothing to back up', message:'There are no saved games yet.', tone:'info' });
+    return;
+  }
+
+  var d = new Date();
+  var ymd = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  var json = JSON.stringify({ kind:'scorecard-backup', version:1, exportedAt:d.toISOString(), games:games });
+  var sigs = {};
+  games.forEach(function(g){ sigs[g.id] = bkSignature(g.meta); });
+
+  shareOrDownloadJSON(json, 'scorecard-backup-' + ymd + '.json', function(){
+    var st = bkState();
+    st.at = Date.now();
+    st.sigs = sigs;
+    bkSaveState(st);
+    renderBackupNudge();
+    kbFlash('Backed up ' + games.length + ' game' + (games.length === 1 ? '' : 's'), '#1D9E75');
+  });
+}
+
+function restoreBackup(backup){
+  if(!Array.isArray(backup.games)){
+    showAlert({ title:'Invalid backup', message:'This backup file has no games in it.', tone:'danger' });
+    return;
+  }
+  var index = gmGetIndex();
+  var have = {};
+  index.forEach(function(e){ have[e.id] = true; });
+  have[gmGetActiveId()] = true;
+  var st = bkState();
+  var added = 0, skipped = 0, bad = 0, failed = 0;
+
+  backup.games.forEach(function(g){
+    var ok = g && g.id && g.payload && g.payload.G && g.payload.G.lineup && g.payload.G.scores;
+    if(!ok){ bad++; return; }
+    if(have[g.id]){ skipped++; return; }
+    try { localStorage.setItem(GM_GAME_PREFIX + g.id, JSON.stringify(g.payload)); }
+    catch(e){ failed++; return; }
+    var meta = Object.assign({ away:'Away', home:'Home', awayScore:0, homeScore:0, date:'', status:'', plays:0 }, g.meta || {}, { id: g.id });
+    index.push(meta);
+    st.sigs[g.id] = bkSignature(meta); // it came from a backup, so it's backed up
+    have[g.id] = true;
+    added++;
+  });
+
+  // Newest first, as My Games lists them
+  index.sort(function(a, b){ return String(b.savedAt || '').localeCompare(String(a.savedAt || '')); });
+  gmSaveIndex(index);
+  bkSaveState(st);
+  renderBackupNudge();
+
+  var lines = [added + ' game' + (added === 1 ? '' : 's') + ' added to My Games.'];
+  if(skipped) lines.push(skipped + ' already on this device (left unchanged).');
+  if(bad) lines.push(bad + ' unreadable entr' + (bad === 1 ? 'y' : 'ies') + ' skipped.');
+  if(failed) lines.push(failed + ' couldn\'t be saved — storage may be full.');
+  showAlert({ title:'Backup restored', message: lines.join('\n'), tone: failed ? 'danger' : 'info' });
+}
+
+// Reminder banner: only between games (never mid-game), when something
+// isn't backed up and either the game just finished or the last backup is
+// over a week old. Dismissing snoozes it for a day.
+function backupNudgeCount(){
+  var unbacked = bkUnbacked();
+  if(!unbacked.length) return 0;
+  var cur = gmCurrentSummary();
+  if(G.log.length > 0 && cur.status !== 'Final') return 0;
+  var st = bkState(), now = Date.now();
+  var activeId = gmGetActiveId();
+  var justFinished = cur.status === 'Final' && activeId && !st.nudged[activeId];
+  var stale = now - (st.at || 0) > BK_STALE_MS;
+  var snoozed = now - (st.dismissedAt || 0) < BK_SNOOZE_MS;
+  return (justFinished || (stale && !snoozed)) ? unbacked.length : 0;
+}
+
+function renderBackupNudge(){
+  var el = document.getElementById('backupNudge');
+  if(!el) return;
+  var n = backupNudgeCount();
+  if(!n){ el.hidden = true; return; }
+  el.innerHTML = '<span class="bn-text">💾 ' + n + ' game' + (n === 1 ? '' : 's') + ' not backed up</span>'
+    + '<button class="bn-go" onclick="backupAllGames()">Back up now</button>'
+    + '<button class="bn-x" onclick="dismissBackupNudge()" aria-label="Dismiss backup reminder">&times;</button>';
+  el.hidden = false;
+}
+
+function dismissBackupNudge(){
+  var st = bkState();
+  st.dismissedAt = Date.now();
+  var activeId = gmGetActiveId();
+  if(activeId) st.nudged[activeId] = true;
+  bkSaveState(st);
+  renderBackupNudge();
+}
+
+// "Last backup: 3 days ago" under the menu item
+function renderBackupHint(){
+  var el = document.getElementById('backupHint');
+  if(!el) return;
+  var at = bkState().at;
+  if(!at){ el.textContent = 'Never backed up'; return; }
+  var days = Math.floor((Date.now() - at) / (24 * 3600 * 1000));
+  el.textContent = 'Last backup: ' + (days === 0 ? 'today' : days === 1 ? 'yesterday' : days + ' days ago');
 }
 
 // ── Custom confirm / alert modals ──
@@ -6294,8 +6483,17 @@ function init(){
   autoFillDate();
   restoreNotes();
   syncWakeLock();
+  renderBackupNudge();
 }
 init();
+
+// Ask the browser not to clear this site's storage on its own (iOS may evict
+// data from apps that go unused). Best effort — backups are still the safety net.
+if(navigator.storage && navigator.storage.persist){
+  navigator.storage.persisted()
+    .then(function(p){ return p || navigator.storage.persist(); })
+    .catch(function(){});
+}
 
 // Offline support: cache the app so it opens with no signal (e.g. at the ballpark).
 if('serviceWorker' in navigator){
