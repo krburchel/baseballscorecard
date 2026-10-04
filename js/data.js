@@ -45,7 +45,8 @@ var MLB_LEAGUE_LOGO = 'https://www.mlbstatic.com/team-logos/league-on-light/';
 // maxGames: series length, for the "Game #" picker
 var POSTSEASON = {
   wild: { label:'Wild Card',    logo: MLB_LEAGUE_LOGO + '1.svg',   maxGames: 3 },
-  alds: { label:'ALDS',         logo: MLB_LEAGUE_LOGO + '103.svg', maxGames: 5 },
+  alds: { label:'ALDS',         logo: MLB_LEAGUE_LOGO + '103.svg', maxGames: 5,
+          official: { '2026': 'assets/postseason/alds-2026.png' } },   // that year's official logo, bundled
   alcs: { label:'ALCS',         logo: MLB_LEAGUE_LOGO + '103.svg', maxGames: 7 },
   nlds: { label:'NLDS',         logo: MLB_LEAGUE_LOGO + '104.svg', maxGames: 5 },
   nlcs: { label:'NLCS',         logo: MLB_LEAGUE_LOGO + '104.svg', maxGames: 7 },

@@ -3,7 +3,7 @@
 // Wi-Fi) serve the cached copy instead. The network request keeps running in
 // the background and refreshes the cache, so the next open is up to date.
 // Fully offline, the cached copy is served right away.
-var CACHE = 'scorecard-v3';
+var CACHE = 'scorecard-v4';
 var NETWORK_TIMEOUT_MS = 3000;
 var ASSETS = [
   './',
@@ -18,6 +18,7 @@ var ASSETS = [
   './js/storage.js',
   './js/reports.js',
   './js/ui.js',
+  './assets/postseason/alds-2026.png',
   './manifest.json',
   './icon-192.png',
   './icon-512.png',

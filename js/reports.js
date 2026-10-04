@@ -153,12 +153,24 @@ function renderSeriesGamePicker(){
   el.style.display = '';
 }
 
-function postseasonBadge(){
+// The round's logo for this game: the official logo for that year when the app
+// bundles one (it already says e.g. "2026 ALDS"), otherwise the league logo.
+function postseasonLogo(){
   var ps = POSTSEASON[G.notes && G.notes.gameType];
-  if(!ps) return '';
+  if(!ps) return null;
   var yr = (G.notes.date || '').slice(0, 4) || String(new Date().getFullYear());
-  var gameNo = G.notes.seriesGame ? ' · Game ' + G.notes.seriesGame : '';
-  return '<span class="ps-badge"><img src="' + ps.logo + '" alt="" />' + yr + ' ' + ps.label + gameNo + '</span>';
+  var official = ps.official && ps.official[yr];
+  return { ps: ps, yr: yr, src: official || ps.logo, official: !!official, label: yr + ' ' + ps.label };
+}
+
+function postseasonBadge(){
+  var pl = postseasonLogo();
+  if(!pl) return '';
+  var gameNo = G.notes.seriesGame ? 'Game ' + G.notes.seriesGame : '';
+  if(pl.official){
+    return '<span class="ps-badge ps-badge-official"><img src="' + pl.src + '" alt="' + esc(pl.label) + '" />' + gameNo + '</span>';
+  }
+  return '<span class="ps-badge"><img src="' + pl.src + '" alt="" />' + pl.label + (gameNo ? ' · ' + gameNo : '') + '</span>';
 }
 
 function teamLogoImg(side, cls){
@@ -279,7 +291,8 @@ function buildFinalImage(){
   var bat = { away: sfBatting('away'), home: sfBatting('home') };
   var pit = { away: sfPitching('away'), home: sfPitching('home') };
   var ps = POSTSEASON[G.notes && G.notes.gameType];
-  return Promise.all([sfLoadImg(TEAM_LOGOS[away]), sfLoadImg(TEAM_LOGOS[home]), sfLoadImg(ps ? ps.logo : null)]).then(function(imgs){
+  var pl = postseasonLogo();
+  return Promise.all([sfLoadImg(TEAM_LOGOS[away]), sfLoadImg(TEAM_LOGOS[home]), sfLoadImg(pl ? pl.src : null)]).then(function(imgs){
     var logo = { away: imgs[0], home: imgs[1] }, psLogo = imgs[2];
     var n = Math.max(9, G.totalInnings);
     var batRows = Math.max(bat.away.rows.length, bat.home.rows.length);
@@ -307,11 +320,16 @@ function buildFinalImage(){
     }
     if(G.notes && G.notes.venue) meta.push(G.notes.venue);
     var bx = x0;
-    if(ps){
-      if(psLogo){ sfContain(ctx, psLogo, bx, y, 40, 40); bx += 50; }
-      var yr = (G.notes.date || '').slice(0, 4) || String(new Date().getFullYear());
-      var label = (yr + ' ' + ps.label + (G.notes.seriesGame ? ' · Game ' + G.notes.seriesGame : '')).toUpperCase();
-      sfText(ctx, label, bx, y + 20, { size:22, weight:800, color:SF_C.ink });
+    if(pl){
+      var gameNo = G.notes.seriesGame ? 'Game ' + G.notes.seriesGame : '';
+      if(pl.official && psLogo){
+        // The official logo carries the year and round itself; just add the game
+        sfContain(ctx, psLogo, bx, y - 10, 90, 60); bx += 102;
+        if(gameNo) sfText(ctx, gameNo.toUpperCase(), bx, y + 20, { size:22, weight:800, color:SF_C.ink });
+      } else {
+        if(psLogo){ sfContain(ctx, psLogo, bx, y, 40, 40); bx += 50; }
+        sfText(ctx, (pl.label + (gameNo ? ' · ' + gameNo : '')).toUpperCase(), bx, y + 20, { size:22, weight:800, color:SF_C.ink });
+      }
     }
     if(meta.length) sfText(ctx, meta.join(' · '), x1, y + 20, { size:20, color:SF_C.muted, align:'right', maxW: ps ? 480 : x1 - x0 });
     y += 44 + 24;
