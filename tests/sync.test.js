@@ -135,3 +135,34 @@ test('sync is invisible until it is set up and signed in', (t) => {
   w.openSyncPanel();
   assert.match(w.document.querySelector('.sync-body').textContent, /isn't set up/, 'without a config it says so');
 });
+
+test('"Sync now" says what happened and shows the device and cloud counts', async (t) => {
+  const backend = createBackend();
+  const ipad = await device(t, backend, 'iPad');
+  await scoreAndSync(ipad, [single]);
+  ipad.openSyncPanel();
+  ipad.syncNow();
+  assert.equal(ipad.document.getElementById('syncNowBtn').textContent, 'Syncing…', 'button shows progress');
+  await wait();
+  const text = ipad.document.querySelector('.sync-body').textContent;
+  assert.match(text, /✓ Synced at .* — nothing new to upload/);
+  assert.match(text, /On this device: 1 game · In the cloud: 1/);
+  ipad.recordKO('swinging'); ipad._doSave();
+  ipad.syncNow(); await wait();
+  assert.match(ipad.document.querySelector('.sync-body').textContent, /1 game uploaded/);
+});
+
+test('an upload stuck waiting on the network does not block later syncs', async (t) => {
+  const backend = createBackend();
+  const ipad = await device(t, backend, 'iPad');
+  await scoreAndSync(ipad, [single]);
+  const id = ipad.gmGetActiveId();
+  ipad.firebase._goOffline();
+  ipad.recordKO('swinging'); ipad._doSave(); ipad.syncPush();       // stuck: no network
+  assert.equal(ipad._sync.pushing, false, 'not left "busy"');
+  ipad.recordHit(2); ipad._doSave(); ipad.syncPush();               // a later change still queues
+  await ipad.firebase._goOnline(); await wait();
+  const cloud = JSON.parse(backend.docs.get('users/uid-1/games/' + id).payload);
+  same(cloud.G.pas.map(p => p.res), ['1B', 'K', '2B'], 'the cloud has the latest version');
+  assert.equal(ipad.syncWaiting(), 0);
+});

@@ -111,8 +111,11 @@ function syncSoon(delay){
   _sync.timer = setTimeout(syncPush, delay === undefined ? SYNC_DELAY_MS : delay);
 }
 
+// Uploads every changed game. `_sync.pushing` only covers the scan (so the saves
+// it triggers don't reschedule); uploads still waiting on the network don't block
+// later syncs. Resolves when this round's uploads have reached the server.
 function syncPush(){
-  if(!_sync.user || _sync.pushing || _sync.applying) return Promise.resolve();
+  if(!_sync.user || _sync.pushing || _sync.applying) return Promise.resolve({ uploaded: 0 });
   _sync.pushing = true;
   var st = syncState(), now = Date.now(), jobs = [];
   var games = syncLocalGames(), here = {};
@@ -121,7 +124,7 @@ function syncPush(){
     var m = st.meta[g.id] = st.meta[g.id] || {};
     var sig = syncSig(g.raw);
     if(m.sig !== sig){ m.sig = sig; m.updatedAt = Math.max(now, (m.remoteUpdatedAt || 0) + 1); }
-    if(m.pushedSig !== sig) jobs.push(syncUpload(g, m, st));
+    if(m.pushedSig !== sig && m.inflightSig !== sig) jobs.push(syncUpload(g, m, st));
   });
   // Games that were synced but are gone here: deleted on this device
   Object.keys(st.meta).forEach(function(id){
@@ -132,15 +135,16 @@ function syncPush(){
       m.remoteUpdatedAt = m.updatedAt; syncSaveState(st);
     }).catch(function(){}));
   });
+  _sync.pushing = false;
   syncSaveState(st);
   renderSyncStatus();
   return Promise.all(jobs).then(function(){
-    _sync.pushing = false;
     _sync.lastSync = Date.now();
-    _sync.error = '';
     syncSaveState(st);
     renderSyncStatus();
-  }, function(){ _sync.pushing = false; renderSyncStatus(); });
+    renderSyncPanel();
+    return { uploaded: jobs.length };
+  }, function(err){ renderSyncStatus(); renderSyncPanel(); throw err; });
 }
 
 function syncUpload(g, m, st){
@@ -150,10 +154,13 @@ function syncUpload(g, m, st){
     away: e.away || '', home: e.home || '', awayScore: e.awayScore || 0, homeScore: e.homeScore || 0,
     date: e.date || '', status: e.status || '', plays: e.plays || 0
   };
+  m.inflightSig = sig;
   return syncGamesRef().doc(g.id).set(doc).then(function(){
-    m.pushedSig = sig; m.remoteUpdatedAt = m.updatedAt;
+    m.pushedSig = sig; m.remoteUpdatedAt = m.updatedAt; m.inflightSig = null;
+    _sync.error = '';
     syncSaveState(st);
   }).catch(function(err){
+    m.inflightSig = null;
     if(err && err.code === 'permission-denied'){
       // A newer version is already in the cloud: keep ours as a copy, take theirs
       return syncGamesRef().doc(g.id).get().then(function(snap){
@@ -170,9 +177,13 @@ function syncUpload(g, m, st){
 // ── Download ──
 function syncOnSnapshot(snap){
   var st = syncState();
+  _sync.cloud = _sync.cloud || {};
   snap.docChanges().forEach(function(ch){
-    if(ch.type === 'removed' || ch.doc.metadata.hasPendingWrites) return;
-    var id = ch.doc.id, d = ch.doc.data(), m = st.meta[id] = st.meta[id] || {};
+    if(ch.type === 'removed') return;
+    var id = ch.doc.id, d = ch.doc.data();
+    _sync.cloud[id] = !d.deleted;
+    if(ch.doc.metadata.hasPendingWrites) return;
+    var m = st.meta[id] = st.meta[id] || {};
     if((d.updatedAt || 0) <= (m.remoteUpdatedAt || 0)) return;      // nothing new
     var localChanged = m.sig && m.pushedSig !== m.sig;
     if(localChanged && (m.updatedAt || 0) >= (d.updatedAt || 0)) return;  // ours is newer (or this is our own write)
@@ -182,6 +193,7 @@ function syncOnSnapshot(snap){
   _sync.lastSync = Date.now();
   syncSaveState(st);
   renderSyncStatus();
+  renderSyncPanel();
 }
 
 // The losing (older) local version becomes a copy in My Games; the cloud version takes its place
@@ -304,13 +316,16 @@ function renderSyncPanel(){
     html += '<p>Sync isn\'t set up for this app yet.</p>';
   } else if(_sync.user){
     var waiting = syncWaiting();
+    var local = gmGetIndex().length, cloud = Object.keys(_sync.cloud || {}).filter(function(k){ return _sync.cloud[k]; }).length;
     html += '<p class="sync-line"><b>Signed in</b> as ' + esc(_sync.user.email || st.email || '') + '</p>'
+      + '<p class="sync-line">On this device: <b>' + local + '</b> game' + (local === 1 ? '' : 's') + ' · In the cloud: <b>' + cloud + '</b></p>'
       + '<p class="sync-line">' + (waiting ? waiting + ' game' + (waiting === 1 ? '' : 's') + ' waiting to upload' : 'Everything on this device is uploaded')
       + (_sync.lastSync ? ' · last synced ' + new Date(_sync.lastSync).toLocaleTimeString([], { hour:'numeric', minute:'2-digit' }) : '') + '</p>'
+      + (_sync.nowMsg ? '<p class="sync-ok-msg">' + esc(_sync.nowMsg) + '</p>' : '')
       + (_sync.error ? '<p class="sync-err">' + esc(_sync.error) + '</p>' : '')
       + '<label class="sync-field">This device\'s name <input id="syncDevice" value="' + esc(st.device) + '" onchange="syncRenameDevice(this.value)" /></label>'
       + '<p class="sync-note">Games scored on any signed-in device show up in My Games and season stats everywhere. If the same game changes on two devices, the newer version wins and the other is kept as a copy.</p>'
-      + '<div class="pe-actions"><button class="pe-cancel" onclick="syncSignOut()">Sign out</button><button class="rp-confirm" onclick="syncPush()">Sync now</button></div>';
+      + '<div class="pe-actions"><button class="pe-cancel" onclick="syncSignOut()">Sign out</button><button class="rp-confirm" id="syncNowBtn" onclick="syncNow()"' + (_sync.busyNow ? ' disabled' : '') + '>' + (_sync.busyNow ? 'Syncing…' : 'Sync now') + '</button></div>';
   } else {
     html += '<p class="sync-note">Sign in to keep My Games, season stats and backups the same on all your devices.</p>'
       + '<form onsubmit="event.preventDefault(); syncSubmitSignIn();" class="sync-form">'
@@ -321,6 +336,27 @@ function renderSyncPanel(){
   }
   html += '</div></div>';
   ov.innerHTML = html;
+}
+
+// "Sync now": upload changes and say what happened (or that uploads are still queued)
+function syncNow(){
+  if(_sync.busyNow) return;
+  _sync.busyNow = true; _sync.nowMsg = ''; _sync.error = '';
+  renderSyncPanel();
+  var done = false;
+  var finish = function(msg, err){
+    if(done) return; done = true;
+    _sync.busyNow = false;
+    _sync.nowMsg = msg || '';
+    if(err) _sync.error = err;
+    renderSyncStatus(); renderSyncPanel();
+  };
+  setTimeout(function(){ finish('', 'Still uploading — the connection is slow. Uploads are queued and will finish on their own.'); }, 12000);
+  syncPush().then(function(r){
+    var t = new Date().toLocaleTimeString([], { hour:'numeric', minute:'2-digit' });
+    var n = (r && r.uploaded) || 0;
+    finish('✓ Synced at ' + t + (n ? ' — ' + n + ' game' + (n === 1 ? '' : 's') + ' uploaded' : ' — nothing new to upload'));
+  }, function(err){ finish('', syncErrorText(err)); });
 }
 
 function syncSubmitSignIn(){
