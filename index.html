@@ -260,6 +260,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .infield svg { display:block; width:100%; max-width:280px; height:auto; margin:0 auto; border-radius:6px; }
 .if-base { cursor:pointer; outline:none; }
 .if-base:focus-visible rect { stroke:var(--blue); stroke-width:2; }
+.stadium-slot { margin-top:12px; }
+.stadium-slot:empty { display:none; }
 .stadium-photo { margin:0; display:flex; flex-direction:column; gap:3px; min-width:0; }
 .stadium-photo img { display:block; width:100%; aspect-ratio:16/7; object-fit:cover; border-radius:6px; background:var(--header-bg); }
 .stadium-photo figcaption { display:flex; justify-content:space-between; align-items:baseline; gap:8px; min-width:0; }
@@ -908,6 +910,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
           <button class="btn" onclick="clearOuts()">Clear</button>
         </div>
       </div>
+      <div id="stadiumWrap" class="stadium-slot"></div>
     </div>
 
     <div class="card">
@@ -939,21 +942,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       </div>
       <div id="absPicker" style="display:none"></div>
       <div class="abs-tally" id="absTally"></div>
-    </div>
-
-    <div class="card">
-      <div class="label">Bases</div>
-      <div class="bases-field">
-        <div class="infield" id="infield" aria-label="Bases"></div>
-        <div id="stadiumWrap"></div>
-      </div>
-      <div class="btns" style="justify-content:center;margin-top:4px">
-        <button class="btn" onclick="addRun()">+ Run</button>
-        <button class="btn" onclick="clearBases()">Clear</button>
-      </div>
-      <div class="runner-labels" id="runnerLabels"></div>
       <div style="border-top:1px solid var(--border);margin-top:8px;padding-top:8px">
-        <div class="label" style="margin-bottom:5px">Stolen bases / outs on the bases / wild pitch / passed ball / balk / defensive error</div>
+        <div class="label" style="margin-bottom:5px">Baserunning</div>
         <div class="btns" id="brBtns">
           <button class="btn" style="border-color:#185FA5;color:#185FA5" onclick="startBRAction('sb')">SB</button>
           <button class="btn" style="border-color:#BA7517;color:#BA7517" onclick="startBRAction('cs')">CS</button>
@@ -965,6 +955,19 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         </div>
         <div id="brPicker" style="display:none"></div>
       </div>
+    </div>
+
+    <div class="card">
+      <div class="label">Bases</div>
+      <div class="bases-field">
+        <div class="infield" id="infield" aria-label="Bases"></div>
+      </div>
+      <div class="btns" style="justify-content:center;margin-top:4px">
+        <button class="btn" onclick="addRun()">+ Run</button>
+        <button class="btn" onclick="clearBases()">Clear</button>
+      </div>
+      <div class="runner-labels" id="runnerLabels"></div>
+
     </div>
   </div>
 
