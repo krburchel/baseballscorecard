@@ -391,6 +391,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 /* pitchers */
 .prow { display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding:7px 12px; border-bottom:1px solid var(--border); cursor:pointer; }
 .p-line:empty { display:none; }
+.p-line[role=button] { cursor:pointer; border-radius:4px; }
+.p-line[role=button]:hover, .p-line[role=button]:focus-visible { color:var(--text); text-decoration:underline dotted; outline:none; }
+.p-warn { padding:7px 12px; font-size:11px; line-height:1.4; color:var(--amber); background:var(--al); border-top:1px solid var(--border); }
+.ple-grid { display:grid; grid-template-columns:repeat(4, 1fr); gap:8px; }
+.ple-grid label { display:flex; flex-direction:column; gap:3px; font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; }
+.ple-grid input { width:100%; padding:6px 8px; font:inherit; font-size:14px; border:1.5px solid var(--border); border-radius:6px; background:var(--surface); color:var(--text); }
+.ple-grid input.bad { border-color:var(--red); }
+@media(max-width:420px){ .ple-grid { grid-template-columns:repeat(3, 1fr); } }
 .p-line { order:1; flex-basis:100%; font-size:11px; color:var(--muted); padding-left:16px; margin-top:-3px; font-variant-numeric:tabular-nums; }
 .prow:last-child { border-bottom:none; }
 .prow.active-p { background:var(--bl); }
@@ -668,6 +676,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   .prow { padding:4px 8px; }
   .prow.active-p { background:var(--bl)!important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
   .p-dot.hidden { display:none; }
+  .p-warn { display:none!important; }
   /* score color accents */
   .active-inn { background:var(--bl)!important; color:var(--blue)!important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
   .half-top { background:var(--bl)!important; color:var(--blue)!important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
@@ -4826,14 +4835,30 @@ function renderPitchers(side){
       html+='<input class="p-name" value="'+esc(p.name)+'" placeholder="Pitcher '+(i+1)+'" data-action="set-p-name" data-side="'+side+'" data-pidx="'+i+'" />';
     }
     html+='<span class="pc'+pitchCountClass(p.pitches)+'" id="'+side+'pc'+i+'">'+p.pitches+'</span>';
-    html+='<div class="p-line" id="'+side+'pl'+i+'">'+pitchingLine(p)+'</div>';
+    html+='<div class="p-line" id="'+side+'pl'+i+'" data-action="edit-p-line" data-side="'+side+'" data-pidx="'+i+'" role="button" tabindex="0" title="Tap to edit this pitching line">'+pitchingLine(p)+'</div>';
     html+='<div class="padj"><button class="pb" data-action="adj-p" data-side="'+side+'" data-pidx="'+i+'" data-dir="-1">−</button><button class="pb" data-action="adj-p" data-side="'+side+'" data-pidx="'+i+'" data-dir="1">+</button></div>';
     html+='</div>';
   });
   html+='<div class="add-p" data-action="add-p" data-side="'+side+'"><span style="font-size:16px;margin-right:4px">+</span>Add pitcher</div>';
+  var chk = staffOutsCheck(side);
+  if(chk) html+='<div class="p-warn">⚠ Innings pitched add up to '+fmtIP(chk.credited)+', but this team has recorded '+fmtIP(chk.expected)+'. Tap a pitching line to fix it.</div>';
   panel.innerHTML=html;
 }
 // Innings pitched in baseball notation: 17 outs → "5.2"
+// Outs the fielding side has actually recorded (3 per completed half it
+// fielded, plus the current half's outs) vs. the outs credited to its
+// pitchers. Returns null when they agree or the game is over (final halves
+// can end early, so they're not checked).
+function staffOutsCheck(side){
+  if(G.log.some(function(l){ return l.tag === 'Final'; })) return null;
+  var completed = side === 'home'
+    ? (G.half === 'bot' ? G.inning : G.inning - 1)  // home fields the top halves
+    : G.inning - 1;                                   // away fields the bottoms
+  var expected = completed * 3 + (fielding() === side ? G.outs : 0);
+  var credited = G.pitchers[side].reduce(function(n, p){ return n + (p.outs || 0); }, 0);
+  return expected === credited ? null : { expected: expected, credited: credited };
+}
+
 function fmtIP(outs){ return Math.floor(outs / 3) + '.' + (outs % 3); }
 function pitchStrikes(p){ return Math.max(0, p.pitches - (p.balls || 0)); }
 
@@ -4844,6 +4869,99 @@ function pitchingLine(p){
   if(p.hr > 0) parts.push(p.hr + ' HR');
   parts.push('<span title="Pitches-strikes">' + p.pitches + '-' + pitchStrikes(p) + '</span>');
   return parts.join(' · ');
+}
+
+// ── Pitching line editor ──
+// Hand corrections for a pitcher's line (e.g. plays recorded before the app
+// tracked IP/H per pitcher, or the official scorer changing a call).
+var PLE_FIELDS = [
+  {k:'outs', label:'IP'}, {k:'h', label:'H'}, {k:'r', label:'R'}, {k:'er', label:'ER'},
+  {k:'bb', label:'BB'}, {k:'k', label:'K'}, {k:'hr', label:'HR'}
+];
+var _pleState = null; // {side, idx}
+
+// "5.1" → 16 outs; null if it isn't baseball IP notation
+function parseIP(str){
+  var m = /^\s*(\d+)(?:\.([012]))?\s*$/.exec(str || '');
+  return m ? parseInt(m[1], 10) * 3 + (m[2] ? parseInt(m[2], 10) : 0) : null;
+}
+
+function openPitchLineEditor(side, idx){
+  var p = G.pitchers[side][idx];
+  if(!p) return;
+  closePitchLineEditor();
+  _pleState = { side: side, idx: idx };
+  var ov = document.createElement('div');
+  ov.className = 'rp-overlay';
+  ov.id = 'pleOverlay';
+  ov.addEventListener('click', function(e){ if(e.target === ov) closePitchLineEditor(); });
+
+  var chk = staffOutsCheck(side);
+  var html = '<div class="rp-modal" role="dialog" aria-modal="true" aria-labelledby="pleTitle">';
+  html += '<div class="rp-hdr"><h3 id="pleTitle">' + esc(p.name || 'Pitcher ' + (idx + 1)) + ' <span class="rp-hdr-sub">— ' + esc(team(side)) + '</span></h3>'
+    + '<button class="inn-popover-close" style="position:static" onclick="closePitchLineEditor()" aria-label="Close">&times;</button></div>';
+  html += '<div class="rp-body"><div class="ple-grid">';
+  PLE_FIELDS.forEach(function(f){
+    var v = f.k === 'outs' ? fmtIP(p.outs || 0) : (p[f.k] || 0);
+    html += '<label>' + f.label + '<input id="ple_' + f.k + '" value="' + v + '" inputmode="' + (f.k === 'outs' ? 'decimal' : 'numeric') + '" autocomplete="off"'
+      + ' onkeydown="if(event.key===\'Enter\'){event.preventDefault();savePitchLineEditor();}else if(event.key===\'Escape\'){event.preventDefault();closePitchLineEditor();}" /></label>';
+  });
+  html += '</div>';
+  html += '<div class="pe-note">IP uses baseball notation: 5.1 = 5⅓ innings, 5.2 = 5⅔.'
+    + (chk ? ' This team has recorded <b>' + fmtIP(chk.expected) + '</b> innings of outs so far; its pitchers are credited with ' + fmtIP(chk.credited) + '.' : '')
+    + ' Pitch counts are changed with − / + on the row.</div>';
+  html += '<div class="pe-actions"><button class="pe-cancel" onclick="closePitchLineEditor()">Cancel</button>'
+    + '<button class="rp-confirm" onclick="savePitchLineEditor()">Save</button></div>';
+  html += '</div></div>';
+  ov.innerHTML = html;
+  document.body.appendChild(ov);
+  var first = document.getElementById('ple_outs');
+  if(first){ first.focus(); first.select(); }
+}
+
+function closePitchLineEditor(){
+  _pleState = null;
+  var ov = document.getElementById('pleOverlay');
+  if(ov) ov.remove();
+}
+
+function savePitchLineEditor(){
+  if(!_pleState) return;
+  var side = _pleState.side, p = G.pitchers[side][_pleState.idx];
+  var vals = {}, bad = null;
+  PLE_FIELDS.forEach(function(f){
+    var inp = document.getElementById('ple_' + f.k);
+    inp.classList.remove('bad');
+    var v = f.k === 'outs' ? parseIP(inp.value) : (/^\s*\d+\s*$/.test(inp.value) ? parseInt(inp.value, 10) : null);
+    if(v === null){ inp.classList.add('bad'); bad = bad || inp; }
+    vals[f.k] = v;
+  });
+  if(bad){
+    bad.focus();
+    kbFlash(bad.id === 'ple_outs' ? 'IP like 5, 5.1 or 5.2' : 'Whole numbers only', '#BA7517');
+    return;
+  }
+  if(vals.er > vals.r){
+    var er = document.getElementById('ple_er');
+    er.classList.add('bad');
+    er.focus();
+    kbFlash('ER can\'t be more than R', '#BA7517');
+    return;
+  }
+  var changes = [];
+  PLE_FIELDS.forEach(function(f){
+    var old = p[f.k] || 0;
+    if(vals[f.k] !== old){
+      changes.push(f.label + ' ' + (f.k === 'outs' ? fmtIP(old) + '→' + fmtIP(vals[f.k]) : old + '→' + vals[f.k]));
+    }
+  });
+  closePitchLineEditor();
+  if(!changes.length) return;
+  saveState();
+  PLE_FIELDS.forEach(function(f){ p[f.k] = vals[f.k]; });
+  addLog('Pitching line edited: ' + (p.name || 'Pitcher') + ' — ' + changes.join(', '), 'Edit', 't-info');
+  renderPitchers(side);
+  saveToStorage();
 }
 
 function adj(side, i, d){
@@ -6319,6 +6437,10 @@ document.addEventListener('keydown', function(e){
     if(e.key === 'Escape') closePaEditor();
     return;
   }
+  if(document.getElementById('pleOverlay')){
+    if(e.key === 'Escape') closePitchLineEditor();
+    return;
+  }
   // If runner placement picker is open, only allow Escape (auto-advance)
   if(document.getElementById('rpOverlay')){
     if(e.key === 'Escape'){ rpAutoAdvance(); }
@@ -6432,9 +6554,12 @@ function findAction(el, container){
   return null;
 }
 
+// init() runs again after Reset game, so each setup binds only once —
+// otherwise every tap fires twice (e.g. "Add pitcher" adding two).
 function setupLineupDelegation(side){
   var panel = document.getElementById(side+'Lineup');
-  if(!panel) return;
+  if(!panel || panel._bound) return;
+  panel._bound = true;
   panel.addEventListener('click', function(e){
     var el = findAction(e.target, panel);
     if(!el) return;
@@ -6461,17 +6586,26 @@ function setupLineupDelegation(side){
 
 function setupPitcherDelegation(side){
   var panel = document.getElementById(side+'PitcherPanel');
-  if(!panel) return;
+  if(!panel || panel._bound) return;
+  panel._bound = true;
   panel.addEventListener('click', function(e){
     var el = findAction(e.target, panel);
     if(!el) return;
     var act = el.dataset.action;
     var pidx = parseInt(el.dataset.pidx);
     // Stop propagation from inputs/selects to prevent set-active-p firing
-    if(act === 'set-p-name' || act === 'adj-p' || act === 'add-p') e.stopPropagation();
-    if(act === 'set-active-p') setActivePitcher(el.dataset.side, pidx);
+    if(act === 'set-p-name' || act === 'adj-p' || act === 'add-p' || act === 'edit-p-line') e.stopPropagation();
+    if(act === 'edit-p-line') openPitchLineEditor(el.dataset.side, pidx);
+    else if(act === 'set-active-p') setActivePitcher(el.dataset.side, pidx);
     else if(act === 'adj-p') adj(el.dataset.side, pidx, parseInt(el.dataset.dir));
     else if(act === 'add-p') addPitcher(el.dataset.side);
+  });
+  panel.addEventListener('keydown', function(e){
+    var el = e.target;
+    if((e.key === 'Enter' || e.key === ' ') && el.dataset && el.dataset.action === 'edit-p-line'){
+      e.preventDefault();
+      openPitchLineEditor(el.dataset.side, parseInt(el.dataset.pidx));
+    }
   });
   panel.addEventListener('change', function(e){
     var el = e.target;
@@ -6486,7 +6620,9 @@ function setupPitcherDelegation(side){
 
 function setupFielderDelegation(){
   var fg = document.getElementById('fielderGrid');
-  if(fg) fg.addEventListener('click', function(e){
+  if(!fg || fg._bound) return;
+  fg._bound = true;
+  fg.addEventListener('click', function(e){
     var el = findAction(e.target, fg);
     if(!el || el.dataset.action !== 'sel-fielder') return;
     selectFielder(parseInt(el.dataset.num));
