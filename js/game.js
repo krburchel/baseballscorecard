@@ -21,7 +21,7 @@ function mkGame(){
     pitchers:{home:[mkPitcher()], away:[mkPitcher()]},
     log:[],
     batterLog:{home:{}, away:{}},
-    pas:[],
+    pas:[], nextPaId:1,
     mlbGamePk:null, mlbGameTeams:'', // MLB's id for this game (Check vs MLB)
     mlbKeep:{},                      // MLB differences the scorer chose to keep
     notes:mkNotes(),
@@ -117,6 +117,10 @@ function migrateGame(g){
   // v5 → v6: Check vs MLB
   if(!g.mlbKeep) g.mlbKeep = {};
 
+  // v6 → v7: plate appearances get ids so play-log lines can point at them
+  if(!g.nextPaId) g.nextPaId = 1;
+  (g.pas || []).forEach(function(pa){ if(!pa.id) pa.id = g.nextPaId++; });
+
   // Very early saves stored bases as booleans; now we store runner names
   // (string) or null. Normalize either way.
   if(g.bases){
@@ -196,8 +200,26 @@ function chargeRun(pa, unearned){
   var pIdx = pa && pa.pIdx < staff.length ? pa.pIdx : activePIdx(fSide);
   var p = staff[pIdx];
   p.r++;
-  if(!unearned && !(pa && pa.unearned)) p.er++;
+  if(!unearned && !(pa && pa.unearned) && !inningOverWithoutErrors(pIdx)) p.er++;
   renderPitchers(fSide);
+}
+
+// Earned-run reconstruction (rule 9.16): count each batter who reached on an
+// error as the out that should have been made. If those plus the real outs
+// already reach three, the inning should have been over and the run is
+// unearned. A reliever gets no benefit from misplays before he came in, so only
+// errors while this pitcher or a later one was pitching count for him.
+function inningOverWithoutErrors(pIdx){
+  var bSide = batting(), missed = 0;
+  G.pas.forEach(function(q){
+    if(q.side === bSide && q.inn === G.inning && q.half === G.half && /^E\d?$/.test(q.res) && (q.pIdx || 0) >= pIdx) missed++;
+  });
+  return G.outs + missed >= 3;
+}
+
+function newPaId(){
+  if(!G.nextPaId) G.nextPaId = 1;
+  return G.nextPaId++;
 }
 
 // ── Plate appearances (scorecard grid) ──

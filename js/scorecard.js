@@ -12,8 +12,11 @@ function logBatter(side, batterIdx, result, outsOnPlay){
   var nm = curName(side, batterIdx);
   G.batterLog[side][key].push(nm + ' — ' + result);
 
-  var isOut = paIsOut(result);
+  var isOut = paIsOut(result), id = newPaId();
+  // The result line ("Díaz — Single") was just logged: point it at this PA
+  if(G.log[0] && !G.log[0].paId && G.log[0].text.indexOf(nm) >= 0) G.log[0].paId = id;
   G.pas.push({
+    id: id,
     side: side, slot: batterIdx, inn: G.inning, half: G.half, res: result,
     reached: paReachFor(result),
     out: isOut ? Math.min(3, G.outs + (outsOnPlay || 1)) : 0,

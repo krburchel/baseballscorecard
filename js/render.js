@@ -100,6 +100,7 @@ function renderLog(){
           + '<input class="log-edit-input" id="logEditInput" value="' + esc(e.text) + '" />'
           + '<span class="ltag ' + e.cls + '">' + e.tag + '</span>'
           + '<button class="log-edit-save" onclick="logEditSave()">Save</button>'
+          + (logPaIndex(e) >= 0 ? '<button class="log-edit-play" onclick="logEditPlay(' + i + ')" title="Change the result, bases or out on the scorecard (stats follow)">Edit play</button>' : '')
           + '<button class="log-edit-del" onclick="logEditDelete(' + i + ')">Delete</button>'
           + '<button class="log-edit-cancel" onclick="logEditCancel()">Cancel</button>'
           + '</div>';
@@ -152,7 +153,48 @@ function logEditSave(){
   saveToStorage();
 }
 
+// The scorecard plate appearance a log line records, or -1
+function logPaIndex(entry){
+  if(!entry || !entry.paId) return -1;
+  for(var i = 0; i < G.pas.length; i++) if(G.pas[i].id === entry.paId) return i;
+  return -1;
+}
+
+// "Edit play": the result belongs on the scorecard, where stats follow it
+function logEditPlay(idx){
+  var pi = logPaIndex(G.log[idx]);
+  logEditIdx = -1;
+  renderLog();
+  if(pi >= 0) openPaEditor(pi);
+}
+
+// Deleting a result line asks whether the play itself should go too
 function logEditDelete(idx){
+  if(idx < 0 || idx >= G.log.length) return;
+  var pi = logPaIndex(G.log[idx]);
+  if(pi < 0){ deleteLogLine(idx); return; }
+  var pa = G.pas[pi];
+  showConfirm({
+    title: 'Remove the play too?',
+    message: 'This line records ' + curNameForPa(pa) + ': ' + paLabel(pa.res) + ' (' + (pa.half === 'top' ? 'T' : 'B') + pa.inn + '). Remove that plate appearance from the scorecard and stats as well?',
+    confirmLabel: 'Remove play',
+    cancelLabel: 'Just the log line',
+    tone: 'warn'
+  }).then(function(removePlay){
+    var id = pa.id;
+    deleteLogLine(idx);
+    if(!removePlay) return;
+    var at = -1;
+    G.pas.forEach(function(q, i){ if(q.id === id) at = i; });
+    if(at < 0) return;
+    saveState();
+    removePa(at, 'Log edit');
+    renderAll();
+    saveToStorage();
+  });
+}
+
+function deleteLogLine(idx){
   if(idx < 0 || idx >= G.log.length) return;
   // Undo snapshots that already contained this entry now span one fewer
   var len = G.log.length;

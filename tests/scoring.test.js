@@ -123,10 +123,74 @@ test('Undo after deleting a play-log entry restores the right log', (t) => {
   w.recordHit(1); w.recordKO('swinging');
   const before = JSON.stringify(w.G.log);
   w.addBall();
-  w.logEditDelete(w.G.log.length - 1);           // delete the oldest entry
+  w.deleteLogLine(w.G.log.length - 1);           // delete the oldest entry (text only)
   const expected = JSON.parse(before).slice(0, -1);
   w.undoAction();                                // undo the ball
   same(w.G.log, expected, 'log as before the ball, minus the deleted entry');
+});
+
+test('earned runs: with two outs, a batter who reaches on an error ends the inning for earned-run purposes', (t) => {
+  const w = fresh(t);
+  w.recordKO('swinging'); w.recordKO('swinging');                    // 2 outs
+  w.outState.type = 'error'; w.outState.fielder = 6; w.recordOut();  // should have been the 3rd out
+  w.recordHit(4);                                                    // two-run homer
+  const p = w.G.pitchers.home[0];
+  same([p.r, p.er], [2, 0], 'both runs unearned (the old rule made the homer earned)');
+});
+
+test('earned runs: with one out, the reconstructed inning is not over, so the homer is earned', (t) => {
+  const w = fresh(t);
+  w.recordKO('swinging');                                            // 1 out
+  w.outState.type = 'error'; w.outState.fielder = 6; w.recordOut();
+  w.recordHit(4);
+  const p = w.G.pitchers.home[0];
+  same([p.r, p.er], [2, 1], 'runner who reached on the error unearned, batter earned');
+});
+
+test('earned runs: a reliever does not get the benefit of an error made before he came in', (t) => {
+  const w = fresh(t);
+  w.recordKO('swinging'); w.recordKO('swinging');
+  w.outState.type = 'error'; w.outState.fielder = 6; w.recordOut();  // error under the starter
+  w.addPitcher('home'); w.setActivePitcher('home', 1);
+  w.recordHit(4);
+  const [starter, reliever] = w.G.pitchers.home;
+  same([starter.r, starter.er, reliever.r, reliever.er], [1, 0, 1, 1], 'inherited runner unearned to the starter; homer earned to the reliever');
+});
+
+test('play log: a result line is linked to its play; "Edit play" opens the scorecard editor', (t) => {
+  const w = fresh(t);
+  w.recordHit(2);
+  const line = w.G.log.findIndex(e => /Double/.test(e.text));
+  assert.equal(w.G.log[line].paId, w.G.pas[0].id, 'linked');
+  w.logEditStart(line);
+  assert.ok(w.document.querySelector('.log-edit-play'), 'Edit play button shown');
+  w.logEditPlay(line);
+  assert.ok(w.document.getElementById('peOverlay'), 'cell editor open');
+  w.closePaEditor();
+});
+
+test('play log: deleting a result line can remove the play and its stats (and Undo brings the play back)', async (t) => {
+  const w = fresh(t);
+  w.recordHit(1); w.recordKO('swinging');
+  const line = w.G.log.findIndex(e => /Single/.test(e.text));
+  w.showConfirm = () => Promise.resolve(true);     // "Remove play"
+  w.logEditDelete(line);
+  await new Promise(r => setTimeout(r, 0));
+  same([w.G.pas.map(p => p.res), w.G.lineup.away[0].hits.s, w.G.rhe.away[1], w.G.pitchers.home[0].h], [['K'], 0, 0, 0]);
+  assert.ok(!w.G.log.some(e => /Single/.test(e.text)), 'line gone');
+  w.undoAction();
+  same(w.G.pas.map(p => p.res), ['1B', 'K'], 'play restored');
+});
+
+test('play log: "Just the log line" leaves the play alone', async (t) => {
+  const w = fresh(t);
+  w.recordHit(1);
+  const line = w.G.log.findIndex(e => /Single/.test(e.text));
+  w.showConfirm = () => Promise.resolve(false);
+  w.logEditDelete(line);
+  await new Promise(r => setTimeout(r, 0));
+  same([w.G.pas.length, w.G.lineup.away[0].hits.s], [1, 1]);
+  assert.ok(!w.G.log.some(e => /Single/.test(e.text)), 'only the line is gone');
 });
 
 test('cell editor: changing a flyout to a single moves the batter, pitcher and team stats', (t) => {

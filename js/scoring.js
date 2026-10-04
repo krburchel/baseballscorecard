@@ -914,6 +914,7 @@ function advanceBatterSilent(side){
 function manualOut(){
   saveState();
   var side = batting();
+  addLog(curName(side, abIdx(side)) + ' — out', 'Out', 't-out');
   logBatter(side, abIdx(side), 'Out');
   var innOver = addOut();
   if(!innOver){

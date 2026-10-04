@@ -779,7 +779,7 @@ function mlbInsertPa(d){
   sl.subs.forEach(function(sub, si){ if(mlbNormName(sub.name) === n) who = si; });
   var fSide = side === 'home' ? 'away' : 'home', pIdx = activePIdx(fSide);
   G.pitchers[fSide].forEach(function(p, i){ if(mlbNormName(p.name) === mlbNormName(e.pitcher)) pIdx = i; });
-  var pa = { side:side, slot:slot, inn:e.inn, half:e.half, res:e.res, reached:e.reached, out:e.out,
+  var pa = { id: newPaId(), side:side, slot:slot, inn:e.inn, half:e.half, res:e.res, reached:e.reached, out:e.out,
              pIdx:pIdx, unearned: e.res[0] === 'E', risp: e.risp };
   if(who !== undefined) pa.who = who; // otherwise resolved by substitution timing
 
@@ -799,6 +799,7 @@ function mlbInsertPa(d){
   list.splice(paBatterLogIdx(pa), 0, curNameForPa(pa) + ' — ' + e.res);
   applyPaStats(pa, 1);
   addLog('MLB check: added ' + e.batter + ' ' + paLabel(e.res) + ' (' + key + ')', 'Edit', 't-info');
+  G.log[0].paId = pa.id;
 }
 
 function mlbUse(kind, i){
@@ -974,7 +975,7 @@ function mlbApplyPlay(feed, p, entries){
     var slot = e.slot >= 0 ? e.slot : abIdx(side);
     mlbEnsureInSlot(side, slot, p.matchup.batter.fullName, null, 'ph');
     var res = mlbNotation(p);
-    var pa = { side: side, slot: slot, inn: a.inning, half: half, res: res,
+    var pa = { id: newPaId(), side: side, slot: slot, inn: a.inning, half: half, res: res,
                reached: e.reached || 0, out: e.out || 0, pIdx: pIdx,
                who: G.lineup[side][slot].subs.length - 1, unearned: res[0] === 'E',
                risp: e.risp !== undefined ? e.risp : !!(G.bases[1] || G.bases[2]) };
@@ -1015,6 +1016,7 @@ function mlbApplyPlay(feed, p, entries){
   G.bases = [m.postOnFirst, m.postOnSecond, m.postOnThird].map(function(x){ return x ? x.fullName : null; });
   G.balls = 0; G.strikes = 0; G.fouls = 0;
   addLog('MLB: ' + (p.result.description || p.result.event || 'Play'), label || 'MLB', cls);
+  if(isPA) G.log[0].paId = pa.id;
 
   if(G.outs >= 3){
     if(G.scores[side][a.inning - 1] === null) G.scores[side][a.inning - 1] = 0;
