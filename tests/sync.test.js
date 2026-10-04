@@ -127,7 +127,11 @@ test('signing in with the wrong password shows a clear error', async (t) => {
 test('sync is invisible until it is set up and signed in', (t) => {
   const w = loadApp('https://fresh.scorecard.test/');
   t.after(() => w.close());
-  assert.equal(w.document.getElementById('syncPill').hidden, true);
+  assert.equal(w.document.getElementById('syncPill').hidden, true, 'no pill before signing in');
   w.openSyncPanel();
-  assert.match(w.document.querySelector('.sync-body').textContent, /isn't set up/);
+  assert.ok(w.document.getElementById('syncEmail'), 'configured: the panel offers sign-in');
+  w.closeSyncPanel();
+  w.FIREBASE_CONFIG = null;
+  w.openSyncPanel();
+  assert.match(w.document.querySelector('.sync-body').textContent, /isn't set up/, 'without a config it says so');
 });
