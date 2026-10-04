@@ -137,6 +137,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .br-picker-btns { display:flex; gap:5px; flex-wrap:wrap; }
 .br-pick { padding:5px 10px; font-size:12px; font-weight:600; border:1.5px solid var(--border); border-radius:6px; background:transparent; cursor:pointer; color:var(--text); }
 .br-pick:hover { background:var(--header-bg); }
+.ro-fielders { width:100%; max-width:260px; padding:5px 8px; font:inherit; font-size:12px; border:1.5px solid var(--border); border-radius:6px; background:var(--surface); color:var(--text); }
 .br-pick-cancel { padding:5px 10px; font-size:12px; border:1px solid var(--border); border-radius:6px; background:transparent; cursor:pointer; color:var(--muted); }
 
 /* ── Runner placement picker (post-hit) ── */
@@ -943,10 +944,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       </div>
       <div class="runner-labels" id="runnerLabels"></div>
       <div style="border-top:1px solid var(--border);margin-top:8px;padding-top:8px">
-        <div class="label" style="margin-bottom:5px">Stolen bases / wild pitch / passed ball / balk / defensive error</div>
+        <div class="label" style="margin-bottom:5px">Stolen bases / outs on the bases / wild pitch / passed ball / balk / defensive error</div>
         <div class="btns" id="brBtns">
           <button class="btn" style="border-color:#185FA5;color:#185FA5" onclick="startBRAction('sb')">SB</button>
           <button class="btn" style="border-color:#BA7517;color:#BA7517" onclick="startBRAction('cs')">CS</button>
+          <button class="btn" style="border-color:#5F5E5A;color:#5F5E5A" onclick="startRunnerOut()" title="Runner put out on the bases: thrown out advancing, picked off or doubled off">OUT</button>
           <button class="btn" style="border-color:#993C1D;color:#993C1D" onclick="startBRAction('wp')">WP</button>
           <button class="btn" style="border-color:#993C1D;color:#993C1D" onclick="startBRAction('pb')">PB</button>
           <button class="btn" style="border-color:#534AB7;color:#534AB7" onclick="recordBalk()">BLK</button>
@@ -1990,7 +1992,7 @@ function executeBRAction(type, baseIdx){
     paRunnerOut(side, csRunner);
     G.bases[baseIdx] = null;
     addLog((typeof csRunner === 'string' && csRunner !== '?' ? csRunner : nm) + ' — caught stealing (' + csFrom + ')', 'CS', 't-cs');
-    addOut();
+    addRunnerOut();
     renderBases();
     renderLineup(side);
 
@@ -2060,6 +2062,83 @@ function executeBRAction(type, baseIdx){
   }
 
   checkWalkoff();
+}
+
+// An out on a baserunner. Unlike a batter's out, the batter at the plate
+// keeps his count (unless the out ends the inning).
+function addRunnerOut(){
+  var b = G.balls, s = G.strikes, f = G.fouls;
+  var innOver = addOut();
+  if(!innOver){ G.balls = b; G.strikes = s; G.fouls = f; renderCount(); }
+  return innOver;
+}
+
+// ── Runner out on the bases ──
+// Thrown out advancing (e.g. stretching a double), picked off, or doubled
+// off. The runner's scorecard cell gets the out number and keeps its result;
+// the pitcher gets the out; the batter at the plate keeps his turn.
+var RO_BASES = ['1st', '2nd', '3rd', 'home'];
+var _roBase = null; // base index of the runner being put out
+
+function roRunnerName(bi){
+  var n = G.bases[bi];
+  return typeof n === 'string' && n !== '?' ? n : 'Runner';
+}
+
+function startRunnerOut(){
+  var runners = [0, 1, 2].filter(baseOcc);
+  if(!runners.length){ kbFlash('No runners on base', '#BA7517'); return; }
+  if(runners.length === 1){ pickRunnerOutRunner(runners[0]); return; }
+  var picker = document.getElementById('brPicker');
+  if(!picker) return;
+  var html = '<div class="br-picker-inner"><div class="br-picker-title">Which runner is out?</div><div class="br-picker-btns">';
+  runners.forEach(function(bi){
+    html += '<button class="br-pick" onclick="pickRunnerOutRunner(' + bi + ')">' + ['1B','2B','3B'][bi] + ' · ' + esc(shortName(roRunnerName(bi))) + '</button>';
+  });
+  html += '<button class="br-pick-cancel" onclick="cancelRunnerOut()">Cancel</button></div></div>';
+  picker.innerHTML = html;
+  picker.style.display = '';
+}
+
+function pickRunnerOutRunner(bi){
+  _roBase = bi;
+  var picker = document.getElementById('brPicker');
+  if(!picker) return;
+  var html = '<div class="br-picker-inner">';
+  html += '<div class="br-picker-title">' + esc(roRunnerName(bi)) + ' (on ' + RO_BASES[bi] + ') — out where?</div>';
+  html += '<div class="br-picker-btns" style="margin-bottom:6px">'
+    + '<input class="ro-fielders" id="roFielders" inputmode="numeric" placeholder="Fielders, e.g. 9-6-5 (optional)" aria-label="Fielders (optional)" /></div>';
+  html += '<div class="br-picker-btns">';
+  for(var d = bi + 1; d <= 3; d++){
+    html += '<button class="br-pick" onclick="executeRunnerOut(' + d + ')">Out at ' + RO_BASES[d] + '</button>';
+  }
+  html += '<button class="br-pick" onclick="executeRunnerOut(' + bi + ')">Picked off / doubled off at ' + RO_BASES[bi] + '</button>';
+  html += '<button class="br-pick-cancel" onclick="cancelRunnerOut()">Cancel</button></div></div>';
+  picker.innerHTML = html;
+  picker.style.display = '';
+}
+
+function cancelRunnerOut(){
+  _roBase = null;
+  cancelBRPicker();
+}
+
+function executeRunnerOut(dest){
+  if(_roBase === null || !baseOcc(_roBase)){ cancelRunnerOut(); return; }
+  var bi = _roBase;
+  var fEl = document.getElementById('roFielders');
+  var fielders = fEl ? fEl.value.replace(/[^\d-]/g, '').replace(/^-+|-+$/g, '') : '';
+  cancelRunnerOut();
+  saveState();
+
+  var side = batting(), name = roRunnerName(bi);
+  var what = dest === bi ? 'picked off / doubled off at ' + RO_BASES[bi] : 'out at ' + RO_BASES[dest] + ' (from ' + RO_BASES[bi] + ')';
+  paRunnerOut(side, G.bases[bi]);
+  G.bases[bi] = null;
+  addLog(name + ' — ' + what + (fielders ? ', ' + fielders : ''), 'Out', 't-out');
+  addRunnerOut();
+  renderBases();
+  renderLineup(side);
 }
 
 function recordHBP(){
