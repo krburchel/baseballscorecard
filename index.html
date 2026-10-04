@@ -581,6 +581,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .mlb-you { color:var(--muted); }
 .mlb-them { color:var(--text); font-weight:600; }
 .mlb-desc { font-size:11px; color:var(--muted); margin-top:2px; }
+.mlb-diff { background:var(--al); color:var(--amber); font-weight:700; border-radius:3px; padding:0 3px; }
+.mlb-differs { font-size:11px; font-weight:600; color:var(--amber); margin-top:2px; }
 .mlb-note { font-size:11px; color:var(--amber); margin-top:2px; }
 .mlb-acts { display:flex; gap:6px; align-items:center; }
 .mlb-use { padding:5px 10px; font:inherit; font-size:12px; font-weight:600; border:none; border-radius:6px; background:var(--blue); color:#fff; cursor:pointer; white-space:nowrap; }
@@ -6279,6 +6281,21 @@ function mlbSameResult(a, b){
 
 function mlbHalfOrder(inn, half){ return inn * 2 + (half === 'bot' ? 1 : 0); }
 function mlbHalfName(inn, half){ return (half === 'top' ? 'Top ' : 'Bottom ') + inn; }
+// Same as mlbPaText, as HTML, with the parts that differ highlighted — and
+// spelled out when missing ("no out number"), so rows like "K" vs "K, out 1"
+// read clearly.
+var MLB_FIELD_LABELS = { result:'result', bases:'bases reached', out:'out number' };
+function mlbPaHtml(res, reached, out, fields){
+  function mark(on, text){ return on ? '<mark class="mlb-diff">' + esc(text) + '</mark>' : esc(text); }
+  var diffBases = fields.indexOf('bases') >= 0, diffOut = fields.indexOf('out') >= 0;
+  var html = mark(fields.indexOf('result') >= 0, paLabel(res));
+  if(reached > 0 || diffBases){
+    html += ', ' + mark(diffBases, reached === 4 ? 'scored' : reached > 0 ? 'reached ' + ['', '1st', '2nd', '3rd'][reached] : 'didn\'t reach');
+  }
+  if(out || diffOut) html += ', ' + mark(diffOut, out ? 'out ' + out : 'no out number');
+  return html;
+}
+
 function mlbPaText(res, reached, out){
   return paLabel(res)
     + (reached === 4 ? ', scored' : reached > 0 ? ', reached ' + ['', '1st', '2nd', '3rd'][reached] : '')
@@ -6677,6 +6694,7 @@ function renderMlbCheck(){
 
 function mlbRowHtml(d, kind, i){
   var where = '', who = '', you = '', them = '', desc = '', note = '', canUse = true;
+  var youHtml = null, themHtml = null, differs = '';
   var useLabel = 'Use MLB\'s';
   if(d.type === 'play' || d.type === 'missing' || d.type === 'extra'){
     where = (d.half === 'top' ? 'T' : 'B') + d.inn;
@@ -6684,8 +6702,9 @@ function mlbRowHtml(d, kind, i){
   if(d.type === 'play'){
     var pa = G.pas[d.paIdx];
     who = curNameForPa(pa);
-    you = mlbPaText(pa.res, pa.reached, pa.out);
-    them = mlbPaText(d.mlb.res, d.mlb.reached, d.mlb.out);
+    youHtml = mlbPaHtml(pa.res, pa.reached, pa.out, d.fields);
+    themHtml = mlbPaHtml(d.mlb.res, d.mlb.reached, d.mlb.out, d.fields);
+    differs = d.fields.map(function(f){ return MLB_FIELD_LABELS[f]; }).join(', ');
     desc = d.mlb.desc;
     if(mlbNormName(who) && mlbNormName(who) !== mlbNormName(d.mlb.batter)) note = 'MLB has ' + d.mlb.batter + ' batting here';
   } else if(d.type === 'missing'){
@@ -6703,14 +6722,25 @@ function mlbRowHtml(d, kind, i){
     useLabel = 'Remove it';
   } else if(d.type === 'pitcher' || d.type === 'pitcherNew'){
     var L = d.mlb.line;
-    var line = function(p){ return fmtIP(p.outs || 0) + ' IP · ' + (p.h || 0) + ' H · ' + (p.r || 0) + ' R · ' + (p.er || 0) + ' ER · ' + (p.bb || 0) + ' BB · ' + (p.k || 0) + ' K · ' + (p.pitches || 0) + '-' + Math.max(0, (p.pitches || 0) - (p.balls || 0)); };
+    // Pitching line with the stats that differ from `other` highlighted
+    var line = function(p, other){
+      function stat(v, ov, label){
+        var t = v + label;
+        return other && v !== ov ? '<mark class="mlb-diff">' + esc(t) + '</mark>' : esc(t);
+      }
+      var o = other || {};
+      var ps = function(x){ return (x.pitches || 0) + '-' + Math.max(0, (x.pitches || 0) - (x.balls || 0)); };
+      return stat(fmtIP(p.outs || 0), other ? fmtIP(o.outs || 0) : null, ' IP') + ' · ' + stat(p.h || 0, o.h || 0, ' H') + ' · '
+        + stat(p.r || 0, o.r || 0, ' R') + ' · ' + stat(p.er || 0, o.er || 0, ' ER') + ' · ' + stat(p.bb || 0, o.bb || 0, ' BB') + ' · '
+        + stat(p.k || 0, o.k || 0, ' K') + ((p.hr || o.hr) ? ' · ' + stat(p.hr || 0, o.hr || 0, ' HR') : '') + ' · '
+        + stat(ps(p), other ? ps(o) : null, ' pitches');
+    };
     who = d.mlb.name;
-    them = line(L);
-    if(d.type === 'pitcherNew'){ you = 'not in your pitchers'; useLabel = 'Add pitcher'; }
+    if(d.type === 'pitcherNew'){ you = 'not in your pitchers'; useLabel = 'Add pitcher'; themHtml = line(L, null); }
     else {
       var ap = G.pitchers[d.side][d.appIdx];
-      you = d.nameOnly ? 'unnamed (' + (ap.name || 'Pitcher ' + (d.appIdx + 1)) + ')' : line(ap);
-      if(d.nameOnly) useLabel = 'Use name';
+      if(d.nameOnly){ you = 'unnamed (' + (ap.name || 'Pitcher ' + (d.appIdx + 1)) + ')'; useLabel = 'Use name'; themHtml = line(L, null); }
+      else { youHtml = line(ap, L); themHtml = line(L, ap); }
     }
     where = d.side === 'away' ? team('away').split(' ').pop() : team('home').split(' ').pop();
   } else if(d.type === 'runs'){
@@ -6723,7 +6753,8 @@ function mlbRowHtml(d, kind, i){
   return '<div class="mlb-row' + (keptNow ? ' mlb-kept' : '') + '">'
     + '<div class="mlb-where">' + esc(where) + '</div>'
     + '<div class="mlb-cmp"><div class="mlb-who">' + esc(who) + '</div>'
-    + '<div><span class="mlb-you">You: ' + esc(you) + '</span> · <span class="mlb-them">MLB: ' + esc(them) + '</span></div>'
+    + '<div><span class="mlb-you">You: ' + (youHtml !== null ? youHtml : esc(you)) + '</span> · <span class="mlb-them">MLB: ' + (themHtml !== null ? themHtml : esc(them)) + '</span></div>'
+    + (differs ? '<div class="mlb-differs">Differs: ' + esc(differs) + '</div>' : '')
     + (desc ? '<div class="mlb-desc">' + esc(desc) + '</div>' : '')
     + (note ? '<div class="mlb-note">' + esc(note) + '</div>' : '')
     + '</div>'
