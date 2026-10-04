@@ -589,6 +589,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .mlb-sum { padding:10px 16px; font-size:12px; color:var(--muted); line-height:1.6; border-bottom:1px solid var(--border); }
 .mlb-sum b { color:var(--text); }
 .mlb-sum b.mlb-ok { color:var(--green); }
+.mlb-catchup { margin-left:6px; background:var(--blue); color:#fff; padding:3px 10px; }
 .mlb-link { border:none; background:none; padding:0; font:inherit; color:var(--blue); text-decoration:underline; cursor:pointer; }
 .mlb-sec { display:flex; justify-content:space-between; align-items:center; padding:10px 16px 6px; font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; background:var(--header-bg); border-bottom:1px solid var(--border); }
 .mlb-row { display:flex; gap:10px; align-items:flex-start; flex-wrap:wrap; padding:9px 16px; border-bottom:1px solid var(--border); font-size:13px; }
@@ -6451,7 +6452,7 @@ function mlbPlays(feed){
       var e = {
         inn: a.inning, half: half, side: half === 'top' ? 'away' : 'home', order: order,
         batterId: b.id, batter: b.fullName, slot: slotOf[b.id] !== undefined ? slotOf[b.id] : -1,
-        pitcher: p.matchup.pitcher.fullName, res: mlbNotation(p),
+        atBat: a.atBatIndex, pitcher: p.matchup.pitcher.fullName, res: mlbNotation(p),
         reached: 0, out: 0, desc: p.result.description || ''
       };
       (halves[order] = halves[order] || []).push(e);
@@ -6695,6 +6696,232 @@ function mlbKeep(kind, i){
   renderMlbCheck();
 }
 
+// ── Catch up from MLB ──
+// Adds the plays MLB has after the scorecard's last plate appearance and moves
+// the game forward: substitutions, pitching changes, results, runners, outs,
+// runs (charged as MLB charges them), steals and pitch counts, ending on MLB's
+// current batter and count. One undo step.
+
+function mlbPlayerName(feed, id){
+  var pl = feed.gameData.players['ID' + id];
+  return pl ? pl.fullName : '';
+}
+
+// Index into allPlays where catching up starts, or -1 if the scorecard isn't behind.
+// In the scorecard's current half-inning, skip as many MLB plate appearances as
+// the scorecard already has.
+function mlbCatchUpStart(feed){
+  var appOrder = mlbHalfOrder(G.inning, G.half), side = batting();
+  var have = G.pas.filter(function(pa){ return pa.side === side && pa.inn === G.inning && pa.half === G.half; }).length;
+  var plays = feed.liveData.plays.allPlays || [], seen = 0;
+  for(var i = 0; i < plays.length; i++){
+    var a = plays[i].about, o = mlbHalfOrder(a.inning, a.halfInning === 'top' ? 'top' : 'bot');
+    if(o < appOrder) continue;
+    if(o === appOrder && seen < have){
+      if(MLB_PA_EVENTS[plays[i].result.eventType] && a.isComplete !== false) seen++;
+      continue;
+    }
+    return i;
+  }
+  return -1;
+}
+
+// How many completed plate appearances catching up would add
+function mlbCatchUpCount(feed){
+  var start = mlbCatchUpStart(feed);
+  if(start < 0) return 0;
+  return feed.liveData.plays.allPlays.slice(start).filter(function(p){
+    return p.about.isComplete !== false && MLB_PA_EVENTS[p.result.eventType];
+  }).length;
+}
+
+// Move the scorecard to a half-inning (closing out the one it's in)
+function mlbGoToHalf(inn, half){
+  var side = batting();
+  if(G.scores[side][G.inning - 1] === null) G.scores[side][G.inning - 1] = 0;
+  G.inning = inn; G.half = half;
+  while(G.totalInnings < inn){ G.totalInnings++; G.scores.home.push(null); G.scores.away.push(null); }
+  G.outs = 0; G.balls = 0; G.strikes = 0; G.fouls = 0;
+  G.bases = [null, null, null];
+}
+
+function mlbActivatePitcher(side, name){
+  var n = mlbNormName(name), idx = -1;
+  G.pitchers[side].forEach(function(p, i){ if(idx < 0 && mlbNormName(p.name) === n) idx = i; });
+  if(idx < 0){
+    // An unnamed, unused slot takes the name; otherwise add the pitcher
+    G.pitchers[side].forEach(function(p, i){ if(idx < 0 && !mlbNormName(p.name) && !p.pitches && !p.outs) idx = i; });
+    if(idx < 0){ G.pitchers[side].push(mkPitcher()); idx = G.pitchers[side].length - 1; }
+    G.pitchers[side][idx].name = name;
+  }
+  G.pitchers[side].forEach(function(p, i){ p.active = i === idx; });
+  return idx;
+}
+
+// Put a player into a lineup spot as a sub unless he's already the one there
+function mlbEnsureInSlot(side, slot, name, pos, subType){
+  if(slot < 0 || slot > 8 || !name) return;
+  if(mlbNormName(curName(side, slot)) === mlbNormName(name)) return;
+  var sl = G.lineup[side][slot], prev = curName(side, slot);
+  if(!sl.name && !sl.subs.length){ sl.name = name; if(pos) sl.pos = pos; return; }
+  sl.subs.push({ name: name, pos: pos || '—', inning: G.inning, half: G.half, hits: mkHits(), subType: subType || 'ph' });
+  addLog(name + ' (' + (subType === 'pr' ? 'PR' : subType === 'ph' ? 'PH' : pos || 'Sub') + ') replaces ' + prev + ' (spot ' + (slot + 1) + ')', 'Sub', 't-sub');
+}
+
+function mlbSideOfPlayer(feed, id){
+  var t = feed.liveData.boxscore.teams;
+  return t.away.players['ID' + id] ? 'away' : t.home.players['ID' + id] ? 'home' : null;
+}
+
+// Stats object for a runner by name (whoever holds that name in the lineup)
+function mlbRunnerHits(side, name){
+  var slot = findRunnerSlot(side, name);
+  if(slot < 0) return null;
+  var sl = G.lineup[side][slot], n = mlbNormName(name);
+  for(var s = sl.subs.length - 1; s >= 0; s--) if(mlbNormName(sl.subs[s].name) === n) return sl.subs[s].hits || (sl.subs[s].hits = mkHits());
+  return sl.hits;
+}
+
+function mlbApplyPlay(feed, p, entries){
+  var a = p.about, half = a.halfInning === 'top' ? 'top' : 'bot';
+  var side = half === 'top' ? 'away' : 'home', fSide = side === 'away' ? 'home' : 'away';
+  if(G.inning !== a.inning || G.half !== half) mlbGoToHalf(a.inning, half);
+
+  // Substitutions and pitching changes that happened during this play
+  (p.playEvents || []).forEach(function(e){
+    if(e.type !== 'action' || !e.details) return;
+    var t = e.details.eventType, id = e.player && e.player.id;
+    if(t === 'pitching_substitution' && id){
+      mlbActivatePitcher(fSide, mlbPlayerName(feed, id));
+      addLog(e.details.description || ('Pitching change: ' + mlbPlayerName(feed, id)), 'P', 't-info');
+    } else if((t === 'offensive_substitution' || t === 'defensive_substitution') && id && e.battingOrder){
+      var s = mlbSideOfPlayer(feed, id), pos = e.position && e.position.abbreviation;
+      var st = pos === 'PR' ? 'pr' : pos === 'PH' ? 'ph' : 'def';
+      mlbEnsureInSlot(s, Math.floor(parseInt(e.battingOrder, 10) / 100) - 1, mlbPlayerName(feed, id), pos, st);
+      if(st === 'pr' && e.replacedPlayer){
+        var old = mlbPlayerName(feed, e.replacedPlayer.id);
+        G.bases = G.bases.map(function(b){ return b && mlbNormName(b) === mlbNormName(old) ? mlbPlayerName(feed, id) : b; });
+      }
+    }
+  });
+  if(a.isComplete === false) return;
+
+  var pIdx = mlbActivatePitcher(fSide, p.matchup.pitcher.fullName), P = G.pitchers[fSide][pIdx];
+  var pitches = (p.playEvents || []).filter(function(e){ return e.isPitch; });
+  P.pitches += pitches.length;
+  P.balls += pitches.filter(function(e){ var c = (e.details.call || {}).code; return e.details.isBall || c === 'H'; }).length;
+
+  var isPA = !!MLB_PA_EVENTS[p.result.eventType], label = '', cls = 't-info';
+  if(isPA){
+    var e = entries[a.atBatIndex] || {};
+    var slot = e.slot >= 0 ? e.slot : abIdx(side);
+    mlbEnsureInSlot(side, slot, p.matchup.batter.fullName, null, 'ph');
+    var res = mlbNotation(p);
+    var pa = { side: side, slot: slot, inn: a.inning, half: half, res: res,
+               reached: e.reached || 0, out: e.out || 0, pIdx: pIdx,
+               who: G.lineup[side][slot].subs.length - 1, unearned: res[0] === 'E' };
+    if(pa.out && !paIsOut(res)) pa.outOnBases = true;
+    G.pas.push(pa);
+    applyPaStats(pa, 1);
+    if(p.result.rbi) paHits(pa).rbi = (paHits(pa).rbi || 0) + p.result.rbi;
+    var key = (half === 'top' ? 'T' : 'B') + a.inning;
+    (G.batterLog[side][key] = G.batterLog[side][key] || []).push(curName(side, slot) + ' — ' + res);
+    if(side === 'home') G.homeBatter = (slot + 1) % 9; else G.awayBatter = (slot + 1) % 9;
+    label = paLabel(res);
+    cls = paIsHit(res) ? (/^HR/.test(res) ? 't-hr' : 't-hit') : paIsOut(res) ? 't-out' : 't-info';
+  }
+
+  // Runners: steals, caught stealing, runs (charged to MLB's responsible pitcher)
+  (p.runners || []).forEach(function(rn){
+    var d = rn.details || {}, mv = rn.movement || {}, name = d.runner && d.runner.fullName;
+    var h = mlbRunnerHits(side, name);
+    if(/^stolen_base/.test(d.eventType || '') && !mv.isOut && h) h.sb++;
+    if(/^caught_stealing/.test(d.eventType || '') && mv.isOut && h) h.cs++;
+    if(mv.end === 'score' && d.isScoringEvent){
+      G.scores[side][a.inning - 1] = (G.scores[side][a.inning - 1] || 0) + 1;
+      G.rhe[side][0]++;
+      if(h) h.r = (h.r || 0) + 1;
+      var rp = d.responsiblePitcher ? mlbPlayerName(feed, d.responsiblePitcher.id) : p.matchup.pitcher.fullName;
+      var ri = pIdx;
+      G.pitchers[fSide].forEach(function(q, i){ if(mlbNormName(q.name) === mlbNormName(rp)) ri = i; });
+      G.pitchers[fSide][ri].r++;
+      if(d.earned) G.pitchers[fSide][ri].er++;
+    }
+  });
+
+  // Outs (credited to the pitcher on the mound) and runners left on base
+  var outsAfter = (p.count && p.count.outs) || 0;
+  if(outsAfter > G.outs) P.outs += outsAfter - G.outs;
+  G.outs = outsAfter;
+  var m = p.matchup;
+  G.bases = [m.postOnFirst, m.postOnSecond, m.postOnThird].map(function(x){ return x ? x.fullName : null; });
+  G.balls = 0; G.strikes = 0; G.fouls = 0;
+  addLog('MLB: ' + (p.result.description || p.result.event || 'Play'), label || 'MLB', cls);
+
+  if(G.outs >= 3){
+    if(G.scores[side][a.inning - 1] === null) G.scores[side][a.inning - 1] = 0;
+    if(half === 'top') mlbGoToHalf(a.inning, 'bot'); else mlbGoToHalf(a.inning + 1, 'top');
+  }
+}
+
+function mlbCatchUp(){
+  if(!_mlb || !_mlb.feed) return;
+  var feed = _mlb.feed, start = mlbCatchUpStart(feed);
+  if(start < 0) return;
+  var n = mlbCatchUpCount(feed);
+  showConfirm({
+    title: 'Catch up from MLB?',
+    message: 'Add the ' + n + ' plate appearance' + (n === 1 ? '' : 's') + ' MLB has after your last one — results, runners, outs, runs, substitutions, pitching changes and pitch counts — and move the game to MLB\'s current batter. One Undo reverses it.',
+    confirmLabel: 'Catch up',
+    cancelLabel: 'Not now',
+    tone: 'info'
+  }).then(function(ok){
+    if(!ok) return;
+    saveState();
+    var entries = {};
+    var m = mlbPlays(feed);
+    Object.keys(m.halves).forEach(function(k){ m.halves[k].forEach(function(e){ entries[e.atBat] = e; }); });
+    var plays = feed.liveData.plays.allPlays, last = null;
+    for(var i = start; i < plays.length; i++){ mlbApplyPlay(feed, plays[i], entries); last = plays[i]; }
+
+    // End on MLB's current batter and count (an at-bat in progress)
+    if(last && last.about.isComplete === false){
+      var a = last.about, half = a.halfInning === 'top' ? 'top' : 'bot', side = half === 'top' ? 'away' : 'home';
+      if(G.inning !== a.inning || G.half !== half) mlbGoToHalf(a.inning, half);
+      var bo = mlbSlotByName(side, last.matchup.batter.fullName);
+      var box = feed.liveData.boxscore.teams[side].players['ID' + last.matchup.batter.id];
+      if(box && box.battingOrder) bo = Math.floor(parseInt(box.battingOrder, 10) / 100) - 1;
+      if(bo >= 0){
+        mlbEnsureInSlot(side, bo, last.matchup.batter.fullName, null, 'ph');
+        if(side === 'home') G.homeBatter = bo; else G.awayBatter = bo;
+      }
+      mlbActivatePitcher(side === 'away' ? 'home' : 'away', last.matchup.pitcher.fullName);
+      G.balls = Math.min(3, last.count.balls || 0); G.strikes = Math.min(2, last.count.strikes || 0);
+      var lm = last.matchup;
+      G.bases = [lm.postOnFirst, lm.postOnSecond, lm.postOnThird].map(function(x){ return x ? x.fullName : null; });
+      if(!lm.postOnFirst && !lm.postOnSecond && !lm.postOnThird){
+        // In-progress play: MLB reports runners before it as the previous play's result
+        var prev = plays[plays.length - 2];
+        if(prev && prev.about.inning === a.inning && prev.about.halfInning === a.halfInning){
+          var pm = prev.matchup;
+          G.bases = [pm.postOnFirst, pm.postOnSecond, pm.postOnThird].map(function(x){ return x ? x.fullName : null; });
+        }
+      }
+    }
+
+    // Finished game
+    if((feed.gameData.status || {}).abstractGameState === 'Final' && !G.log.some(function(l){ return l.tag === 'Final'; })){
+      var aw = G.rhe.away[0], hm = G.rhe.home[0];
+      addLog('FINAL — ' + (hm > aw ? team('home') : team('away')) + ' wins ' + Math.max(aw, hm) + '-' + Math.min(aw, hm), 'Final', 't-run');
+    }
+    addLog('Caught up from MLB: ' + n + ' plate appearance' + (n === 1 ? '' : 's') + ' added', 'MLB', 't-info');
+    renderAll();
+    saveToStorage();
+    renderMlbCheck();
+    kbFlash('Caught up — ' + n + ' play' + (n === 1 ? '' : 's') + ' added', '#1D9E75');
+  });
+}
+
 // ── Fetching ──
 function mlbFetchJSON(url){
   var ctl = window.AbortController ? new AbortController() : null;
@@ -6781,7 +7008,9 @@ function renderMlbCheck(){
     var kept = 0;
     function visible(x){ if(G.mlbKeep[x.key]){ kept++; return _mlbShowKept; } return true; }
     var plays = d.plays.map(function(x, i){ return { d:x, i:i }; }).filter(function(x){ return visible(x.d); });
-    var pitchers = d.pitchers.map(function(x, i){ return { d:x, i:i }; }).filter(function(x){ return visible(x.d); });
+    // While the scorecard is behind MLB, pitching lines can't match yet — catching up settles them
+    var behindN = mlbCatchUpCount(_mlb.feed);
+    var pitchers = behindN ? [] : d.pitchers.map(function(x, i){ return { d:x, i:i }; }).filter(function(x){ return visible(x.d); });
     var runs = d.runs.map(function(x, i){ return { d:x, i:i }; }).filter(function(x){ return visible(x.d); });
     var total = plays.length + pitchers.length + runs.length;
     var at = new Date(_mlb.fetchedAt);
@@ -6791,10 +7020,11 @@ function renderMlbCheck(){
 
     html += '<div class="mlb-sum">MLB: ' + esc(state) + (state === 'Final' ? '' : ' · ' + esc(mlbAt) + (ls.outs !== undefined ? ', ' + ls.outs + ' out' : ''))
       + ' · as of ' + at.toLocaleTimeString([], { hour:'numeric', minute:'2-digit' }) + '<br>'
-      + (total ? '<b>' + total + ' difference' + (total === 1 ? '' : 's') + '</b>' : '<b class="mlb-ok">✓ Everything matches MLB</b>')
+      + (total ? '<b>' + total + ' difference' + (total === 1 ? '' : 's') + '</b>' : '<b class="mlb-ok">✓ Everything ' + (behindN ? 'you\'ve recorded ' : '') + 'matches MLB</b>')
       + (d.matched ? ' · ' + d.matched + ' play' + (d.matched === 1 ? '' : 's') + ' match' : '')
       + (d.pending ? ' · ' + d.pending + ' not posted by MLB yet' : '')
       + (d.behind ? ' · MLB has ' + d.behind + ' play' + (d.behind === 1 ? '' : 's') + ' you haven\'t recorded yet' : '')
+      + (behindN ? ' <button class="mlb-btn mlb-catchup" onclick="mlbCatchUp()">Catch up (' + behindN + ')</button><br>Pitching lines are compared once you\'re caught up.' : '')
       + (kept ? ' · <button class="mlb-link" onclick="_mlbShowKept=!_mlbShowKept;renderMlbCheck()">' + (_mlbShowKept ? 'hide' : 'show') + ' ' + kept + ' kept as yours</button>' : '')
       + '</div>';
 
