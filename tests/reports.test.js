@@ -29,12 +29,24 @@ test('2026 NLDS games show the official NLDS logo', (t) => {
   assert.match(html, /Game 2/);
 });
 
+test('2026 ALCS, NLCS and World Series games show their official logos', (t) => {
+  const w = loadApp();
+  t.after(() => w.close());
+  for(const [type, file, label] of [['alcs', 'alcs', 'ALCS'], ['nlcs', 'nlcs', 'NLCS'], ['ws', 'ws', 'World Series']]){
+    const html = badgeFor(w, type, '2026-10-20', '3');
+    assert.match(html, new RegExp('assets/postseason/' + file + '-2026\\.png'), label);
+    assert.match(html, new RegExp('alt="2026 ' + label + '"'), label);
+    assert.match(html, /Game 3/, label);
+  }
+});
+
 test('other years and rounds keep the league-logo badge', (t) => {
   const w = loadApp();
   t.after(() => w.close());
   assert.match(badgeFor(w, 'alds', '2025-10-04'), /team-logos\/league-on-light\/103\.svg/, '2025 ALDS');
   assert.match(badgeFor(w, 'nlds', '2025-10-04'), /team-logos\/league-on-light\/104\.svg/, '2025 NLDS');
-  assert.match(badgeFor(w, 'alcs', '2026-10-12'), /team-logos\/league-on-light\/103\.svg/, '2026 ALCS (no official logo yet)');
+  assert.match(badgeFor(w, 'alcs', '2025-10-12'), /team-logos\/league-on-light\/103\.svg/, '2025 ALCS');
+  assert.match(badgeFor(w, 'wild', '2026-09-30'), /team-logos\/league-on-light\/1\.svg/, '2026 Wild Card (no official logo)');
   assert.equal(badgeFor(w, 'regular', '2026-07-04'), '', 'regular season: no badge');
 });
 
