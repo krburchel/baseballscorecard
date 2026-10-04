@@ -1,0 +1,32 @@
+rules_version = '2';
+
+// Baseball Scorecard sync: each signed-in user reads and writes only their own games.
+// An update is accepted only if it's newer than what's stored, so an older offline
+// edit can't overwrite a newer one (the app then keeps the older version as a copy).
+// Games are never hard-deleted from the app; deletions are stored as { deleted: true }.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{uid}/games/{gameId} {
+      function isOwner() {
+        return request.auth != null && request.auth.uid == uid;
+      }
+      function validGame() {
+        let d = request.resource.data;
+        return d.updatedAt is number
+          && d.deleted is bool
+          && (d.payload == null || (d.payload is string && d.payload.size() < 900000));
+      }
+
+      allow read: if isOwner();
+      allow create: if isOwner() && validGame();
+      allow update: if isOwner() && validGame()
+        && request.resource.data.updatedAt > resource.data.updatedAt;
+      allow delete: if false;
+    }
+
+    // Nothing else is readable or writable
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

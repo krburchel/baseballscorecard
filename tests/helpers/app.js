@@ -21,11 +21,12 @@ function fakeFetch(url){
   return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(JSON.parse(JSON.stringify(body))) });
 }
 
-function loadApp(){
+// url: each simulated device gets its own origin, so its own localStorage
+function loadApp(url){
   const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
   const scripts = [...html.matchAll(/<script src="([^"]+)"><\/script>/g)].map(m => m[1]);
   const dom = new JSDOM(html.replace(/<script src="[^"]+"><\/script>/g, '').replace(/<link rel="stylesheet"[^>]*>/, ''), {
-    url: 'https://scorecard.test/',
+    url: url || 'https://scorecard.test/',
     runScripts: 'outside-only',
     pretendToBeVisual: true
   });

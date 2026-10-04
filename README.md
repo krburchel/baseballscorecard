@@ -22,6 +22,8 @@ ballpark or on TV. It installs to an iPad or phone home screen and works offline
 - **Season stats** across every saved game, filtered by team, games attended, and game type.
 - **Sharing and saving:** a share-ready final image, a PDF scorecard, My Games, game files,
   backups of every game with a reminder, and offline use (service worker).
+- **Sync across devices** (Firebase): sign in once per device and My Games, season stats and
+  backups are the same everywhere. Each device still saves locally first and works offline.
 
 ## Running it locally
 
@@ -49,6 +51,8 @@ plain scripts that share one global scope and load in this order:
 | `js/mlb.js` | Today's games and lineups, Check vs MLB, catch-up |
 | `js/storage.js` | Autosave, My Games, game info, file export/import, reset, backups |
 | `js/reports.js` | PDF box score, Share final image, season stats, team pickers, stadium photo |
+| `js/firebase-config.js` | Firebase project settings for sync (public by design) |
+| `js/sync.js` | Sync: sign-in, uploading changed games, applying other devices' changes, conflict copies |
 | `js/ui.js` | Dialogs, keyboard shortcuts, event delegation, wake lock, startup (loads last) |
 
 Code that runs while a file loads may only use things defined in the same or an earlier file.
@@ -56,6 +60,20 @@ Code that runs while a file loads may only use things defined in the same or an 
 
 When a saved game's shape changes, add the default to `migrateGame` (in `js/game.js`) so older
 games and backups keep loading.
+
+## Sync (Firebase)
+
+Games are stored at `users/{uid}/games/{gameId}` in Firestore, one document per game (the saved
+game as JSON plus a summary). `firestore.rules` lets each user read and write only their own
+games and accepts an update only if it's newer than the stored one; deletions are stored as
+`{ deleted: true }`. When an older edit loses, the app keeps it in My Games as a copy (left out
+of season stats).
+
+Setup: create a Firebase project with Firestore and Email/Password sign-in (turn off public
+sign-ups and add the account in the console), paste `firestore.rules` into Firestore → Rules,
+add the site's domain to Authentication → Authorized domains, and put the web app's
+`firebaseConfig` in `js/firebase-config.js`. The Firebase compat libraries are bundled in
+`js/vendor/firebase` (Apache 2.0) and load only on signed-in devices.
 
 ## Tests
 
@@ -73,6 +91,10 @@ The tests load the real `index.html` and scripts into jsdom, with MLB data serve
 - `tests/scoring.test.js` covers the hand-scoring rules (ABS overturns, reaching on an error,
   double plays, outs on the bases, counts kept on runner outs, RISP, innings pitched,
   inherited runners, Undo, the cell editor, and loading older saved games).
+
+- `tests/sync.test.js` runs two simulated devices against an in-memory Firebase: games
+  appearing on the other device, following a game being scored elsewhere, deletions,
+  offline changes uploading later, and the newer-wins-plus-copy conflict rule.
 
 The tests also run on every push (GitHub Actions).
 

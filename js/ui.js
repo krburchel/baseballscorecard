@@ -147,6 +147,10 @@ document.addEventListener('keydown', function(e){
     if(e.key === 'Escape') closeSeasonStats();
     return;
   }
+  if(document.getElementById('syncOverlay')){
+    if(e.key === 'Escape') closeSyncPanel();
+    return;
+  }
   // If runner placement picker is open, only allow Escape (auto-advance)
   if(document.getElementById('rpOverlay')){
     if(e.key === 'Escape'){ rpAutoAdvance(); }
@@ -396,6 +400,7 @@ function init(){
   restoreNotes();
   syncWakeLock();
   renderBackupNudge();
+  syncInit();
 }
 
 init();

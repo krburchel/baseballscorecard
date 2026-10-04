@@ -527,7 +527,7 @@ function ssGames(){
     if(e.id === activeId) return;
     var payload = null;
     try { payload = JSON.parse(localStorage.getItem(GM_GAME_PREFIX + e.id) || 'null'); } catch(x){}
-    if(!payload || !payload.G) return;
+    if(!payload || !payload.G || payload.syncCopy) return;   // sync conflict copies don't count twice
     var g = migrateGame(payload.G);
     if(!g.log.length && !g.pas.length) return;
     out.push({ id: e.id, g: g, away: ssTeamLabel(payload.teamAway, 'Away'), home: ssTeamLabel(payload.teamHome, 'Home') });

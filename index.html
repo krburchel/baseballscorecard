@@ -38,6 +38,7 @@
     <div class="hdr-btns">
       <button class="today-btn" id="todayBtn" onclick="showTodaysGames()">📅 Today</button>
       <span class="hdr-spacer"></span>
+      <button class="sync-pill" id="syncPill" onclick="openSyncPanel()" hidden></button>
       <button class="reset-btn" id="undoBtn" onclick="undoAction()" disabled>↩ Undo</button>
       <div class="save-menu-wrap">
         <button class="pdf-btn" onclick="toggleSaveMenu()" id="saveMenuBtn" aria-haspopup="true">☰ Menu</button>
@@ -46,6 +47,7 @@
           <button class="save-menu-item" onclick="closeSaveMenu(); openShareFinal()">🖼 Share final</button>
           <button class="save-menu-item" onclick="closeSaveMenu(); openSeasonStats()">📊 Season stats</button>
           <button class="save-menu-item" onclick="showGameManager(); closeSaveMenu()">📋 My Games</button>
+          <button class="save-menu-item" onclick="closeSaveMenu(); openSyncPanel()">☁ Sync</button>
           <button class="save-menu-item" onclick="exportPDF(); closeSaveMenu()">🖨 Export PDF</button>
           <button class="save-menu-item" onclick="exportJSON(); closeSaveMenu()">📁 Save game file</button>
           <button class="save-menu-item" onclick="triggerImport(); closeSaveMenu()">📂 Load game file</button>
@@ -364,6 +366,8 @@
 <script src="js/mlb.js"></script>
 <script src="js/storage.js"></script>
 <script src="js/reports.js"></script>
+<script src="js/firebase-config.js"></script>
+<script src="js/sync.js"></script>
 <script src="js/ui.js"></script>
 </body>
 </html>
