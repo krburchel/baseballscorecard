@@ -562,6 +562,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .cf-btn.danger { background:var(--red); border-color:var(--red); color:#fff; }
 .cf-btn.danger:hover { filter:brightness(1.08); background:var(--red); }
 
+/* ── Share final ── */
+.sf-modal { max-width:720px; }
+.sf-body { padding:14px 16px 16px; }
+.sf-img { display:block; width:100%; height:auto; border:1px solid var(--border); border-radius:8px; }
+.sf-acts { display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap; margin-top:12px; }
+.sf-acts button { padding:8px 14px; font-size:13px; }
+
 /* ── Check vs MLB ── */
 .mlb-modal { max-width:640px; }
 .mlb-hdr-btns { display:flex; align-items:center; gap:8px; }
@@ -843,6 +850,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         <button class="pdf-btn" onclick="toggleSaveMenu()" id="saveMenuBtn" aria-haspopup="true">☰ Menu</button>
         <div class="save-menu" id="saveMenu">
           <button class="save-menu-item" onclick="closeSaveMenu(); openMlbCheck()">⚾ Check vs MLB</button>
+          <button class="save-menu-item" onclick="closeSaveMenu(); openShareFinal()">🖼 Share final</button>
           <button class="save-menu-item" onclick="showGameManager(); closeSaveMenu()">📋 My Games</button>
           <button class="save-menu-item" onclick="exportPDF(); closeSaveMenu()">🖨 Export PDF</button>
           <button class="save-menu-item" onclick="exportJSON(); closeSaveMenu()">📁 Save game file</button>
@@ -1415,7 +1423,15 @@ var MAX_HISTORY = 30;
 // Helper: is a base occupied? Works with both old boolean and new name-string format
 function baseOcc(i){ return !!G.bases[i]; }
 // Helper: short name for runner labels (first initial + last name)
-function shortName(n){ if(!n) return '?'; var parts=n.trim().split(/\s+/); if(parts.length===1) return parts[0]; return parts[0][0]+'. '+parts[parts.length-1]; }
+function shortName(n){
+  if(!n) return '?';
+  var parts = n.trim().split(/\s+/);
+  if(parts.length === 1) return parts[0];
+  // Keep a suffix with the surname: "Luis García Jr." → "L. García Jr."
+  var suffix = '';
+  if(parts.length > 2 && /^(jr|sr|ii|iii|iv|v)\.?$/i.test(parts[parts.length - 1])) suffix = ' ' + parts.pop();
+  return parts[0][0] + '. ' + parts[parts.length - 1] + suffix;
+}
 
 // Snapshots leave out the play log and keep its length instead: entries are
 // only ever added at the front, so the older part of the log never moves and
@@ -6843,6 +6859,296 @@ function mlbRowHtml(d, kind, i){
     + '</div></div>';
 }
 
+// ══ Shareable final ══
+// Draws the game as a PNG (score, line score, batting and pitching lines)
+// for the share sheet. Always light-themed — it's meant to be posted.
+var SF_W = 1080, SF_PAD = 48;
+var SF_C = { bg:'#ffffff', ink:'#1a1a1a', muted:'#888780', line:'#e3e1d9', head:'#f5f4f0', accent:'#185FA5' };
+var SF_FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+var _sf = null; // { blob, url, filename }
+
+// "New York Yankees" → "Yankees", "Toronto Blue Jays" → "Blue Jays"
+function teamShort(name){
+  var two = /(Red Sox|White Sox|Blue Jays)$/.exec(name);
+  return two ? two[1] : name.split(' ').pop();
+}
+
+function sfLoadImg(url){
+  return new Promise(function(resolve){
+    if(!url) return resolve(null);
+    var im = new Image();
+    im.crossOrigin = 'anonymous'; // MLB serves logos with CORS, so the canvas stays exportable
+    im.onload = function(){ resolve(im); };
+    im.onerror = function(){ resolve(null); };
+    setTimeout(function(){ resolve(null); }, 5000); // offline: draw without logos
+    im.src = url;
+  });
+}
+
+function sfContain(ctx, im, x, y, w, h){
+  if(!im) return;
+  var iw = im.naturalWidth || w, ih = im.naturalHeight || h;
+  var s = Math.min(w / iw, h / ih), dw = iw * s, dh = ih * s;
+  ctx.drawImage(im, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
+}
+
+// Text cut to fit with an ellipsis
+function sfFit(ctx, text, maxW){
+  text = String(text);
+  if(ctx.measureText(text).width <= maxW) return text;
+  while(text.length > 1 && ctx.measureText(text + '…').width > maxW) text = text.slice(0, -1);
+  return text + '…';
+}
+
+function sfText(ctx, text, x, y, opts){
+  opts = opts || {};
+  ctx.font = (opts.weight || 400) + ' ' + (opts.size || 22) + 'px ' + SF_FONT;
+  ctx.fillStyle = opts.color || SF_C.ink;
+  ctx.textAlign = opts.align || 'left';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(opts.maxW ? sfFit(ctx, text, opts.maxW) : String(text), x, y);
+}
+
+// Every player who appeared, starters then their subs, plus team totals
+function sfBatting(side){
+  var rows = [], tot = { ab:0, r:0, h:0, rbi:0, bb:0, k:0 };
+  G.lineup[side].forEach(function(sl, i){
+    var players = [{ name: sl.name || 'Batter ' + (i + 1), pos: sl.pos, h: sl.hits, sub: false }]
+      .concat(sl.subs.map(function(s){ return { name: s.name || 'Sub', pos: s.subType === 'pr' ? 'PR' : s.pos, h: s.hits || mkHits(), sub: true }; }));
+    players.forEach(function(p){
+      var h = p.h;
+      var r = { name: p.name, pos: p.pos && p.pos !== '—' ? p.pos : '', sub: p.sub,
+        ab: abFor(h), r: h.r || 0, h: h.s + h.d + h.t + h.hr, rbi: h.rbi || 0,
+        bb: (h.bb || 0) + (h.ibb || 0), k: (h.kl || 0) + (h.ks || 0) };
+      rows.push(r);
+      ['ab', 'r', 'h', 'rbi', 'bb', 'k'].forEach(function(k){ tot[k] += r[k]; });
+    });
+  });
+  return { rows: rows, tot: tot };
+}
+
+// Pitchers who were used (or at least named)
+function sfPitching(side){
+  return G.pitchers[side].filter(function(p){ return p.pitches || p.outs || p.name; });
+}
+
+function sfStatus(){
+  if(G.log.some(function(l){ return l.tag === 'Final'; })){
+    return 'FINAL' + (G.inning > 9 || G.totalInnings > 9 ? '/' + G.inning : '');
+  }
+  return (G.half === 'top' ? 'TOP ' : 'BOT ') + G.inning;
+}
+
+function buildFinalImage(){
+  var away = team('away'), home = team('home');
+  var bat = { away: sfBatting('away'), home: sfBatting('home') };
+  var pit = { away: sfPitching('away'), home: sfPitching('home') };
+  var ps = POSTSEASON[G.notes && G.notes.gameType];
+  return Promise.all([sfLoadImg(TEAM_LOGOS[away]), sfLoadImg(TEAM_LOGOS[home]), sfLoadImg(ps ? ps.logo : null)]).then(function(imgs){
+    var logo = { away: imgs[0], home: imgs[1] }, psLogo = imgs[2];
+    var n = Math.max(9, G.totalInnings);
+    var batRows = Math.max(bat.away.rows.length, bat.home.rows.length);
+    var pitRows = Math.max(pit.away.length, pit.home.length, 1);
+    var RH = 34;
+    var H = SF_PAD + 44 + 24 + 150 + 30 + 46 * 3 + 44 + 44 + RH * batRows + 40 + 36 + 44 + RH * pitRows + 30 + 40 + SF_PAD;
+
+    var scale = 2; // crisp on phones/retina
+    var cv = document.createElement('canvas');
+    cv.width = SF_W * scale; cv.height = H * scale;
+    var ctx = cv.getContext('2d');
+    ctx.scale(scale, scale);
+    ctx.fillStyle = SF_C.bg;
+    ctx.fillRect(0, 0, SF_W, H);
+
+    var x0 = SF_PAD, x1 = SF_W - SF_PAD, y = SF_PAD;
+
+    // ── Top line: postseason badge · date · venue
+    var meta = [];
+    if(G.notes && G.notes.date){
+      try {
+        var dp = G.notes.date.split('-');
+        meta.push(new Date(dp[0], dp[1] - 1, dp[2]).toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric', year:'numeric' }));
+      } catch(e){ meta.push(G.notes.date); }
+    }
+    if(G.notes && G.notes.venue) meta.push(G.notes.venue);
+    var bx = x0;
+    if(ps){
+      if(psLogo){ sfContain(ctx, psLogo, bx, y, 40, 40); bx += 50; }
+      var yr = (G.notes.date || '').slice(0, 4) || String(new Date().getFullYear());
+      var label = (yr + ' ' + ps.label + (G.notes.seriesGame ? ' · Game ' + G.notes.seriesGame : '')).toUpperCase();
+      sfText(ctx, label, bx, y + 20, { size:22, weight:800, color:SF_C.ink });
+    }
+    if(meta.length) sfText(ctx, meta.join(' · '), x1, y + 20, { size:20, color:SF_C.muted, align:'right', maxW: ps ? 480 : x1 - x0 });
+    y += 44 + 24;
+
+    // ── Score: logo, name and runs for each team, status in the middle
+    var aR = G.rhe.away[0], hR = G.rhe.home[0], final = sfStatus().indexOf('FINAL') === 0;
+    var mid = SF_W / 2;
+    [['away', away, aR, hR], ['home', home, hR, aR]].forEach(function(t){
+      var left = t[0] === 'away', won = final && t[2] > t[3];
+      var lx = left ? x0 : x1 - 120;
+      sfContain(ctx, logo[t[0]], lx, y + 15, 120, 120);
+      var nx = left ? x0 + 140 : x1 - 140;
+      sfText(ctx, teamShort(t[1]), nx, y + 60, { size:40, weight:800, align: left ? 'left' : 'right', maxW: 250, color: SF_C.ink });
+      sfText(ctx, t[1].replace(teamShort(t[1]), '').trim() || ' ', nx, y + 102, { size:20, color:SF_C.muted, align: left ? 'left' : 'right', maxW: 250 });
+      sfText(ctx, t[2], left ? mid - 70 : mid + 70, y + 75, { size:96, weight:800, align: left ? 'right' : 'left', color: final && !won ? SF_C.muted : SF_C.ink });
+    });
+    // status pill
+    ctx.font = '800 20px ' + SF_FONT;
+    var st = sfStatus(), pw = ctx.measureText(st).width + 28;
+    ctx.fillStyle = final ? SF_C.ink : SF_C.accent;
+    sfRound(ctx, mid - pw / 2, y + 58, pw, 34, 17); ctx.fill();
+    sfText(ctx, st, mid, y + 76, { size:20, weight:800, color:'#ffffff', align:'center' });
+    y += 150 + 30;
+
+    // ── Line score
+    var teamW = 200, rheW = 64, innW = (x1 - x0 - teamW - rheW * 3) / n;
+    ctx.fillStyle = SF_C.head; ctx.fillRect(x0, y, x1 - x0, 46);
+    for(var c = 1; c <= n; c++) sfText(ctx, c, x0 + teamW + innW * (c - 0.5), y + 23, { size:20, weight:600, color:SF_C.muted, align:'center' });
+    ['R', 'H', 'E'].forEach(function(k, i){ sfText(ctx, k, x1 - rheW * (3 - i) + rheW / 2, y + 23, { size:20, weight:700, color:SF_C.muted, align:'center' }); });
+    ['away', 'home'].forEach(function(side, r){
+      var ry = y + 46 * (r + 1);
+      sfLine(ctx, x0, ry, x1, ry);
+      sfContain(ctx, logo[side], x0 + 6, ry + 7, 32, 32);
+      sfText(ctx, teamShort(team(side)), x0 + 48, ry + 23, { size:22, weight:700, maxW: teamW - 56 });
+      for(var c = 1; c <= n; c++){
+        var v = G.scores[side][c - 1];
+        sfText(ctx, v === null || v === undefined ? '' : v, x0 + teamW + innW * (c - 0.5), ry + 23, { size:22, align:'center' });
+      }
+      G.rhe[side].forEach(function(v, i){ sfText(ctx, v, x1 - rheW * (3 - i) + rheW / 2, ry + 23, { size:22, weight:800, align:'center' }); });
+    });
+    sfLine(ctx, x0, y + 46 * 3, x1, y + 46 * 3);
+    sfLine(ctx, x1 - rheW * 3, y, x1 - rheW * 3, y + 46 * 3);
+    y += 46 * 3 + 44;
+
+    // ── Batting and pitching, away on the left, home on the right
+    var colW = (x1 - x0 - 40) / 2;
+    var BAT_COLS = ['AB', 'R', 'H', 'RBI', 'BB', 'K'], BAT_KEYS = ['ab', 'r', 'h', 'rbi', 'bb', 'k'];
+    var PIT_COLS = ['IP', 'H', 'R', 'ER', 'BB', 'K'];
+    var statW = 44;
+    var yBat = y;
+    ['away', 'home'].forEach(function(side, ci){
+      var cx = x0 + ci * (colW + 40), sx = cx + colW - statW * BAT_COLS.length;
+      var yy = yBat;
+      sfText(ctx, teamShort(team(side)) + ' batting', cx, yy + 20, { size:22, weight:800 });
+      BAT_COLS.forEach(function(h, i){ sfText(ctx, h, sx + statW * (i + 0.5), yy + 20, { size:17, weight:700, color:SF_C.muted, align:'center' }); });
+      yy += 44;
+      sfLine(ctx, cx, yy - 4, cx + colW, yy - 4);
+      bat[side].rows.forEach(function(r){
+        var nm = shortName(r.name) + (r.pos ? '  ' + r.pos : '');
+        sfText(ctx, (r.sub ? '↳ ' : '') + nm, cx + (r.sub ? 14 : 0), yy + RH / 2, { size: r.sub ? 18 : 20, weight: r.sub ? 400 : 500, color: r.sub ? '#444' : SF_C.ink, maxW: sx - cx - (r.sub ? 22 : 8) });
+        BAT_KEYS.forEach(function(k, i){ sfText(ctx, r[k], sx + statW * (i + 0.5), yy + RH / 2, { size:20, align:'center', color: r[k] ? SF_C.ink : SF_C.muted }); });
+        yy += RH;
+      });
+      yy = yBat + 44 + RH * batRows;
+      sfLine(ctx, cx, yy + 2, cx + colW, yy + 2);
+      sfText(ctx, 'Totals', cx, yy + 20, { size:20, weight:800 });
+      BAT_KEYS.forEach(function(k, i){ sfText(ctx, bat[side].tot[k], sx + statW * (i + 0.5), yy + 20, { size:20, weight:800, align:'center' }); });
+
+      var yp = yBat + 44 + RH * batRows + 40 + 36;
+      sfText(ctx, teamShort(team(side)) + ' pitching', cx, yp + 20, { size:22, weight:800 });
+      PIT_COLS.forEach(function(h, i){ sfText(ctx, h, sx + statW * (i + 0.5), yp + 20, { size:17, weight:700, color:SF_C.muted, align:'center' }); });
+      yp += 44;
+      sfLine(ctx, cx, yp - 4, cx + colW, yp - 4);
+      pit[side].forEach(function(p){
+        sfText(ctx, shortName(p.name || 'Pitcher'), cx, yp + RH / 2, { size:20, weight:500, maxW: sx - cx - 8 });
+        [fmtIP(p.outs || 0), p.h || 0, p.r || 0, p.er || 0, p.bb || 0, p.k || 0].forEach(function(v, i){
+          sfText(ctx, v, sx + statW * (i + 0.5), yp + RH / 2, { size:20, align:'center' });
+        });
+        yp += RH;
+      });
+    });
+
+    // ── Footer
+    sfText(ctx, 'Scored live with Baseball Scorecard', SF_W / 2, H - SF_PAD + 6, { size:17, color:SF_C.muted, align:'center' });
+
+    return new Promise(function(resolve, reject){
+      cv.toBlob(function(blob){ blob ? resolve(blob) : reject(new Error('Couldn\'t create the image.')); }, 'image/png');
+    });
+  });
+}
+
+function sfLine(ctx, ax, ay, bx2, by){
+  ctx.strokeStyle = SF_C.line; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx2, by); ctx.stroke();
+}
+function sfRound(ctx, x, y, w, h, r){
+  ctx.beginPath();
+  ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+function sfFilename(){
+  var d = (G.notes && G.notes.date) || new Date().toISOString().slice(0, 10);
+  return (teamShort(team('away')) + '-at-' + teamShort(team('home')) + '-' + d).replace(/\s+/g, '-') + '.png';
+}
+
+// Preview with Share / Save / Copy
+function openShareFinal(){
+  closeShareFinal();
+  var ov = document.createElement('div');
+  ov.className = 'gm-overlay';
+  ov.id = 'sfOverlay';
+  ov.addEventListener('click', function(e){ if(e.target === ov) closeShareFinal(); });
+  ov.innerHTML = '<div class="gm-modal sf-modal" role="dialog" aria-modal="true" aria-labelledby="sfTitle">'
+    + '<div class="gm-hdr"><h3 id="sfTitle">🖼 Share final</h3><button class="games-modal-close" onclick="closeShareFinal()" aria-label="Close">&times;</button></div>'
+    + '<div class="gm-body"><div class="mlb-msg" id="sfBody">Drawing the scorecard…</div></div></div>';
+  document.body.appendChild(ov);
+  buildFinalImage().then(function(blob){
+    if(!document.getElementById('sfOverlay')) return;
+    _sf = { blob: blob, url: URL.createObjectURL(blob), filename: sfFilename() };
+    var file = new File([blob], _sf.filename, { type:'image/png' });
+    var canShare = !!(navigator.canShare && navigator.canShare({ files:[file] }));
+    var canCopy = !!(navigator.clipboard && window.ClipboardItem);
+    var el = document.getElementById('sfBody');
+    el.className = 'sf-body';
+    el.innerHTML = '<img class="sf-img" src="' + _sf.url + '" alt="Scorecard image: ' + esc(team('away')) + ' ' + G.rhe.away[0] + ', ' + esc(team('home')) + ' ' + G.rhe.home[0] + '" />'
+      + '<div class="sf-acts">'
+      + (canShare ? '<button class="mlb-use" onclick="shareFinalImage()">Share…</button>' : '')
+      + '<button class="' + (canShare ? 'mlb-keep' : 'mlb-use') + '" onclick="saveFinalImage()">Save image</button>'
+      + (canCopy ? '<button class="mlb-keep" onclick="copyFinalImage()">Copy image</button>' : '')
+      + '</div>';
+  }).catch(function(err){
+    var el = document.getElementById('sfBody');
+    if(el){ el.className = 'mlb-msg mlb-err'; el.textContent = (err && err.message) || 'Couldn\'t create the image.'; }
+  });
+}
+
+function closeShareFinal(){
+  var ov = document.getElementById('sfOverlay');
+  if(ov) ov.remove();
+  if(_sf && _sf.url) URL.revokeObjectURL(_sf.url);
+  _sf = null;
+}
+
+function shareFinalImage(){
+  if(!_sf) return;
+  var file = new File([_sf.blob], _sf.filename, { type:'image/png' });
+  navigator.share({ files:[file] }).catch(function(err){
+    if(!err || err.name !== 'AbortError') saveFinalImage();
+  });
+}
+
+function saveFinalImage(){
+  if(!_sf) return;
+  var a = document.createElement('a');
+  a.href = _sf.url;
+  a.download = _sf.filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+function copyFinalImage(){
+  if(!_sf) return;
+  navigator.clipboard.write([new ClipboardItem({ 'image/png': _sf.blob })])
+    .then(function(){ kbFlash('Image copied', '#1D9E75'); })
+    .catch(function(){ kbFlash('Couldn\'t copy — use Save image', '#BA7517'); });
+}
+
 // ── Backup all games ──
 // One file with every game in My Games (the current game is saved there
 // first). Restoring merges: games already on this device are left alone.
@@ -7141,6 +7447,10 @@ document.addEventListener('keydown', function(e){
   }
   if(document.getElementById('mlbOverlay')){
     if(e.key === 'Escape') closeMlbCheck();
+    return;
+  }
+  if(document.getElementById('sfOverlay')){
+    if(e.key === 'Escape') closeShareFinal();
     return;
   }
   // If runner placement picker is open, only allow Escape (auto-advance)
