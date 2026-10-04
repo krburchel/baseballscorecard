@@ -37,6 +37,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   --disabled:#ccc;
   --flyout-bg:#F1EFE8; --flyout-text:#5F5E5A; --flyout-border:#D3D1C7;
   --groundout-bg:#EAF3DE; --groundout-text:#3B6D11; --groundout-border:#C0DD97;
+  --field-grass:#6aa86b; --field-foul:#5e9a60; --field-dirt:#c99b6c; --field-chalk:#ffffff;
 }
 
 @media(prefers-color-scheme: dark){
@@ -54,6 +55,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     --disabled:#444;
     --flyout-bg:#252525; --flyout-text:#aaa; --flyout-border:#444;
     --groundout-bg:#1a2e18; --groundout-text:#6bbb40; --groundout-border:#2e5520;
+    --field-grass:#33703d; --field-foul:#2c6034; --field-dirt:#8c6a4c; --field-chalk:#e8efe7;
   }
   body { background:var(--bg); color:var(--text); }
 }
@@ -253,13 +255,19 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 
 /* bases */
 .bases-wrap { display:flex; justify-content:center; padding:4px 0; }
-.diamond { position:relative; width:82px; height:82px; }
-.base { position:absolute; width:22px; height:22px; background:var(--header-bg); border:1.5px solid var(--border); cursor:pointer; transform:rotate(45deg); border-radius:3px; }
-.base.on { background:var(--amber); border-color:var(--amber); }
-.base-2b { top:4px; left:30px; }
-.base-3b { top:30px; left:4px; }
-.base-1b { top:30px; left:56px; }
-.base-home { bottom:4px; left:30px; background:var(--header-bg); }
+.bases-field { display:flex; flex-direction:column; gap:8px; }
+.infield { line-height:0; }
+.infield svg { display:block; width:100%; max-width:280px; height:auto; margin:0 auto; border-radius:6px; }
+.if-base { cursor:pointer; outline:none; }
+.if-base:focus-visible rect { stroke:var(--blue); stroke-width:2; }
+.stadium-photo { margin:0; display:flex; flex-direction:column; gap:3px; min-width:0; }
+.stadium-photo img { display:block; width:100%; aspect-ratio:16/7; object-fit:cover; border-radius:6px; background:var(--header-bg); }
+.stadium-photo figcaption { display:flex; justify-content:space-between; align-items:baseline; gap:8px; min-width:0; }
+.stadium-name { font-size:11px; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.stadium-credit { font-size:9px; color:var(--muted); text-decoration:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.stadium-credit:hover { text-decoration:underline; }
+.stadium-photo-off img { display:none; }
+.runner-labels { display:none; }
 .runner-labels { margin-top:2px; font-size:10px; color:var(--muted); line-height:1.4; text-align:center; }
 .runner-labels span { display:inline-block; margin:0 3px; }
 .runner-labels .rlabel-on { color:var(--amber); font-weight:600; }
@@ -683,7 +691,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   .dot.strike.on { background:var(--red)!important; border-color:var(--red)!important; }
   .dot.foul.on { background:var(--purple)!important; border-color:var(--purple)!important; }
   .dot.out.on { background:var(--out-color)!important; border-color:var(--out-color)!important; }
-  .base.on { background:var(--amber)!important; border-color:var(--amber)!important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  .infield svg, .stadium-photo img { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
   /* lineup */
   .lineup-grid { grid-template-columns:1fr 1fr; gap:6px; }
   .lineup-panel { border:1.5px solid #333; border-radius:0; page-break-inside:avoid; }
@@ -935,16 +943,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 
     <div class="card">
       <div class="label">Bases</div>
-      <div style="display:flex;align-items:flex-start;gap:8px;">
-        <div class="bases-wrap" style="flex-shrink:0">
-          <div class="diamond">
-            <div class="base base-2b" id="base2" onclick="toggleBase(2)"></div>
-            <div class="base base-3b" id="base3" onclick="toggleBase(3)"></div>
-            <div class="base base-1b" id="base1" onclick="toggleBase(1)"></div>
-            <div class="base base-home"></div>
-          </div>
-        </div>
-        <div id="stadiumWrap" style="flex:1;min-width:0;"></div>
+      <div class="bases-field">
+        <div class="infield" id="infield" aria-label="Bases"></div>
+        <div id="stadiumWrap"></div>
       </div>
       <div class="btns" style="justify-content:center;margin-top:4px">
         <button class="btn" onclick="addRun()">+ Run</button>
@@ -4922,22 +4923,74 @@ function addRun(){
 function renderBases(){
   syncPaBases();
   scheduleScorecardRender();
-  [1, 2, 3].forEach(function(b){
-    document.getElementById('base' + b).className = 'base base-' + b + 'b' + (baseOcc(b - 1) ? ' on' : '');
-  });
-  // Update runner name labels
-  var rl = document.getElementById('runnerLabels');
-  if(rl){
-    var parts = [];
-    var labels = ['1B','2B','3B'];
-    for(var i = 0; i < 3; i++){
-      if(baseOcc(i)){
-        var rn = typeof G.bases[i] === 'string' && G.bases[i] !== '?' ? shortName(G.bases[i]) : '';
-        if(rn) parts.push('<span class="rlabel-on">' + labels[i] + ': ' + esc(rn) + '</span>');
+  var el = document.getElementById('infield');
+  if(el) el.innerHTML = infieldSVG();
+}
+
+// ── Infield drawing (Bases card) ──
+// To scale in feet: home at (0,0), 90 ft base paths, mound at 60 ft 6 in, infield
+// dirt arc 95 ft around the rubber. Runners sit on the bases with name tags; each
+// base is a button that adds or removes a runner (toggleBase).
+var IF_BASES = [[63.64, 63.64], [0, 127.28], [-63.64, 63.64]]; // 1B, 2B, 3B
+var IF_VB = [-128, -176, 256, 210];                              // feet, SVG coords (y down)
+var IF_PX = 260;                                                 // typical drawn width in CSS px (sizes the labels)
+function ifP(x, y){ return Math.round(x * 10) / 10 + ',' + Math.round(-y * 10) / 10; }
+function infieldSVG(){
+  var k = IF_VB[2] / IF_PX;                 // feet per CSS px, to size labels in px
+  var lpX = -280, rpX = 280;                // foul lines run off the drawing
+  var s = '<svg viewBox="' + IF_VB.join(' ') + '" role="group" aria-label="Infield">';
+  s += '<defs><clipPath id="ifFair"><polygon points="' + ifP(0, 0) + ' ' + ifP(lpX, -lpX) + ' ' + ifP(rpX, rpX) + '"/></clipPath></defs>';
+  s += '<rect x="' + IF_VB[0] + '" y="' + IF_VB[1] + '" width="' + IF_VB[2] + '" height="' + IF_VB[3] + '" fill="var(--field-foul)"/>';
+  s += '<polygon points="' + ifP(0, 0) + ' ' + ifP(lpX, -lpX) + ' ' + ifP(rpX, rpX) + '" fill="var(--field-grass)"/>';
+  s += '<circle cx="0" cy="-60.5" r="95" fill="var(--field-dirt)" clip-path="url(#ifFair)"/>';
+  s += '<polygon points="' + ifP(0, 13) + ' ' + ifP(50.6, 63.64) + ' ' + ifP(0, 114.28) + ' ' + ifP(-50.6, 63.64) + '" fill="var(--field-grass)"/>';
+  s += '<circle cx="0" cy="0" r="13" fill="var(--field-dirt)"/>';
+  s += '<circle cx="0" cy="-60.5" r="9" fill="var(--field-dirt)"/><rect x="-1.5" y="-61" width="3" height="1" fill="var(--field-chalk)"/>';
+  s += '<line x1="0" y1="0" x2="' + lpX + '" y2="' + lpX + '" stroke="var(--field-chalk)" stroke-width="1"/>';
+  s += '<line x1="0" y1="0" x2="' + rpX + '" y2="' + (-rpX) + '" stroke="var(--field-chalk)" stroke-width="1"/>';
+  var b = 7;
+  // home plate: point toward the catcher, flat edge toward the pitcher
+  s += '<polygon points="' + ifP(-b / 2, b * 0.9) + ' ' + ifP(b / 2, b * 0.9) + ' ' + ifP(b / 2, b * 0.4) + ' ' + ifP(0, 0) + ' ' + ifP(-b / 2, b * 0.4) + '" fill="var(--field-chalk)"/>';
+  IF_BASES.forEach(function(q, i){
+    var occ = baseOcc(i), name = occ && typeof G.bases[i] === 'string' && G.bases[i] !== '?' ? shortName(G.bases[i]) : '';
+    var label = ['First', 'Second', 'Third'][i] + ' base: ' + (occ ? (name || 'runner') + ' on. Tap to clear' : 'empty. Tap to put a runner on');
+    s += '<g class="if-base" data-base="' + (i + 1) + '" role="button" tabindex="0" aria-label="' + esc(label) + '">';
+    s += '<circle cx="' + q[0] + '" cy="' + (-q[1]) + '" r="24" fill="transparent"/>';
+    s += '<rect x="' + (q[0] - b / 2) + '" y="' + (-q[1] - b / 2) + '" width="' + b + '" height="' + b + '" fill="var(--field-chalk)" transform="rotate(45 ' + q[0] + ' ' + (-q[1]) + ')"/>';
+    if(occ){
+      var r = 11 * k;
+      s += '<circle cx="' + q[0] + '" cy="' + (-q[1]) + '" r="' + r + '" fill="var(--amber)" stroke="var(--surface)" stroke-width="' + (2 * k) + '"/>';
+      if(name){
+        var t = 11 * k, tw = (name.length * 0.56 * t) + 10 * k, th = t * 1.6;
+        var ly = i === 1 ? -q[1] - r - 3 * k - th : -q[1] + r + 3 * k;
+        var lx = Math.max(IF_VB[0] + 2, Math.min(IF_VB[0] + IF_VB[2] - tw - 2, q[0] - tw / 2));
+        s += '<rect x="' + lx + '" y="' + ly + '" width="' + tw + '" height="' + th + '" rx="' + th / 2 + '" fill="var(--surface)" opacity=".92"/>';
+        s += '<text x="' + (lx + tw / 2) + '" y="' + (ly + th / 2) + '" text-anchor="middle" dominant-baseline="central" font-size="' + t + '" font-weight="600" fill="var(--text)">' + esc(name) + '</text>';
       }
     }
-    rl.innerHTML = parts.join('');
+    s += '</g>';
+  });
+  return s + '</svg>';
+}
+
+// Taps / Enter / Space on a base toggle a runner (bound once; the SVG re-renders)
+function setupInfieldDelegation(){
+  var el = document.getElementById('infield');
+  if(!el || el._bound) return;
+  el._bound = true;
+  function hit(e){
+    var g = e.target.closest && e.target.closest('.if-base');
+    if(!g) return false;
+    var b = +g.dataset.base;
+    toggleBase(b);
+    var again = el.querySelector('.if-base[data-base="' + b + '"]');
+    if(again && e.type === 'keydown') again.focus();
+    return true;
   }
+  el.addEventListener('click', hit);
+  el.addEventListener('keydown', function(e){
+    if((e.key === 'Enter' || e.key === ' ') && hit(e)) e.preventDefault();
+  });
 }
 
 function setActivePitcher(side, idx){
@@ -5427,78 +5480,52 @@ var STADIUMS = {
   'Washington Nationals':  { name:'Nationals Park',          lat:38.87306, lng:-77.00750  }
 };
 
-// Convert lat/lng + zoom to OSM tile x,y
-function latLngToTile(lat, lng, zoom) {
-  var n = Math.pow(2, zoom);
-  var x = Math.floor((lng + 180) / 360 * n);
-  var latRad = lat * Math.PI / 180;
-  var y = Math.floor((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n);
-  return { x: x, y: y };
-}
+// Stadium photos: each ballpark's lead photo from Wikipedia / Wikimedia Commons
+// (freely licensed — credited under the photo, linking to the file page).
+var STADIUM_PHOTOS = {
+  "Arizona Diamondbacks": { img:"https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a2/Reserve_A-10_Warthogs_Flyover_2023_World_Series_%288099146%29.jpg/500px-Reserve_A-10_Warthogs_Flyover_2023_World_Series_%288099146%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail", page:"https://commons.wikimedia.org/wiki/File:Reserve_A-10_Warthogs_Flyover_2023_World_Series_(8099146).jpg", by:"U.S. Air Force photo by Staff Sgt. Tyler J. Bolken", lic:"Public domain" },
+  "Athletics": { img:"https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e6/Sutter_Health_Park_aerial_view_2023_%28Quintin_Soloviev%29.jpg/500px-Sutter_Health_Park_aerial_view_2023_%28Quintin_Soloviev%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail", page:"https://commons.wikimedia.org/wiki/File:Sutter_Health_Park_aerial_view_2023_(Quintin_Soloviev).jpg", by:"Quintin Soloviev", lic:"CC BY 4.0" },
+  "Atlanta Braves": { img:"https://thumb.wikimedia.org/wikipedia/commons/thumb/0/04/Truist_Park_2025.jpg/500px-Truist_Park_2025.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail", page:"https://commons.wikimedia.org/wiki/File:Truist_Park_2025.jpg", by:"TarheelBornBred", lic:"CC0" },
+  "Baltimore Orioles": { img:"https://thumb.wikimedia.org/wikipedia/commons/thumb/5/51/OrioleParkatCamdenYardsSummer2025.jpg/500px-OrioleParkatCamdenYardsSummer2025.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail", page:"https://commons.wikimedia.org/wiki/File:OrioleParkatCamdenYardsSummer2025.jpg", by:"Aspifi", lic:"CC BY-SA 4.0" },
+  "Boston Red Sox": { img:"https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4f/131023-F-PR861-033_Hanscom_participates_in_World_Series_pregame_events.jpg/500px-131023-F-PR861-033_Hanscom_participates_in_World_Series_pregame_events.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail", page:"https://commons.wikimedia.org/wiki/File:131023-F-PR861-033_Hanscom_participates_in_World_Series_pregame_events.jpg", by:"Rick Berry", lic:"Public domain" },
+  "Chicago Cubs": { img:"https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c9/Wrigley_Field_in_line_with_sign.jpg/500px-Wrigley_Field_in_line_with_sign.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail", page:"https://commons.wikimedia.org/wiki/File:Wrigley_Field_in_line_with_sign.jpg", by:"Sea Cow", lic:"CC BY-SA 4.0" },
+  "Chicago White Sox": { img:"https://thumb.wikimedia.org/wikipedia/commons/thumb/5/57/Chicago%2C_Illinois%2C_U.S._%282023%29_-_062.jpg/500px-Chicago%2C_Illinois%2C_U.S._%282023%29_-_062.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail", page:"https://commons.wikimedia.org/wiki/File:Chicago,_Illinois,_U.S._(2023)_-_062.jpg", by:"Another Believer", lic:"CC BY-SA 4.0" },
+  "Cincinnati Reds": { img:"https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4a/10Cincinnati_2015_%282%29.jpg/500px-10Cincinnati_2015_%282%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail", page:"https://commons.wikimedia.org/wiki/File:10Cincinnati_2015_(2).jpg", by:"Laslovarga", lic:"CC BY-SA 4.0" },
+  "Cleveland Guardians": { img:"https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f1/Cleveland_Guardians_vs._New_York_Yankees_on_Oct_17_2024_%2854102149292%29.jpg/500px-Cleveland_Guardians_vs._New_York_Yankees_on_Oct_17_2024_%2854102149292%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail", page:"https://commons.wikimedia.org/wiki/File:Cleveland_Guardians_vs._New_York_Yankees_on_Oct_17_2024_(54102149292).jpg", by:"Erik Drost", lic:"CC BY 2.0" },
+  "Colorado Rockies": { img:"https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e2/Coors_Field_July_2015.jpg/500px-Coors_Field_July_2015.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail", page:"https://commons.wikimedia.org/wiki/File:Coors_Field_July_2015.jpg", by:"Thelastcanadian", lic:"CC BY-SA 4.0" },
+  "Detroit Tigers": { img:"https://thumb.wikimedia.org/wikipedia/commons/thumb/0/06/Detroit_Tigers_opening_game_at_Comerica_Park%2C_2007.jpg/500px-Detroit_Tigers_opening_game_at_Comerica_Park%2C_2007.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail", page:"https://commons.wikimedia.org/wiki/File:Detroit_Tigers_opening_game_at_Comerica_Park,_2007.jpg", by:"User MJCdetroit on en.wikipedia", lic:"CC BY-SA 3.0" },
+  "Houston Astros": { img:"https://thumb.wikimedia.org/wikipedia/commons/thumb/1/10/Houston%2C_Texas_%282024%29_-_09.jpg/500px-Houston%2C_Texas_%282024%29_-_09.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail", page:"https://commons.wikimedia.org/wiki/File:Houston,_Texas_(2024)_-_09.jpg", by:"Another Believer", lic:"CC BY-SA 4.0" },
+  "Kansas City Royals": { img:"https://thumb.wikimedia.org/wikipedia/commons/thumb/3/35/Kauffman2017.jpg/500px-Kauffman2017.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail", page:"https://commons.wikimedia.org/wiki/File:Kauffman2017.jpg", by:"Chibears85", lic:"CC BY-SA 4.0" },
+  "Los Angeles Angels": { img:"https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4a/Angelstadiummarch2019.jpg/500px-Angelstadiummarch2019.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail", page:"https://commons.wikimedia.org/wiki/File:Angelstadiummarch2019.jpg", by:"CrispyCream27", lic:"CC BY-SA 4.0" },
+  "Los Angeles Dodgers": { img:"https://thumb.wikimedia.org/wikipedia/commons/thumb/5/50/Dodger_Stadium_and_Chavez_Ravine_far_view%2C_Chicago_Cubs_at_Los_Angeles_Dodgers%2C_%28April_12%2C_2025%29.jpg/500px-Dodger_Stadium_and_Chavez_Ravine_far_view%2C_Chicago_Cubs_at_Los_Angeles_Dodgers%2C_%28April_12%2C_2025%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail", page:"https://commons.wikimedia.org/wiki/File:Dodger_Stadium_and_Chavez_Ravine_far_view,_Chicago_Cubs_at_Los_Angeles_Dodgers,_(April_12,_2025).jpg", by:"Spatms", lic:"CC BY-SA 4.0" },
+  "Miami Marlins": { img:"https://thumb.wikimedia.org/wikipedia/commons/thumb/5/53/LOAN_DEPOT_PARK.jpg/500px-LOAN_DEPOT_PARK.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail", page:"https://commons.wikimedia.org/wiki/File:LOAN_DEPOT_PARK.jpg", by:"Ven-Lib", lic:"CC BY-SA 4.0" },
+  "Milwaukee Brewers": { img:"https://thumb.wikimedia.org/wikipedia/commons/thumb/c/cc/Miller_Park_in_Milwaukee%2C_Wisconsin.jpg/500px-Miller_Park_in_Milwaukee%2C_Wisconsin.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail", page:"https://commons.wikimedia.org/wiki/File:Miller_Park_in_Milwaukee,_Wisconsin.jpg", by:"Carol H. Highsmith", lic:"Public domain" },
+  "Minnesota Twins": { img:"https://thumb.wikimedia.org/wikipedia/commons/thumb/1/17/Target_Field%2C_Minneapolis%2C_Minnesota_%2843167053335%29.jpg/500px-Target_Field%2C_Minneapolis%2C_Minnesota_%2843167053335%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail", page:"https://commons.wikimedia.org/wiki/File:Target_Field,_Minneapolis,_Minnesota_(43167053335).jpg", by:"Ken Lund from Reno, Nevada, USA", lic:"CC BY-SA 2.0" },
+  "New York Mets": { img:"https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e6/Citi_Field_%2848613685207%29.jpg/500px-Citi_Field_%2848613685207%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail", page:"https://commons.wikimedia.org/wiki/File:Citi_Field_(48613685207).jpg", by:"Ajay Suresh from New York, NY, USA", lic:"CC BY 2.0" },
+  "New York Yankees": { img:"https://thumb.wikimedia.org/wikipedia/commons/thumb/a/af/Yankee_Stadium_overhead_2010.jpg/500px-Yankee_Stadium_overhead_2010.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail", page:"https://commons.wikimedia.org/wiki/File:Yankee_Stadium_overhead_2010.jpg", by:"vtravelled.com", lic:"CC BY 2.0" },
+  "Philadelphia Phillies": { img:"https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f6/Citizens_Bank_Park_2021.jpg/500px-Citizens_Bank_Park_2021.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail", page:"https://commons.wikimedia.org/wiki/File:Citizens_Bank_Park_2021.jpg", by:"Chris6d", lic:"CC BY-SA 4.0" },
+  "Pittsburgh Pirates": { img:"https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0e/Pittsburgh_Pirates_park_%28Unsplash%29.jpg/500px-Pittsburgh_Pirates_park_%28Unsplash%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail", page:"https://commons.wikimedia.org/wiki/File:Pittsburgh_Pirates_park_(Unsplash).jpg", by:"Joshua Peacock jcpeacock", lic:"CC0" },
+  "San Diego Padres": { img:"https://thumb.wikimedia.org/wikipedia/commons/thumb/5/55/Petco_Park_Padres_Game.jpg/500px-Petco_Park_Padres_Game.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail", page:"https://commons.wikimedia.org/wiki/File:Petco_Park_Padres_Game.jpg", by:"Mds08011", lic:"CC BY 4.0" },
+  "San Francisco Giants": { img:"https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8e/Oracle_Park_2021.jpg/500px-Oracle_Park_2021.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail", page:"https://commons.wikimedia.org/wiki/File:Oracle_Park_2021.jpg", by:"Chris6d", lic:"CC BY-SA 4.0" },
+  "Seattle Mariners": { img:"https://thumb.wikimedia.org/wikipedia/commons/thumb/1/10/SafecoFieldTop.jpg/500px-SafecoFieldTop.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail", page:"https://commons.wikimedia.org/wiki/File:SafecoFieldTop.jpg", by:"MyName (Cacophony)", lic:"CC BY-SA 3.0" },
+  "St. Louis Cardinals": { img:"https://thumb.wikimedia.org/wikipedia/commons/thumb/f/fb/Busch_Stadium_2022.jpg/500px-Busch_Stadium_2022.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail", page:"https://commons.wikimedia.org/wiki/File:Busch_Stadium_2022.jpg", by:"Lightmetro", lic:"CC BY-SA 4.0" },
+  "Tampa Bay Rays": { img:"https://thumb.wikimedia.org/wikipedia/commons/thumb/5/5e/PXL_20220528_205520913.jpg/500px-PXL_20220528_205520913.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail", page:"https://commons.wikimedia.org/wiki/File:PXL_20220528_205520913.jpg", by:"Vmartin12", lic:"CC BY-SA 4.0" },
+  "Texas Rangers": { img:"https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a0/GlobeLifeField2021.jpg/500px-GlobeLifeField2021.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail", page:"https://commons.wikimedia.org/wiki/File:GlobeLifeField2021.jpg", by:"slgckgc", lic:"CC BY 2.0" },
+  "Toronto Blue Jays": { img:"https://thumb.wikimedia.org/wikipedia/commons/thumb/6/6e/Rogers_Centre_%28500_Level%29_-_Toronto%2C_ON.jpg/500px-Rogers_Centre_%28500_Level%29_-_Toronto%2C_ON.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail", page:"https://commons.wikimedia.org/wiki/File:Rogers_Centre_(500_Level)_-_Toronto,_ON.jpg", by:"JFVoll", lic:"CC BY-SA 4.0" },
+  "Washington Nationals": { img:"https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f9/Nationals_Park_8.16.19_-_7.jpg/500px-Nationals_Park_8.16.19_-_7.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail", page:"https://commons.wikimedia.org/wiki/File:Nationals_Park_8.16.19_-_7.jpg", by:"APK", lic:"CC BY-SA 4.0" }
+};
 
-// Pixel offset of a lat/lng within its tile (0-255)
-function latLngToPixelOffset(lat, lng, zoom, tileX, tileY) {
-  var n = Math.pow(2, zoom);
-  var fx = (lng + 180) / 360 * n - tileX;
-  var latRad = lat * Math.PI / 180;
-  var fy = (1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n - tileY;
-  return { px: fx * 256, py: fy * 256 };
-}
-
-function renderStadium(teamName) {
+function renderStadium(teamName){
   var wrap = document.getElementById('stadiumWrap');
   if(!wrap) return;
-  var sd = STADIUMS[teamName];
-  if(!sd){ wrap.innerHTML=''; return; }
-
-  var zoom = 17;
-  var tile = latLngToTile(sd.lat, sd.lng, zoom);
-  var offset = latLngToPixelOffset(sd.lat, sd.lng, zoom, tile.x, tile.y);
-
-  // We'll show a 2×2 grid of tiles clipped to a square, panning so the stadium center is centered
-  var displaySize = 120; // px, matches the space available
-  var tileSize = 256;
-  var halfDisplay = displaySize / 2;
-
-  // Top-left tile offsets in the 2×2 grid
-  // offset.px/py is where the center falls within tile (tile.x, tile.y)
-  // We want the center of the display to align with offset.px, offset.py
-  // So the 2×2 canvas (512×512) is panned by: panX = offset.px - halfDisplay, panY = offset.py - halfDisplay
-
-  var panX = offset.px - halfDisplay;
-  var panY = offset.py - halfDisplay;
-
-  // Build 2×2 tile grid
-  var tiles = [
-    { tx: tile.x,     ty: tile.y,     dx: -panX,            dy: -panY            },
-    { tx: tile.x + 1, ty: tile.y,     dx: tileSize - panX,  dy: -panY            },
-    { tx: tile.x,     ty: tile.y + 1, dx: -panX,            dy: tileSize - panY  },
-    { tx: tile.x + 1, ty: tile.y + 1, dx: tileSize - panX,  dy: tileSize - panY  }
-  ];
-
-  var isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-  // Use a different OSM tile style for dark mode if desired; standard works fine for both
-  var tileBase = 'https://tile.openstreetmap.org/';
-
-  var html = '<div style="position:relative;width:'+displaySize+'px;height:'+displaySize+'px;overflow:hidden;border-radius:6px;border:1px solid var(--border);flex-shrink:0;">';
-
-  tiles.forEach(function(t) {
-    var url = tileBase + zoom + '/' + t.tx + '/' + t.ty + '.png';
-    html += '<img src="'+url+'" '
-      + 'width="256" height="256" '
-      + 'style="position:absolute;left:'+t.dx.toFixed(1)+'px;top:'+t.dy.toFixed(1)+'px;display:block;image-rendering:auto;" '
-      + 'draggable="false" />';
-  });
-
-  // Crosshair dot at center
-  html += '<div style="position:absolute;left:'+( halfDisplay-4)+'px;top:'+(halfDisplay-4)+'px;width:8px;height:8px;border-radius:50%;background:rgba(220,50,50,0.85);border:1.5px solid #fff;pointer-events:none;"></div>';
-
-  // Stadium name label
-  html += '<div style="position:absolute;bottom:3px;left:0;right:0;text-align:center;font-size:9px;font-weight:600;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.8);pointer-events:none;">'+sd.name+'</div>';
-
-  html += '</div>';
-
-  wrap.innerHTML = html;
+  var ph = STADIUM_PHOTOS[teamName], sd = STADIUMS[teamName];
+  if(!ph){ wrap.innerHTML = ''; return; }
+  var venue = (sd && sd.name) || teamName;
+  wrap.innerHTML = '<figure class="stadium-photo">'
+    + '<img src="' + esc(ph.img) + '" alt="' + esc(venue) + '" decoding="async" onerror="this.parentNode.classList.add(\'stadium-photo-off\')" />'
+    + '<figcaption><span class="stadium-name">' + esc(venue) + '</span>'
+    + '<a class="stadium-credit" href="' + esc(ph.page) + '" target="_blank" rel="noopener">Photo: ' + esc(ph.by) + ' · ' + esc(ph.lic) + '</a></figcaption>'
+    + '</figure>';
 }
 
 // ── Local storage persistence ──
@@ -7681,6 +7708,7 @@ function init(){
   setupPitcherDelegation('home');
   setupPitcherDelegation('away');
   setupFielderDelegation();
+  setupInfieldDelegation();
   // Migrate existing save data to multi-game system if needed
   gmEnsureActiveId();
   var restored = loadFromStorage();
