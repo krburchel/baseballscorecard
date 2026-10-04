@@ -5,11 +5,18 @@ const { loadApp, same } = require('./helpers/app');
 const { createBackend, fakeFirebase } = require('./helpers/fake-firebase');
 
 const wait = (ms = 20) => new Promise(r => setTimeout(r, ms));
+// Wait until a condition holds (sync runs on timers; a fixed pause can be too short
+// when the whole suite runs in parallel)
+async function until(cond, ms = 2000){
+  const end = Date.now() + ms;
+  while(Date.now() < end){ try { if(cond()) return; } catch(e){} await wait(10); }
+}
 
 // A device: the app, its fake Firebase client, signed in to the shared backend
 async function device(t, backend, name){
   const w = loadApp('https://' + name.toLowerCase() + '.scorecard.test/');
-  t.after(() => w.close());
+  // Stop syncing and let in-flight work settle before closing, so no timer fires afterwards
+  t.after(async () => { w._sync.user = null; w.clearTimeout(w._sync.timer); await wait(60); w.close(); });
   w.FIREBASE_CONFIG = { projectId: 'test' };
   w.firebase = fakeFirebase(backend);
   w.SYNC_DELAY_MS = 0;
@@ -82,7 +89,8 @@ test('changes made offline wait, then upload when the device is back online', as
   ipad.recordKO('swinging'); ipad._doSave(); ipad.syncPush(); await wait();
   assert.equal(ipad.syncWaiting(), 1, 'one game waiting');
   assert.equal(JSON.parse(mac.localStorage.getItem(mac.GM_GAME_PREFIX + id)).G.pas.length, 1, 'Mac has not seen it yet');
-  await ipad.firebase._goOnline(); await wait();
+  await ipad.firebase._goOnline();
+  await until(() => ipad.syncWaiting() === 0 && JSON.parse(mac.localStorage.getItem(mac.GM_GAME_PREFIX + id)).G.pas.length === 2);
   assert.equal(ipad.syncWaiting(), 0, 'nothing waiting');
   assert.equal(JSON.parse(mac.localStorage.getItem(mac.GM_GAME_PREFIX + id)).G.pas.length, 2, 'Mac has the offline play');
 });
@@ -100,7 +108,8 @@ test('same game changed on two devices: the newer version wins and the older is 
   await wait(5);
   await scoreAndSync(mac, [single, single]);                           // Mac edits later (newer)
 
-  await ipad.firebase._goOnline(); await wait(40);
+  await ipad.firebase._goOnline();
+  await until(() => ipad.gmGetIndex().some(e => /^Copy/.test(e.status || '')) && JSON.parse(ipad.localStorage.getItem(ipad.GM_GAME_PREFIX + id)).G.pas.length === 3);
   same(JSON.parse(ipad.localStorage.getItem(ipad.GM_GAME_PREFIX + id)).G.pas.map(p => p.res), ['1B', '1B', '1B'], 'newest (Mac) version wins on the iPad');
   const copies = ipad.gmGetIndex().filter(e => /^Copy/.test(e.status || ''));
   assert.equal(copies.length, 1, 'exactly one copy kept');
@@ -161,7 +170,8 @@ test('an upload stuck waiting on the network does not block later syncs', async 
   ipad.recordKO('swinging'); ipad._doSave(); ipad.syncPush();       // stuck: no network
   assert.equal(ipad._sync.pushing, false, 'not left "busy"');
   ipad.recordHit(2); ipad._doSave(); ipad.syncPush();               // a later change still queues
-  await ipad.firebase._goOnline(); await wait();
+  await ipad.firebase._goOnline();
+  await until(() => JSON.parse(backend.docs.get('users/uid-1/games/' + id).payload).G.pas.length === 3 && ipad.syncWaiting() === 0);
   const cloud = JSON.parse(backend.docs.get('users/uid-1/games/' + id).payload);
   same(cloud.G.pas.map(p => p.res), ['1B', 'K', '2B'], 'the cloud has the latest version');
   assert.equal(ipad.syncWaiting(), 0);

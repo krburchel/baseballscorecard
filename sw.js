@@ -3,7 +3,7 @@
 // Wi-Fi) serve the cached copy instead. The network request keeps running in
 // the background and refreshes the cache, so the next open is up to date.
 // Fully offline, the cached copy is served right away.
-var CACHE = 'scorecard-v5';
+var CACHE = 'scorecard-v6';
 var NETWORK_TIMEOUT_MS = 3000;
 // The Firebase libraries (js/vendor/firebase) aren't precached: only signed-in
 // devices load them, and the fetch handler below caches them on first use.
@@ -23,6 +23,7 @@ var ASSETS = [
   './js/sync.js',
   './js/ui.js',
   './assets/postseason/alds-2026.png',
+  './assets/postseason/nlds-2026.png',
   './manifest.json',
   './icon-192.png',
   './icon-512.png',

@@ -20,11 +20,21 @@ test('2026 ALDS games show the official ALDS logo and the game number', (t) => {
   assert.match(html, /Game 2/);
 });
 
+test('2026 NLDS games show the official NLDS logo', (t) => {
+  const w = loadApp();
+  t.after(() => w.close());
+  const html = badgeFor(w, 'nlds', '2026-10-04', '2');
+  assert.match(html, /assets\/postseason\/nlds-2026\.png/);
+  assert.match(html, /alt="2026 NLDS"/);
+  assert.match(html, /Game 2/);
+});
+
 test('other years and rounds keep the league-logo badge', (t) => {
   const w = loadApp();
   t.after(() => w.close());
   assert.match(badgeFor(w, 'alds', '2025-10-04'), /team-logos\/league-on-light\/103\.svg/, '2025 ALDS');
-  assert.match(badgeFor(w, 'nlds', '2026-10-04'), /team-logos\/league-on-light\/104\.svg/, '2026 NLDS');
+  assert.match(badgeFor(w, 'nlds', '2025-10-04'), /team-logos\/league-on-light\/104\.svg/, '2025 NLDS');
+  assert.match(badgeFor(w, 'alcs', '2026-10-12'), /team-logos\/league-on-light\/103\.svg/, '2026 ALCS (no official logo yet)');
   assert.equal(badgeFor(w, 'regular', '2026-07-04'), '', 'regular season: no badge');
 });
 
