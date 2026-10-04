@@ -3,11 +3,21 @@
 // Wi-Fi) serve the cached copy instead. The network request keeps running in
 // the background and refreshes the cache, so the next open is up to date.
 // Fully offline, the cached copy is served right away.
-var CACHE = 'scorecard-v2';
+var CACHE = 'scorecard-v3';
 var NETWORK_TIMEOUT_MS = 3000;
 var ASSETS = [
   './',
   './index.html',
+  './css/app.css',
+  './js/data.js',
+  './js/game.js',
+  './js/scoring.js',
+  './js/render.js',
+  './js/scorecard.js',
+  './js/mlb.js',
+  './js/storage.js',
+  './js/reports.js',
+  './js/ui.js',
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
@@ -44,7 +54,9 @@ self.addEventListener('fetch', function(e){
   // Let cross-origin requests (MLB Stats API, team logos) pass through untouched.
   if(new URL(e.request.url).origin !== self.location.origin) return;
 
-  var network = fetch(e.request).then(function(resp){
+  // Always revalidate with the server (cheap 304s) so a new index.html never
+  // runs with older scripts from the browser's HTTP cache.
+  var network = fetch(e.request, { cache: 'no-cache' }).then(function(resp){
     if(resp && resp.ok){
       var copy = resp.clone();
       caches.open(CACHE).then(function(c){ c.put(e.request, copy); });
