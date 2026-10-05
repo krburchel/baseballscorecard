@@ -115,6 +115,21 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .gm-card-btn.gm-load:hover { background:var(--bl); }
 .gm-card-btn.gm-del { border-color:var(--red); color:var(--red); }
 .gm-card-btn.gm-del:hover { background:var(--rl); }
+/* Postseason series (top of My Games) */
+.ps-series-wrap { padding:10px 16px 4px; border-bottom:1px solid var(--border); }
+.ps-series-title { font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); margin-bottom:6px; }
+.ps-series { border:1px solid var(--border); border-radius:8px; padding:8px 10px; margin-bottom:8px; }
+.ps-series-hdr { display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:13px; font-weight:600; color:var(--text); }
+.ps-series-logo { width:34px; height:24px; object-fit:contain; background:#fff; border-radius:4px; padding:1px; }
+.ps-series-round { font-weight:700; }
+.ps-series-teams { display:inline-flex; align-items:center; gap:4px; margin-left:auto; }
+.ps-series-vs { color:var(--muted); font-weight:400; font-size:11px; }
+.ps-series-status { font-size:12px; font-weight:700; color:var(--blue); margin:4px 0 6px; }
+.ps-series-games { display:flex; flex-wrap:wrap; gap:4px; }
+.ps-game { padding:3px 8px; font-size:11px; font-weight:600; border:1px solid var(--border); border-radius:5px; background:transparent; color:var(--text); cursor:pointer; font-family:inherit; }
+button.ps-game:hover { background:var(--header-bg); }
+.ps-game-active { border-color:var(--blue); background:var(--bl); color:var(--blue); cursor:default; }
+.ps-game-missing { color:var(--muted); border-style:dashed; cursor:default; }
 .gm-empty { padding:24px 16px; text-align:center; color:var(--muted); font-size:13px; }
 
 /* baserunner action picker */

@@ -20,8 +20,12 @@ ballpark or on TV. It installs to an iPad or phone home screen and works offline
   your scorecard with MLB's official play-by-play and fixes differences with a tap; **Catch up**
   fills in plays you missed and moves the game to MLB's current batter and count.
 - **Season stats** across every saved game, filtered by team, games attended, and game type.
+- **Postseason series** at the top of My Games: saved playoff games grouped by round and teams,
+  with the series score (e.g. "Yankees lead 2–1"), each game a tap away, and gaps marked
+  "not scored".
 - **Sharing and saving:** a share-ready final image, a PDF scorecard, My Games, game files,
-  backups of every game with a reminder, and offline use (service worker).
+  backups of every game with a reminder (on a synced device, games in the cloud count as backed
+  up), and offline use (service worker).
 - **Sync across devices** (Firebase): sign in once per device and My Games, season stats and
   backups are the same everywhere. Each device still saves locally first and works offline.
 
@@ -94,7 +98,10 @@ The tests load the real `index.html` and scripts into jsdom, with MLB data serve
 
 - `tests/sync.test.js` runs two simulated devices against an in-memory Firebase: games
   appearing on the other device, following a game being scored elsewhere, deletions,
-  offline changes uploading later, and the newer-wins-plus-copy conflict rule.
+  offline changes uploading later, the newer-wins-plus-copy conflict rule, and the backup
+  reminder standing down for games already in the cloud.
+- `tests/series.test.js` covers the postseason series view (grouping, series score, clinching,
+  games not scored) and `tests/reports.test.js` the postseason logos.
 
 The tests also run on every push (GitHub Actions).
 

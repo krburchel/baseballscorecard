@@ -176,3 +176,18 @@ test('an upload stuck waiting on the network does not block later syncs', async 
   same(cloud.G.pas.map(p => p.res), ['1B', 'K', '2B'], 'the cloud has the latest version');
   assert.equal(ipad.syncWaiting(), 0);
 });
+
+test('on a synced device the backup reminder counts games in the cloud as backed up', async (t) => {
+  const backend = createBackend();
+  const ipad = await device(t, backend, 'iPad');
+  ipad.firebase._goOffline();
+  ipad.recordHit(1); ipad._doSave(); ipad.syncPush(); await wait();
+  assert.equal(ipad.bkUnbacked().length, 1, 'not uploaded yet: still needs a backup');
+  await ipad.firebase._goOnline();
+  await until(() => ipad.bkUnbacked().length === 0);
+  assert.equal(ipad.bkUnbacked().length, 0, 'uploaded: nothing to remind about');
+  ipad.renderBackupHint();
+  assert.match(ipad.document.getElementById('backupHint').textContent, /Backed up by sync/);
+  await ipad.syncSignOut();
+  assert.equal(ipad.bkUnbacked().length, 1, 'signed out: backup files are the only backup again');
+});

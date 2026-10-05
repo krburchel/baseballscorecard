@@ -155,10 +155,12 @@ function renderSeriesGamePicker(){
 
 // The round's logo for this game: the official logo for that year when the app
 // bundles one (it already says e.g. "2026 ALDS"), otherwise the league logo.
-function postseasonLogo(){
-  var ps = POSTSEASON[G.notes && G.notes.gameType];
+// The round's logo for a game's info (the current game's by default)
+function postseasonLogo(notes){
+  var n = notes || G.notes || {};
+  var ps = POSTSEASON[n.gameType];
   if(!ps) return null;
-  var yr = (G.notes.date || '').slice(0, 4) || String(new Date().getFullYear());
+  var yr = (n.date || '').slice(0, 4) || String(new Date().getFullYear());
   var official = ps.official && ps.official[yr];
   return { ps: ps, yr: yr, src: official || ps.logo, official: !!official, label: yr + ' ' + ps.label };
 }
@@ -171,6 +173,86 @@ function postseasonBadge(){
     return '<span class="ps-badge ps-badge-official"><img src="' + pl.src + '" alt="' + esc(pl.label) + '" />' + gameNo + '</span>';
   }
   return '<span class="ps-badge"><img src="' + pl.src + '" alt="" />' + pl.label + (gameNo ? ' · ' + gameNo : '') + '</span>';
+}
+
+// ── Postseason series ──
+// Saved postseason games grouped into series (year + round + the two teams),
+// newest first. The series score counts games scored through the final out.
+function teamShort(name){
+  var m = /(Red Sox|White Sox|Blue Jays)$/.exec(name || '');
+  return m ? m[1] : String(name || '').split(' ').pop();
+}
+
+function psSeriesList(){
+  var map = {}, list = [];
+  ssGames().forEach(function(x){
+    var n = x.g.notes || {}, ps = POSTSEASON[n.gameType];
+    if(!ps) return;
+    var pl = postseasonLogo(n);
+    var teams = [x.away, x.home].sort();
+    var key = pl.yr + '|' + n.gameType + '|' + teams.join('|');
+    var s = map[key];
+    if(!s){
+      s = map[key] = { key: key, label: pl.label, logo: pl.src, maxGames: ps.maxGames, teams: teams, wins: {}, games: [], lastDate: '' };
+      s.wins[teams[0]] = 0; s.wins[teams[1]] = 0;
+      list.push(s);
+    }
+    var as = x.g.rhe.away[0] || 0, hs = x.g.rhe.home[0] || 0, final = ssIsFinal(x.g);
+    var winner = final && as !== hs ? (as > hs ? x.away : x.home) : '';
+    if(winner) s.wins[winner]++;
+    s.games.push({ id: x.id, num: parseInt(n.seriesGame, 10) || 0, date: n.date || '', away: x.away, home: x.home,
+                   as: as, hs: hs, final: final, winner: winner, current: !!x.current });
+    if((n.date || '') > s.lastDate) s.lastDate = n.date;
+  });
+  list.forEach(function(s){
+    s.games.sort(function(a, b){ return (a.num || 99) - (b.num || 99) || a.date.localeCompare(b.date); });
+    var a = s.teams[0], b = s.teams[1], wa = s.wins[a], wb = s.wins[b];
+    s.leader = wa === wb ? '' : wa > wb ? a : b;
+    s.clinched = Math.max(wa, wb) >= Math.ceil(s.maxGames / 2);
+    // Every game from Game 1 on is here (only the latest may still be going): the score is the real series score
+    var n = s.games.length;
+    s.complete = s.games.every(function(g, i){ return g.num === i + 1 && (g.final || i === n - 1); });
+  });
+  list.sort(function(x, y){ return y.lastDate.localeCompare(x.lastDate); });
+  return list;
+}
+
+function psSeriesStatus(s){
+  var a = s.teams[0], b = s.teams[1];
+  if(!s.wins[a] && !s.wins[b]) return 'No finished games yet';
+  var hi = s.leader || a, lo = hi === a ? b : a;
+  var score = s.wins[hi] + '–' + s.wins[lo];
+  var text = !s.leader ? 'Tied ' + score : teamShort(hi) + (s.clinched ? ' win ' : ' lead ') + score;
+  return text + (s.complete || s.clinched ? '' : ' in games you scored');
+}
+
+// The "Postseason" section at the top of My Games
+function psSeriesHtml(){
+  var list = psSeriesList();
+  if(!list.length) return '';
+  var html = '<div class="ps-series-wrap"><div class="ps-series-title">🏆 Postseason</div>';
+  list.forEach(function(s){
+    html += '<div class="ps-series">'
+      + '<div class="ps-series-hdr"><img class="ps-series-logo" src="' + s.logo + '" alt="" /><span class="ps-series-round">' + esc(s.label) + '</span>'
+      + '<span class="ps-series-teams">' + s.teams.map(function(t){
+          var logo = TEAM_LOGOS[t];
+          return (logo ? '<img class="gm-card-logo" src="' + logo + '" alt="" />' : '') + esc(teamShort(t));
+        }).join(' <span class="ps-series-vs">vs</span> ') + '</span></div>'
+      + '<div class="ps-series-status">' + esc(psSeriesStatus(s)) + '</div><div class="ps-series-games">';
+    var last = 0;
+    s.games.forEach(function(g){
+      // Gaps in the numbering: games not scored
+      for(var k = last + 1; g.num && k < g.num; k++) html += '<span class="ps-game ps-game-missing">G' + k + ' · not scored</span>';
+      if(g.num) last = g.num;
+      var lbl = (g.num ? 'G' + g.num : g.date || 'Game') + ' · ';
+      if(g.final && g.winner) lbl += teamShort(g.winner) + ' ' + Math.max(g.as, g.hs) + '–' + Math.min(g.as, g.hs);
+      else lbl += teamShort(g.away) + ' ' + g.as + ', ' + teamShort(g.home) + ' ' + g.hs + (g.final ? '' : ' · unfinished');
+      if(g.current) html += '<span class="ps-game ps-game-active" title="Open now">' + esc(lbl) + '</span>';
+      else html += '<button class="ps-game" onclick="gmLoadGame(\'' + g.id + '\')">' + esc(lbl) + '</button>';
+    });
+    html += '</div></div>';
+  });
+  return html + '</div>';
 }
 
 function teamLogoImg(side, cls){

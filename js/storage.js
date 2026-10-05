@@ -323,6 +323,8 @@ function renderGameManagerContent(overlay){
 
   html += '<div class="gm-body">';
 
+  html += psSeriesHtml();
+
   if(index.length === 0){
     html += '<div class="gm-empty">No saved games yet.<br>Tap "Save current game" to save your first one.</div>';
   } else {
@@ -884,9 +886,11 @@ function bkGames(){
   return list;
 }
 
+// Games in neither the last backup file nor (on a synced device) the cloud
 function bkUnbacked(){
   var st = bkState();
-  return bkGames().filter(function(e){ return st.sigs[e.id] !== bkSignature(e); });
+  var synced = typeof syncHasUploaded === 'function' ? syncHasUploaded : function(){ return false; };
+  return bkGames().filter(function(e){ return st.sigs[e.id] !== bkSignature(e) && !synced(e.id); });
 }
 
 function backupAllGames(){
@@ -970,11 +974,12 @@ function restoreBackup(backup){
 // Reminder banner: only between games (never mid-game), when something
 // isn't backed up and either the game just finished or the last backup is
 // over a week old. Dismissing snoozes it for a day.
+// On a synced device, games count as backed up once they're in the cloud.
 function backupNudgeCount(){
-  var unbacked = bkUnbacked();
-  if(!unbacked.length) return 0;
   var cur = gmCurrentSummary();
   if(G.log.length > 0 && cur.status !== 'Final') return 0;
+  var unbacked = bkUnbacked();
+  if(!unbacked.length) return 0;
   var st = bkState(), now = Date.now();
   var activeId = gmGetActiveId();
   var justFinished = cur.status === 'Final' && activeId && !st.nudged[activeId];
@@ -1008,7 +1013,9 @@ function renderBackupHint(){
   var el = document.getElementById('backupHint');
   if(!el) return;
   var at = bkState().at;
-  if(!at){ el.textContent = 'Never backed up'; return; }
+  var cloud = typeof syncIsOn === 'function' && syncIsOn();
+  if(!at){ el.textContent = cloud ? '☁ Backed up by sync' : 'Never backed up'; return; }
   var days = Math.floor((Date.now() - at) / (24 * 3600 * 1000));
-  el.textContent = 'Last backup: ' + (days === 0 ? 'today' : days === 1 ? 'yesterday' : days + ' days ago');
+  var when = days === 0 ? 'today' : days === 1 ? 'yesterday' : days + ' days ago';
+  el.textContent = cloud ? '☁ Backed up by sync · last file ' + when : 'Last backup: ' + when;
 }

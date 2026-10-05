@@ -123,7 +123,9 @@ function syncPush(){
     here[g.id] = true;
     var m = st.meta[g.id] = st.meta[g.id] || {};
     var sig = syncSig(g.raw);
-    if(m.sig !== sig){ m.sig = sig; m.updatedAt = Math.max(now, (m.remoteUpdatedAt || 0) + 1); }
+    // updatedAt only ever grows: two edits queued in the same millisecond would
+    // otherwise share a time, and the rules reject the second as not newer
+    if(m.sig !== sig){ m.sig = sig; m.updatedAt = Math.max(now, (m.updatedAt || 0) + 1, (m.remoteUpdatedAt || 0) + 1); }
     if(m.pushedSig !== sig && m.inflightSig !== sig) jobs.push(syncUpload(g, m, st));
   });
   // Games that were synced but are gone here: deleted on this device
@@ -278,8 +280,21 @@ function syncWaiting(){
   return n;
 }
 
+// Signed in to sync on this device (stays true offline and across restarts)
+function syncIsOn(){ return syncConfigured() && !!syncState().enabled; }
+
+// Is this game's saved version already in the cloud? Lets the backup reminder stand down.
+function syncHasUploaded(id){
+  if(!syncIsOn()) return false;
+  var m = syncState().meta[id], raw = null;
+  if(!m || !m.pushedSig) return false;
+  try { raw = localStorage.getItem(GM_GAME_PREFIX + id); } catch(e){}
+  return !!raw && syncSig(raw) === m.pushedSig;
+}
+
 // ── Status pill (header) and Sync panel ──
 function renderSyncStatus(){
+  renderBackupNudge();      // an upload finishing can settle the backup reminder
   var el = document.getElementById('syncPill');
   if(!el) return;
   var st = syncState();
