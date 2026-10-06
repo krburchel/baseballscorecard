@@ -153,11 +153,9 @@ function executeBRAction(type, baseIdx){
     renderLineup(side);
 
   } else if(type === 'pb'){
-    // Passed ball: advance runner(s). Charges error to catcher.
-    var fSide = fielding();
-    G.rhe[fSide][2]++;
+    // Passed ball: advance runner(s). Not an error, but runs that score on it are unearned.
     if(baseIdx === -1){
-      addLog('Passed ball — E charged to ' + team(fSide) + ' C', 'PB', 't-pb');
+      addLog('Passed ball', 'PB', 't-pb');
     } else if(baseIdx === -2){
       var pbRuns = advanceRunners(side, 1, true);
       addLog('Passed ball — all runners advance', 'PB', 't-pb');

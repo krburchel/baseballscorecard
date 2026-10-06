@@ -248,3 +248,11 @@ test("the cell editor can change a result to catcher's interference and back", (
   w.openPaEditor(0); w.peSet('t', '1B'); w.savePaEditor();
   same([h.s, h.ci, w.G.rhe.away[1], w.G.rhe.home[2]], [1, 0, 1, 0]);
 });
+
+test('a passed ball moves the runner up but is not an error; a run scoring on it is unearned', (t) => {
+  const w = fresh(t);
+  w.recordHBP(); w.recordHBP(); w.recordHBP();          // bases loaded
+  w.executeBRAction('pb', 2);                          // runner on third scores on a passed ball
+  same([w.G.rhe.home[2], w.G.rhe.away[0]], [0, 1], 'no error; the run counts');
+  same([w.G.pitchers.home[0].r, w.G.pitchers.home[0].er], [1, 0], 'unearned');
+});

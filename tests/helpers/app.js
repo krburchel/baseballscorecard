@@ -49,8 +49,8 @@ const assert = require('node:assert/strict');
 function same(actual, expected, msg){ assert.deepEqual(JSON.parse(JSON.stringify(actual)), expected, msg); }
 
 // A fresh game loaded the way Today's Games does it, plus its MLB feed
-async function loadMlbGame(w, gamePk){
-  const sched = readJSON('schedule-2026-10-03.json');
+async function loadMlbGame(w, gamePk, date){
+  const sched = readJSON('schedule-' + (date || '2026-10-03') + '.json');
   const game = sched.dates[0].games.find(g => g.gamePk === gamePk);
   w._doLoadTodaysGame(game);
   const feed = readJSON('feed-' + gamePk + '.json');

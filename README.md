@@ -17,7 +17,7 @@ ballpark or on TV. It installs to an iPad or phone home screen and works offline
   pitches-strikes), runners in scoring position, and left on base. Runs are charged to the
   pitcher who allowed the runner.
 - **MLB integration (MLB Stats API):** load today's games and lineups; **Check vs MLB** compares
-  your scorecard with MLB's official play-by-play and fixes differences with a tap; **Catch up**
+  your scorecard with MLB's official play-by-play (plays, pitching lines, runs and errors) and fixes differences with a tap; **Catch up**
   fills in plays you missed and moves the game to MLB's current batter and count.
 - **Season stats** across every saved game, filtered by team, games attended, and game type.
 - **Postseason series** at the top of My Games: saved playoff games grouped by round and teams,
@@ -90,8 +90,9 @@ The tests load the real `index.html` and scripts into jsdom, with MLB data serve
 `tests/fixtures` (no network):
 
 - `tests/mlb-games.test.js` catches up all four ALDS Game 1s of Oct 3, 2026 from an empty
-  scorecard and checks the result against MLB: zero Check vs MLB differences, team RISP and
-  left on base, the score, and every batter's and pitcher's line.
+  scorecard and checks the result against MLB: zero Check vs MLB differences (errors included), team RISP and
+  left on base, the score, and every batter's and pitcher's line. ALDS Game 2 (Yankees–Rays,
+  Oct 5, saved mid-game) checks that every kind of error is counted.
 - `tests/scoring.test.js` covers the hand-scoring rules (ABS overturns, reaching on an error,
   double plays, catcher's interference, outs on the bases, counts kept on runner outs, RISP, innings pitched,
   inherited runners, Undo, the cell editor, and loading older saved games).

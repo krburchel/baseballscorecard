@@ -31,6 +31,7 @@ for(const gamePk of GAMES){
       same(d.plays.map(x => x.type + ' ' + x.half + x.inn), [], label + ': play differences');
       same(d.pitchers.map(x => x.mlb.name), [], label + ': pitcher differences');
       same(d.runs.map(x => x.side + ' ' + x.inn), [], label + ': run differences');
+      same(d.errors.map(x => x.side + ' ' + x.app + '/' + x.mlb), [], label + ': error differences');
       assert.ok(w.G.log.some(l => l.tag === 'Final'), label + ': marked FINAL');
     });
 
@@ -119,4 +120,34 @@ test('catch-up continues from a hand-scored start and ends mid at-bat on MLB\'s 
 
   w.undoAction();
   assert.equal(w.G.pas.length, 14, 'one Undo reverses the whole catch-up');
+});
+
+// ALDS Game 2, Oct 5 2026 (saved mid-game): the bottom of the 1st has all three kinds
+// of Yankees error — McMahon's fielding error on the batter (E5), Chisholm's throwing
+// error on a runner during a force out, and Wells's catcher's interference.
+test('Catch up counts every error MLB charges: on the batter, on a runner, and catcher\'s interference', async (t) => {
+  const w = loadApp();
+  t.after(() => w.close());
+  const feed = await loadMlbGame(w, 849839, '2026-10-05');
+  w.mlbCatchUp();
+  await tick();
+  const ls = feed.liveData.linescore.teams;
+  same([w.G.rhe.away[2], w.G.rhe.home[2]], [ls.away.errors, ls.home.errors], 'errors match MLB');
+  assert.equal(ls.away.errors, 3, 'the fixture has the three Yankees errors');
+  const b1 = w.G.pas.filter(p => p.inn === 1 && p.half === 'bot').map(p => p.res);
+  same(b1, ['E5', '1B', 'FC6-4', 'CI', 'FC4-6', 'G4-3'], 'bottom of the 1st');
+  same(w.mlbDiffs(feed).errors, [], 'Check vs MLB: no error differences');
+});
+
+test('Check vs MLB offers MLB\'s error total when the scorecard\'s is off, and Use MLB\'s fixes it', async (t) => {
+  const w = loadApp();
+  t.after(() => w.close());
+  const feed = await loadMlbGame(w, 849839, '2026-10-05');
+  w.mlbCatchUp();
+  await tick();
+  w.G.rhe.away[2] = 1;                                   // as in a game caught up before this fix
+  const d = w.mlbDiffs(feed).errors;
+  same(d.map(x => [x.side, x.app, x.mlb]), [['away', 1, 3]]);
+  w.mlbApply(d[0]);
+  assert.equal(w.G.rhe.away[2], 3);
 });
