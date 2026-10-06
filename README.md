@@ -21,6 +21,8 @@ ballpark or on TV. It installs to an iPad or phone home screen and works offline
 - **MLB integration (MLB Stats API):** load today's games and lineups; **Check vs MLB** compares
   your scorecard with MLB's official play-by-play (plays, pitching lines, runs, errors and the count of the at-bat in progress) and fixes differences with a tap; **Catch up**
   fills in plays you missed and moves the game to MLB's current batter and count.
+  **Follow MLB live** keeps the game caught up on its own while you watch (checks every ~20 s,
+  never moves your count backward, pauses for open dialogs, stops at the final out, one device at a time).
 - **Season stats** across every saved game, filtered by team, games attended, and game type.
 - **Postseason series** at the top of My Games: saved playoff games grouped by round and teams,
   with the series score (e.g. "Yankees lead 2–1"), each game a tap away, and gaps marked
@@ -60,6 +62,7 @@ plain scripts that share one global scope and load in this order:
 | `js/reports.js` | PDF box score, Share final image, season stats, team pickers, stadium photo |
 | `js/firebase-config.js` | Firebase project settings for sync (public by design) |
 | `js/sync.js` | Sync: sign-in, uploading changed games, applying other devices' changes, conflict copies |
+| `js/follow.js` | Follow MLB live: periodic catch-up while watching, the header pill |
 | `js/ui.js` | Dialogs, keyboard shortcuts, event delegation, wake lock, startup (loads last) |
 
 Code that runs while a file loads may only use things defined in the same or an earlier file.
@@ -104,6 +107,8 @@ The tests load the real `index.html` and scripts into jsdom, with MLB data serve
   appearing on the other device, following a game being scored elsewhere, deletions,
   offline changes uploading later, the newer-wins-plus-copy conflict rule, and the backup
   reminder standing down for games already in the cloud.
+- `tests/follow.test.js` covers Follow MLB: catching up, downloading only when MLB has an update,
+  the count moving forward only, waiting for dialogs, Undo, finished games, another device following.
 - `tests/series.test.js` covers the postseason series view (grouping, series score, clinching,
   games not scored) and `tests/reports.test.js` the postseason logos.
 
