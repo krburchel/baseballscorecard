@@ -23,6 +23,8 @@
 <div class="print-header" id="printHeader">⚾ Official Game Scorecard</div>
 <div class="print-sub" id="printSub"></div>
 
+  <!-- Wide screens: scoring controls on the left, scorecard / pitchers / log on the right -->
+  <div class="col-main">
   <div class="header">
     <div class="team-names">
       <div class="team-picker">
@@ -326,6 +328,9 @@
     </div>
   </div>
 
+  </div><!-- /col-main -->
+
+  <div class="col-side">
   <!-- Scorecard grid -->
   <div class="sec-title">Scorecard</div>
   <div class="scorecard-wrap" id="scorecard"></div>
@@ -353,6 +358,7 @@
     <div class="log-inner" id="logInner"><div class="empty-log">No plays logged yet</div></div>
     <div class="log-toggle" id="logToggle" onclick="toggleLog()" style="display:none">▼ Show full log</div>
   </div>
+  </div><!-- /col-side -->
 
   <!-- Print-only box score -->
   <div class="print-boxscore" id="printBoxScore"></div>
