@@ -377,21 +377,47 @@ document.addEventListener('visibilitychange', function(){
   if(document.visibilityState === 'visible') syncWakeLock();
 });
 
-// In dark mode, swap every team logo for MLB's version made for dark backgrounds
-// (the regular ones are dark navy/black for several teams). One rule per team,
-// so logos drawn anywhere in the app follow along.
-function addDarkLogos(){
-  var css = Object.keys(TEAM_LOGOS).map(function(t){
-    var url = TEAM_LOGOS[t], id = (/(\d+)\.svg$/.exec(url) || [])[1];
-    return id ? 'img[src="' + url + '"]{content:url("https://www.mlbstatic.com/team-logos/team-cap-on-dark/' + id + '.svg")}' : '';
-  }).join('');
-  var st = document.createElement('style');
-  st.textContent = '@media (prefers-color-scheme: dark){' + css + '}';
-  document.head.appendChild(st);
+// Dark mode: show MLB's dark-background team logos (several regular ones are navy
+// or black). Applied to the page's images as they appear, so logos drawn anywhere
+// follow along; printing switches back to the regular ones for white paper.
+// (League and postseason logos have other paths and are left alone.)
+var LOGO_RE = /^(https:\/\/www\.mlbstatic\.com\/team-logos\/)(team-cap-on-dark\/)?(\d+\.svg)$/;
+var _logoPrinting = false;
+
+function logoDarkWanted(){
+  return !_logoPrinting && !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+}
+
+function fixLogo(img){
+  var m = LOGO_RE.exec(img.getAttribute('src') || '');
+  if(!m) return;
+  var want = m[1] + (logoDarkWanted() ? 'team-cap-on-dark/' : '') + m[3];
+  if(img.getAttribute('src') !== want) img.setAttribute('src', want);
+}
+
+function fixLogosIn(root){
+  if(root.tagName === 'IMG') fixLogo(root);
+  if(root.querySelectorAll) Array.prototype.forEach.call(root.querySelectorAll('img'), fixLogo);
+}
+
+function setupDarkLogos(){
+  fixLogosIn(document.body);
+  if(window.MutationObserver){
+    new MutationObserver(function(muts){
+      muts.forEach(function(m){
+        if(m.type === 'attributes') fixLogo(m.target);
+        else Array.prototype.forEach.call(m.addedNodes, function(n){ if(n.nodeType === 1) fixLogosIn(n); });
+      });
+    }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['src'] });
+  }
+  var mq = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
+  if(mq && mq.addEventListener) mq.addEventListener('change', function(){ fixLogosIn(document.body); });
+  window.addEventListener('beforeprint', function(){ _logoPrinting = true; fixLogosIn(document.body); });
+  window.addEventListener('afterprint', function(){ _logoPrinting = false; fixLogosIn(document.body); });
 }
 
 function init(){
-  addDarkLogos();
+  setupDarkLogos();
   populateTeamDropdowns();
   // Set up event delegation (once — containers are stable, only innerHTML changes)
   setupLineupDelegation('home');

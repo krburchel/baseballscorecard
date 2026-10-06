@@ -11,12 +11,36 @@ test('team pickers sit in the box score, keep their team through redraws, and ch
   assert.ok(w.document.querySelector('#scoreTable #row-home #teamHome'), 'home picker in the home row');
 
   away.value = 'New York Yankees';
-  away.dispatchEvent(new w.Event('change'));
+  assert.equal(away.getAttribute('onchange'), 'onTeamChange()');
+  w.onTeamChange();                                     // jsdom here doesn't run inline handlers
   assert.equal(w.team('away'), 'New York Yankees');
+  assert.match(w.document.querySelector('#row-away img').getAttribute('src'), /147\.svg$/, 'box score shows the logo');
   w.recordHit(1); w.renderScore(); w.renderAll();
   const again = w.document.getElementById('teamAway');
   assert.equal(again, away, 'the same picker element, moved back in');
   assert.equal(again.value, 'New York Yankees', 'keeps its team');
   assert.ok(w.document.querySelector('#scoreTable #row-away #teamAway'), 'still in the box score');
   assert.equal(w.document.querySelectorAll('#teamAway').length, 1, 'only one');
+});
+
+test('dark mode shows the dark-background team logos, including ones drawn later; printing switches back', async (t) => {
+  const w = loadApp();
+  t.after(() => w.close());
+  const away = w.document.getElementById('teamAway');
+  away.value = 'New York Yankees'; w.onTeamChange();
+  const logo = () => w.document.querySelector('#row-away img').getAttribute('src');
+  assert.equal(logo(), 'https://www.mlbstatic.com/team-logos/147.svg', 'light mode: regular logo');
+
+  w.matchMedia = () => ({ matches: true, addEventListener(){}, removeEventListener(){} });   // switch to dark
+  w.fixLogosIn(w.document.body);
+  assert.equal(logo(), 'https://www.mlbstatic.com/team-logos/team-cap-on-dark/147.svg');
+  w.renderScore();                                        // redrawn: the new image follows along
+  await new Promise(r => setTimeout(r, 0));
+  assert.equal(logo(), 'https://www.mlbstatic.com/team-logos/team-cap-on-dark/147.svg', 'after a redraw');
+
+  w.dispatchEvent(new w.Event('beforeprint'));
+  assert.equal(logo(), 'https://www.mlbstatic.com/team-logos/147.svg', 'printing: regular logo for white paper');
+  w.dispatchEvent(new w.Event('afterprint'));
+  assert.equal(logo(), 'https://www.mlbstatic.com/team-logos/team-cap-on-dark/147.svg', 'back after printing');
+  w.document.querySelectorAll('img[src*="league-on-light"]').forEach(i => assert.ok(!/cap-on-dark/.test(i.src)));
 });
