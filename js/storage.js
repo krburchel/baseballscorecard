@@ -256,8 +256,8 @@ function gmLoadFromSlot(id){
     // Re-fire team change for logos, rosters, stadium
     var away = document.getElementById('teamAway').value;
     var home = document.getElementById('teamHome').value;
-    if(away && away !== '— Select Team —'){ updateLogo('away'); fetchRoster('away', away); }
-    if(home && home !== '— Select Team —'){ updateLogo('home'); fetchRoster('home', home); renderStadium(home); }
+    if(away && away !== '— Select Team —')fetchRoster('away', away);
+    if(home && home !== '— Select Team —'){ fetchRoster('home', home); renderStadium(home); }
     onTeamChange();
     renderAll();
     return true;
@@ -524,7 +524,6 @@ function onTeamChange() {
   var homeLogo = TEAM_LOGOS[home] ? '<img src="'+TEAM_LOGOS[home]+'" style="width:20px;height:20px;object-fit:contain;vertical-align:middle;margin-right:6px;" alt="" />' : '';
   document.getElementById('awayLineupTitle').innerHTML = awayLogo + awayLabel;
   document.getElementById('homeLineupTitle').innerHTML = homeLogo + homeLabel;
-  updateLogo('away'); updateLogo('home');
   renderPitchers('home'); renderPitchers('away'); renderScore();
   renderStadium(home === '— Select Team —' ? null : home);
   // Auto-fill venue from home team stadium

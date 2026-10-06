@@ -377,7 +377,21 @@ document.addEventListener('visibilitychange', function(){
   if(document.visibilityState === 'visible') syncWakeLock();
 });
 
+// In dark mode, swap every team logo for MLB's version made for dark backgrounds
+// (the regular ones are dark navy/black for several teams). One rule per team,
+// so logos drawn anywhere in the app follow along.
+function addDarkLogos(){
+  var css = Object.keys(TEAM_LOGOS).map(function(t){
+    var url = TEAM_LOGOS[t], id = (/(\d+)\.svg$/.exec(url) || [])[1];
+    return id ? 'img[src="' + url + '"]{content:url("https://www.mlbstatic.com/team-logos/team-cap-on-dark/' + id + '.svg")}' : '';
+  }).join('');
+  var st = document.createElement('style');
+  st.textContent = '@media (prefers-color-scheme: dark){' + css + '}';
+  document.head.appendChild(st);
+}
+
 function init(){
+  addDarkLogos();
   populateTeamDropdowns();
   // Set up event delegation (once — containers are stable, only innerHTML changes)
   setupLineupDelegation('home');
@@ -393,8 +407,8 @@ function init(){
     // Re-fire team change to reload logos, rosters, stadium
     var away = document.getElementById('teamAway').value;
     var home = document.getElementById('teamHome').value;
-    if(away && away !== '— Select Team —'){ updateLogo('away'); fetchRoster('away', away); }
-    if(home && home !== '— Select Team —'){ updateLogo('home'); fetchRoster('home', home); renderStadium(home); }
+    if(away && away !== '— Select Team —')fetchRoster('away', away);
+    if(home && home !== '— Select Team —'){ fetchRoster('home', home); renderStadium(home); }
     onTeamChange();
   }
   renderAll();

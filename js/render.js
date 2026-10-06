@@ -421,10 +421,26 @@ function setAtBat(side, i){
   renderAtBatBar();
 }
 
+// Team pickers live in the box score's team cells. The table is rebuilt on every
+// render, so park them first and put them back after (they keep their value).
+function teamSelects(){ return { away: document.getElementById('teamAway'), home: document.getElementById('teamHome') }; }
+
+// A native select is as wide as its longest option; size it to the chosen team instead
+function sizeTeamSelect(sel){
+  var c = sizeTeamSelect.c = sizeTeamSelect.c || document.createElement('canvas');
+  var ctx = c.getContext && c.getContext('2d');
+  if(!ctx || !window.getComputedStyle) return;
+  var cs = getComputedStyle(sel), opt = sel.options[sel.selectedIndex];
+  ctx.font = cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily;
+  sel.style.width = Math.ceil(ctx.measureText(opt ? opt.text : '').width + 22) + 'px';
+}
+
 function renderScore(){
   scheduleScorecardRender();
   var n = G.totalInnings;
   var tbl = document.getElementById('scoreTable');
+  var sels = teamSelects(), holder = document.getElementById('teamSelHolder');
+  ['away', 'home'].forEach(function(s){ if(sels[s] && holder && tbl.contains(sels[s])) holder.appendChild(sels[s]); });
   // Header row — clicking sets the inning AND shows the batter popover
   var hdr = '<thead><tr><th></th>';
   for(var i = 1; i <= n; i++){
@@ -439,8 +455,9 @@ function renderScore(){
   var body = '<tbody>';
   ['away','home'].forEach(function(side){
     var tName = team(side);
-    var logo = TEAM_LOGOS[tName] ? '<img src="' + TEAM_LOGOS[tName] + '" style="width:20px;height:20px;object-fit:contain;vertical-align:middle;margin-right:5px;" alt="" />' : '';
-    var c = '<tr id="row-' + side + '"><td class="team-label">' + logo + tName + '</td>';
+    var logo = TEAM_LOGOS[tName] ? '<img src="' + TEAM_LOGOS[tName] + '" style="width:20px;height:20px;object-fit:contain;flex:none;" alt="" />' : '';
+    var c = '<tr id="row-' + side + '"><td class="team-label"><span class="team-cell">' + logo
+      + (sels[side] ? '<span class="team-sel-slot" data-side="' + side + '"></span>' : esc(tName)) + '</span></td>';
     for(var i = 0; i < n; i++){
       var v = G.scores[side][i];
       var a = (G.inning - 1) === i ? 'active-inn' : '';
@@ -455,6 +472,12 @@ function renderScore(){
   });
   body += '</tbody>';
   tbl.innerHTML = hdr + body;
+  var slots = tbl.querySelectorAll('.team-sel-slot');
+  for(var k = 0; k < slots.length; k++){
+    var sel = sels[slots[k].getAttribute('data-side')];
+    slots[k].appendChild(sel);
+    sizeTeamSelect(sel);
+  }
 }
 
 function renderInn(){

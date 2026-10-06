@@ -26,16 +26,10 @@
   <!-- Wide screens: scoring controls on the left, scorecard / pitchers / log on the right -->
   <div class="col-main">
   <div class="header">
-    <div class="team-names">
-      <div class="team-picker">
-        <img class="team-logo" id="logoAway" src="" alt="" />
-        <select class="team-input" id="teamAway" onchange="onTeamChange()"></select>
-      </div>
-      <span class="vs">vs</span>
-      <div class="team-picker">
-        <img class="team-logo" id="logoHome" src="" alt="" />
-        <select class="team-input" id="teamHome" onchange="onTeamChange()"></select>
-      </div>
+    <!-- The team pickers sit in the box score's team cells (renderScore moves them there) -->
+    <div id="teamSelHolder" hidden>
+      <select class="team-sel" id="teamAway" aria-label="Away team" onchange="onTeamChange()"></select>
+      <select class="team-sel" id="teamHome" aria-label="Home team" onchange="onTeamChange()"></select>
     </div>
     <div class="hdr-btns">
       <button class="today-btn" id="todayBtn" onclick="showTodaysGames()">📅 Today</button>

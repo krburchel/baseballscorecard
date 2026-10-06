@@ -260,16 +260,6 @@ function teamLogoImg(side, cls){
   return url ? '<img class="' + cls + '" src="' + url + '" alt="" />' : '';
 }
 
-function updateLogo(side) {
-  var val = document.getElementById('team'+side.charAt(0).toUpperCase()+side.slice(1)).value;
-  var imgId = 'logo'+side.charAt(0).toUpperCase()+side.slice(1);
-  var img = document.getElementById(imgId);
-  if(!img) return;
-  var url = TEAM_LOGOS[val];
-  if(url) { img.src=url; img.alt=val; img.className='team-logo visible'; }
-  else { img.src=''; img.alt=''; img.className='team-logo'; }
-}
-
 function renderStadium(teamName){
   var wrap = document.getElementById('stadiumWrap');
   if(!wrap) return;
