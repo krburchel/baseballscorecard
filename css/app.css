@@ -666,6 +666,8 @@ button.ps-game:hover { background:var(--header-bg); }
 .sc-tab { display:inline-flex; align-items:center; gap:5px; }
 .sc-tab-logo { width:16px; height:16px; object-fit:contain; }
 .sc-tab.sel .sc-tab-logo { background:#fff; border-radius:3px; padding:1px; }
+/* Dark mode uses MLB's dark-background logos (light-colored): no white chip behind them */
+@media(prefers-color-scheme: dark){ .sc-tab.sel .sc-tab-logo { background:none; padding:0; } }
 .sc-hdr-logo { width:16px; height:16px; object-fit:contain; vertical-align:middle; margin-right:5px; }
 .ps-badge { margin-left:auto; display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--text); white-space:nowrap; }
 .ps-badge img { width:24px; height:24px; object-fit:contain; background:#fff; border-radius:4px; padding:2px; }
