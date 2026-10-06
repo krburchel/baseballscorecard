@@ -645,11 +645,39 @@ function mlbAlign(app, mlb){
 }
 
 // Everything that differs, as a list of fixable rows.
+// The at-bat MLB has in progress, when the scorecard is caught up and on the same
+// batter: MLB's count, fouls, and the pitcher's line so far. Null otherwise.
+function mlbCurrentAtBat(feed){
+  var plays = feed.liveData.plays.allPlays || [], last = plays[plays.length - 1];
+  if(!last || last.about.isComplete !== false || (feed.gameData.status || {}).abstractGameState === 'Final') return null;
+  var a = last.about, half = a.halfInning === 'top' ? 'top' : 'bot', side = half === 'top' ? 'away' : 'home';
+  if(a.inning !== G.inning || half !== G.half || mlbCatchUpCount(feed) > 0) return null;
+  var batter = last.matchup.batter.fullName;
+  if(mlbNormName(curName(side, abIdx(side))) !== mlbNormName(batter)) return null;
+  var pitches = (last.playEvents || []).filter(function(e){ return e.isPitch; });
+  var fSide = side === 'away' ? 'home' : 'away', pIdx = -1;
+  G.pitchers[fSide].forEach(function(p, i){ if(pIdx < 0 && mlbNormName(p.name) === mlbNormName(last.matchup.pitcher.fullName)) pIdx = i; });
+  var st = ((feed.liveData.boxscore.teams[fSide].players['ID' + last.matchup.pitcher.id] || {}).stats || {}).pitching || {};
+  return {
+    batter: batter, side: side, fSide: fSide, pIdx: pIdx, atBat: a.atBatIndex,
+    balls: Math.min(3, last.count.balls || 0), strikes: Math.min(2, last.count.strikes || 0), n: pitches.length,
+    fouls: pitches.filter(function(e){ return /^Foul(?! Tip)/i.test((e.details && e.details.description) || ''); }).length,
+    pitches: st.numberOfPitches || 0, pBalls: Math.max(0, (st.numberOfPitches || 0) - (st.strikes || 0))
+  };
+}
+
+// Take MLB's count for the at-bat in progress (and the pitcher's pitch count with it)
+function mlbApplyCount(c){
+  G.balls = c.balls; G.strikes = c.strikes; G.fouls = c.fouls;
+  var p = c.pIdx >= 0 ? G.pitchers[c.fSide][c.pIdx] : null;
+  if(p){ p.pitches = c.pitches; p.balls = c.pBalls; }
+}
+
 function mlbDiffs(feed){
   var m = mlbPlays(feed);
   var appPos = mlbHalfOrder(G.inning, G.half);
   var settled = Math.min(appPos, m.pos); // halves both sides have finished
-  var res = { plays: [], pitchers: [], runs: [], matched: 0, pending: 0, behind: 0, mlbPos: m.pos, rispMissing: [] };
+  var res = { plays: [], pitchers: [], runs: [], count: [], matched: 0, pending: 0, behind: 0, mlbPos: m.pos, rispMissing: [] };
 
   var orders = {};
   Object.keys(m.halves).forEach(function(k){ orders[k] = true; });
@@ -726,6 +754,12 @@ function mlbDiffs(feed){
     });
   });
 
+  // The count of the at-bat in progress
+  var cur = mlbCurrentAtBat(feed);
+  if(cur && (cur.balls !== G.balls || cur.strikes !== G.strikes)){
+    res.count.push({ type:'count', key:'c|' + cur.atBat + '|' + cur.balls + '-' + cur.strikes, side:cur.side, mlb:cur });
+  }
+
   // Errors by team (MLB's running totals). Only meaningful once the scorecard
   // has every play MLB has, so the panel shows them after catching up.
   res.errors = [];
@@ -764,6 +798,12 @@ function mlbApply(d){
     if(!mlbNormName(p.name)) p.name = d.mlb.name;
     Object.keys(L).forEach(function(k){ p[k] = L[k]; });
     addLog('MLB check: ' + p.name + ' — pitching line set to ' + fmtIP(L.outs) + ' IP, ' + L.h + ' H, ' + L.r + ' R, ' + L.er + ' ER', 'Edit', 't-info');
+    // Those pitches include the at-bat in progress: bring its count along so the two agree
+    var cur = _mlb && _mlb.feed ? mlbCurrentAtBat(_mlb.feed) : null;
+    if(cur && cur.fSide === d.side && cur.pIdx === d.appIdx && (cur.balls !== G.balls || cur.strikes !== G.strikes)){
+      mlbApplyCount(cur);
+      addLog('MLB check: count set to ' + cur.balls + '-' + cur.strikes + ' (' + cur.batter + ')', 'Edit', 't-info');
+    }
   } else if(d.type === 'pitcherNew'){
     var np = mkPitcher();
     np.active = false;
@@ -771,6 +811,9 @@ function mlbApply(d){
     Object.keys(d.mlb.line).forEach(function(k){ np[k] = d.mlb.line[k]; });
     G.pitchers[d.side].push(np);
     addLog('MLB check: added pitcher ' + np.name + ' (' + team(d.side) + ')', 'Edit', 't-info');
+  } else if(d.type === 'count'){
+    mlbApplyCount(d.mlb);
+    addLog('MLB check: count set to ' + d.mlb.balls + '-' + d.mlb.strikes + ' (' + d.mlb.batter + ')', 'Edit', 't-info');
   } else if(d.type === 'errors'){
     G.rhe[d.side][2] = d.mlb;
     addLog('MLB check: ' + team(d.side) + ' errors set to ' + d.mlb, 'Edit', 't-info');
@@ -815,7 +858,7 @@ function mlbInsertPa(d){
 }
 
 function mlbDiffList(diffs, kind){
-  return kind === 'play' ? diffs.plays : kind === 'pitcher' ? diffs.pitchers : kind === 'errors' ? diffs.errors : diffs.runs;
+  return kind === 'play' ? diffs.plays : kind === 'pitcher' ? diffs.pitchers : kind === 'errors' ? diffs.errors : kind === 'count' ? diffs.count : diffs.runs;
 }
 
 function mlbUse(kind, i){
@@ -1084,6 +1127,7 @@ function mlbCatchUp(){
       }
       mlbActivatePitcher(side === 'away' ? 'home' : 'away', last.matchup.pitcher.fullName);
       G.balls = Math.min(3, last.count.balls || 0); G.strikes = Math.min(2, last.count.strikes || 0);
+      G.fouls = (last.playEvents || []).filter(function(e){ return e.isPitch && /^Foul(?! Tip)/i.test((e.details && e.details.description) || ''); }).length;
       var lm = last.matchup;
       G.bases = [lm.postOnFirst, lm.postOnSecond, lm.postOnThird].map(function(x){ return x ? x.fullName : null; });
       if(!lm.postOnFirst && !lm.postOnSecond && !lm.postOnThird){
@@ -1200,7 +1244,8 @@ function renderMlbCheck(){
     var pitchers = behindN ? [] : d.pitchers.map(function(x, i){ return { d:x, i:i }; }).filter(function(x){ return visible(x.d); });
     var runs = d.runs.map(function(x, i){ return { d:x, i:i }; }).filter(function(x){ return visible(x.d); });
     var errors = behindN ? [] : d.errors.map(function(x, i){ return { d:x, i:i }; }).filter(function(x){ return visible(x.d); });
-    var total = plays.length + pitchers.length + runs.length + errors.length;
+    var count = d.count.map(function(x, i){ return { d:x, i:i }; }).filter(function(x){ return visible(x.d); });
+    var total = plays.length + pitchers.length + runs.length + errors.length + count.length;
     var at = new Date(_mlb.fetchedAt);
     var ls = _mlb.feed.liveData.linescore || {};
     var mlbAt = d.mlbPos ? mlbHalfName(Math.floor(d.mlbPos / 2), d.mlbPos % 2 ? 'bot' : 'top') : '—';
@@ -1217,6 +1262,10 @@ function renderMlbCheck(){
       + (kept ? ' · <button class="mlb-link" onclick="_mlbShowKept=!_mlbShowKept;renderMlbCheck()">' + (_mlbShowKept ? 'hide' : 'show') + ' ' + kept + ' kept as yours</button>' : '')
       + '</div>';
 
+    if(count.length){
+      html += '<div class="mlb-sec"><span>Current at-bat</span></div>';
+      count.forEach(function(x){ html += mlbRowHtml(x.d, 'count', x.i); });
+    }
     if(plays.length){
       var applicable = plays.filter(function(x){ return !G.mlbKeep[x.d.key] && mlbCanApply(x.d); }).length;
       html += '<div class="mlb-sec"><span>Plays</span>' + (applicable > 1 ? '<button class="mlb-btn" onclick="mlbUseAllPlays()">Use MLB\'s for all ' + applicable + '</button>' : '') + '</div>';
@@ -1291,6 +1340,11 @@ function mlbRowHtml(d, kind, i){
       else { youHtml = line(ap, L); themHtml = line(L, ap); }
     }
     where = d.side === 'away' ? team('away').split(' ').pop() : team('home').split(' ').pop();
+  } else if(d.type === 'count'){
+    where = 'Now';
+    who = d.mlb.batter;
+    you = G.balls + '-' + G.strikes;
+    them = d.mlb.balls + '-' + d.mlb.strikes + ' (' + d.mlb.n + ' pitch' + (d.mlb.n === 1 ? '' : 'es') + ' this at-bat)';
   } else if(d.type === 'errors'){
     where = 'Game';
     who = team(d.side);

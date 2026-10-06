@@ -17,7 +17,7 @@ ballpark or on TV. It installs to an iPad or phone home screen and works offline
   pitches-strikes), runners in scoring position, and left on base. Runs are charged to the
   pitcher who allowed the runner.
 - **MLB integration (MLB Stats API):** load today's games and lineups; **Check vs MLB** compares
-  your scorecard with MLB's official play-by-play (plays, pitching lines, runs and errors) and fixes differences with a tap; **Catch up**
+  your scorecard with MLB's official play-by-play (plays, pitching lines, runs, errors and the count of the at-bat in progress) and fixes differences with a tap; **Catch up**
   fills in plays you missed and moves the game to MLB's current batter and count.
 - **Season stats** across every saved game, filtered by team, games attended, and game type.
 - **Postseason series** at the top of My Games: saved playoff games grouped by round and teams,

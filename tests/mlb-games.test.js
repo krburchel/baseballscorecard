@@ -151,3 +151,32 @@ test('Check vs MLB offers MLB\'s error total when the scorecard\'s is off, and U
   w.mlbApply(d[0]);
   assert.equal(w.G.rhe.away[2], 3);
 });
+
+// Mid at-bat: MLB has pitches the scorecard doesn't. Check vs MLB offers the count, and
+// taking MLB's pitching line for the pitcher on the mound brings the count along.
+test('Check vs MLB syncs the count of the at-bat in progress', async (t) => {
+  const w = loadApp();
+  t.after(() => w.close());
+  const feed = await loadMlbGame(w, 849839, '2026-10-05');
+  w.mlbCatchUp();
+  await tick();
+  const last = feed.liveData.plays.allPlays.at(-1);           // Simpson batting, saved at 0-0
+  const pitch = desc => ({ isPitch: true, details: { description: desc } });
+  last.playEvents = [pitch('Ball'), pitch('Ball'), pitch('Foul')];
+  last.count = { balls: 2, strikes: 1, outs: last.count.outs };
+  assert.equal(w.curName('home', w.abIdx('home')), 'Chandler Simpson', 'scorecard is on the same batter');
+
+  const d = w.mlbDiffs(feed).count;
+  same(d.map(x => [x.mlb.balls, x.mlb.strikes, x.mlb.n, x.mlb.fouls]), [[2, 1, 3, 1]], 'count row offered');
+  w.mlbApply(d[0]);
+  same([w.G.balls, w.G.strikes, w.G.fouls], [2, 1, 1], 'count set');
+  same(w.mlbDiffs(feed).count, [], 'nothing left to fix');
+
+  // Same at-bat, fixed from the pitcher's row instead
+  w.G.balls = 0; w.G.strikes = 0; w.G.fouls = 0;
+  const p = w.G.pitchers.away.find(x => x.name === 'Cam Schlittler');
+  p.pitches -= 3;
+  const pd = w.mlbDiffs(feed).pitchers.find(x => x.mlb.name === 'Cam Schlittler');
+  w.mlbApply(pd);
+  same([w.G.balls, w.G.strikes], [2, 1], 'pitching line fix brings the count along');
+});
