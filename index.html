@@ -34,12 +34,14 @@
     <div class="hdr-btns">
       <button class="today-btn" id="todayBtn" onclick="showTodaysGames()">📅 Today</button>
       <span class="hdr-spacer"></span>
+      <button class="sync-pill" id="followPill" onclick="followPillTap()" hidden></button>
       <button class="sync-pill" id="syncPill" onclick="openSyncPanel()" hidden></button>
       <button class="reset-btn" id="undoBtn" onclick="undoAction()" disabled>↩ Undo</button>
       <div class="save-menu-wrap">
         <button class="pdf-btn" onclick="toggleSaveMenu()" id="saveMenuBtn" aria-haspopup="true">☰ Menu</button>
         <div class="save-menu" id="saveMenu">
           <button class="save-menu-item" onclick="closeSaveMenu(); openMlbCheck()">⚾ Check vs MLB</button>
+          <button class="save-menu-item" onclick="closeSaveMenu(); toggleFollow()">📡 Follow MLB live<span class="save-menu-hint">Keeps the game caught up while you watch</span></button>
           <button class="save-menu-item" onclick="closeSaveMenu(); openShareFinal()">🖼 Share final</button>
           <button class="save-menu-item" onclick="closeSaveMenu(); openSeasonStats()">📊 Season stats</button>
           <button class="save-menu-item" onclick="showGameManager(); closeSaveMenu()">📋 My Games</button>
@@ -370,6 +372,7 @@
 <script src="js/reports.js"></script>
 <script src="js/firebase-config.js"></script>
 <script src="js/sync.js"></script>
+<script src="js/follow.js"></script>
 <script src="js/ui.js"></script>
 </body>
 </html>

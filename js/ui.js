@@ -438,6 +438,7 @@ function init(){
     onTeamChange();
   }
   renderAll();
+  followInit();
   autoFillDate();
   restoreNotes();
   syncWakeLock();

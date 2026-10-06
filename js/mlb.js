@@ -1108,49 +1108,63 @@ function mlbCatchUp(){
   }).then(function(ok){
     if(!ok) return;
     saveState();
-    var entries = {};
-    var m = mlbPlays(feed);
-    Object.keys(m.halves).forEach(function(k){ m.halves[k].forEach(function(e){ entries[e.atBat] = e; }); });
-    var plays = feed.liveData.plays.allPlays, last = null;
-    for(var i = start; i < plays.length; i++){ mlbApplyPlay(feed, plays[i], entries); last = plays[i]; }
-
-    // End on MLB's current batter and count (an at-bat in progress)
-    if(last && last.about.isComplete === false){
-      var a = last.about, half = a.halfInning === 'top' ? 'top' : 'bot', side = half === 'top' ? 'away' : 'home';
-      if(G.inning !== a.inning || G.half !== half) mlbGoToHalf(a.inning, half);
-      var bo = mlbSlotByName(side, last.matchup.batter.fullName);
-      var box = feed.liveData.boxscore.teams[side].players['ID' + last.matchup.batter.id];
-      if(box && box.battingOrder) bo = Math.floor(parseInt(box.battingOrder, 10) / 100) - 1;
-      if(bo >= 0){
-        mlbEnsureInSlot(side, bo, last.matchup.batter.fullName, null, 'ph');
-        if(side === 'home') G.homeBatter = bo; else G.awayBatter = bo;
-      }
-      mlbActivatePitcher(side === 'away' ? 'home' : 'away', last.matchup.pitcher.fullName);
-      G.balls = Math.min(3, last.count.balls || 0); G.strikes = Math.min(2, last.count.strikes || 0);
-      G.fouls = (last.playEvents || []).filter(function(e){ return e.isPitch && /^Foul(?! Tip)/i.test((e.details && e.details.description) || ''); }).length;
-      var lm = last.matchup;
-      G.bases = [lm.postOnFirst, lm.postOnSecond, lm.postOnThird].map(function(x){ return x ? x.fullName : null; });
-      if(!lm.postOnFirst && !lm.postOnSecond && !lm.postOnThird){
-        // In-progress play: MLB reports runners before it as the previous play's result
-        var prev = plays[plays.length - 2];
-        if(prev && prev.about.inning === a.inning && prev.about.halfInning === a.halfInning){
-          var pm = prev.matchup;
-          G.bases = [pm.postOnFirst, pm.postOnSecond, pm.postOnThird].map(function(x){ return x ? x.fullName : null; });
-        }
-      }
-    }
-
-    // Finished game
-    if((feed.gameData.status || {}).abstractGameState === 'Final' && !G.log.some(function(l){ return l.tag === 'Final'; })){
-      var aw = G.rhe.away[0], hm = G.rhe.home[0];
-      addLog('FINAL — ' + (hm > aw ? team('home') : team('away')) + ' wins ' + Math.max(aw, hm) + '-' + Math.min(aw, hm), 'Final', 't-run');
-    }
+    mlbApplyCatchUp(feed);
     addLog('Caught up from MLB: ' + n + ' plate appearance' + (n === 1 ? '' : 's') + ' added', 'MLB', 't-info');
     renderAll();
     saveToStorage();
     renderMlbCheck();
     kbFlash('Caught up — ' + n + ' play' + (n === 1 ? '' : 's') + ' added', '#1D9E75');
   });
+}
+
+// Add every play MLB has after the scorecard's last one and end on MLB's current
+// batter and count. No confirmation and no undo snapshot (callers take one).
+// Returns the number of plate appearances added.
+function mlbApplyCatchUp(feed){
+  var start = mlbCatchUpStart(feed), n = mlbCatchUpCount(feed);
+  if(start < 0) return 0;
+  var entries = {};
+  var m = mlbPlays(feed);
+  Object.keys(m.halves).forEach(function(k){ m.halves[k].forEach(function(e){ entries[e.atBat] = e; }); });
+  var plays = feed.liveData.plays.allPlays, last = null;
+  for(var i = start; i < plays.length; i++){ mlbApplyPlay(feed, plays[i], entries); last = plays[i]; }
+
+  // End on MLB's current batter and count (an at-bat in progress)
+  if(last && last.about.isComplete === false){
+    var a = last.about, half = a.halfInning === 'top' ? 'top' : 'bot', side = half === 'top' ? 'away' : 'home';
+    if(G.inning !== a.inning || G.half !== half) mlbGoToHalf(a.inning, half);
+    var bo = mlbSlotByName(side, last.matchup.batter.fullName);
+    var box = feed.liveData.boxscore.teams[side].players['ID' + last.matchup.batter.id];
+    if(box && box.battingOrder) bo = Math.floor(parseInt(box.battingOrder, 10) / 100) - 1;
+    if(bo >= 0){
+      mlbEnsureInSlot(side, bo, last.matchup.batter.fullName, null, 'ph');
+      if(side === 'home') G.homeBatter = bo; else G.awayBatter = bo;
+    }
+    mlbActivatePitcher(side === 'away' ? 'home' : 'away', last.matchup.pitcher.fullName);
+    G.balls = Math.min(3, last.count.balls || 0); G.strikes = Math.min(2, last.count.strikes || 0);
+    G.fouls = (last.playEvents || []).filter(function(e){ return e.isPitch && /^Foul(?! Tip)/i.test((e.details && e.details.description) || ''); }).length;
+    var lm = last.matchup;
+    G.bases = [lm.postOnFirst, lm.postOnSecond, lm.postOnThird].map(function(x){ return x ? x.fullName : null; });
+    if(!lm.postOnFirst && !lm.postOnSecond && !lm.postOnThird){
+      // In-progress play: MLB reports runners before it as the previous play's result
+      var prev = plays[plays.length - 2];
+      if(prev && prev.about.inning === a.inning && prev.about.halfInning === a.halfInning){
+        var pm = prev.matchup;
+        G.bases = [pm.postOnFirst, pm.postOnSecond, pm.postOnThird].map(function(x){ return x ? x.fullName : null; });
+      }
+    }
+  }
+
+  mlbMarkFinal(feed);
+  return n;
+}
+
+// MLB has the game as final: mark it final here too (once)
+function mlbMarkFinal(feed){
+  if((feed.gameData.status || {}).abstractGameState !== 'Final' || G.log.some(function(l){ return l.tag === 'Final'; })) return false;
+  var aw = G.rhe.away[0], hm = G.rhe.home[0];
+  addLog('FINAL — ' + (hm > aw ? team('home') : team('away')) + ' wins ' + Math.max(aw, hm) + '-' + Math.min(aw, hm), 'Final', 't-run');
+  return true;
 }
 
 // ── Fetching ──
@@ -1258,6 +1272,8 @@ function renderMlbCheck(){
       + (d.pending ? ' · ' + d.pending + ' not posted by MLB yet' : '')
       + (d.behind ? ' · MLB has ' + d.behind + ' play' + (d.behind === 1 ? '' : 's') + ' you haven\'t recorded yet' : '')
       + (behindN ? ' <button class="mlb-btn mlb-catchup" onclick="mlbCatchUp()">Catch up (' + behindN + ')</button><br>Pitching lines and errors are compared once you\'re caught up.' : '')
+      + (state === 'Final' ? '' : '<br>' + (followIsMine() ? '📡 Following MLB live <button class="mlb-btn" onclick="stopFollow();renderMlbCheck()">Stop</button>'
+          : '<button class="mlb-btn mlb-catchup" onclick="closeMlbCheck();startFollow()">📡 Follow live</button> keeps the game caught up while you watch'))
       + (d.rispMissing.length ? '<br>' + d.rispMissing.length + ' plate appearance' + (d.rispMissing.length === 1 ? ' has' : 's have') + ' no RISP recorded <button class="mlb-btn mlb-catchup" onclick="mlbFillRisp()">Fill in RISP (' + d.rispMissing.length + ')</button>' : '')
       + (kept ? ' · <button class="mlb-link" onclick="_mlbShowKept=!_mlbShowKept;renderMlbCheck()">' + (_mlbShowKept ? 'hide' : 'show') + ' ' + kept + ' kept as yours</button>' : '')
       + '</div>';

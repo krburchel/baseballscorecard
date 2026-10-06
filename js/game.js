@@ -24,6 +24,7 @@ function mkGame(){
     pas:[], nextPaId:1,
     mlbGamePk:null, mlbGameTeams:'', // MLB's id for this game (Check vs MLB)
     mlbKeep:{},                      // MLB differences the scorer chose to keep
+    mlbFollow:null,                  // { device, since } while a device is following MLB live
     notes:mkNotes(),
     abs:{home:{challenged:0,overturned:0}, away:{challenged:0,overturned:0}}
   };
@@ -116,6 +117,7 @@ function migrateGame(g){
 
   // v5 → v6: Check vs MLB
   if(!g.mlbKeep) g.mlbKeep = {};
+  if(g.mlbFollow === undefined) g.mlbFollow = null;
 
   // v6 → v7: plate appearances get ids so play-log lines can point at them
   if(!g.nextPaId) g.nextPaId = 1;

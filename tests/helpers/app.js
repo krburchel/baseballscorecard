@@ -11,11 +11,14 @@ const FIXTURES = path.join(__dirname, '..', 'fixtures');
 function readJSON(file){ return JSON.parse(fs.readFileSync(path.join(FIXTURES, file), 'utf8')); }
 
 // Answers the app's fetch() calls: schedule and live feeds from fixtures,
-// anything else (rosters, venues) with an empty but valid response.
-function fakeFetch(url){
+// anything else (rosters, venues) with an empty but valid response. A game's
+// update-times list is w.mlbStamps (set by a test); every URL is logged in w.fetchLog.
+function fakeFetch(url, w){
   let body = {};
+  if(w) (w.fetchLog = w.fetchLog || []).push(url);
   const feed = /\/game\/(\d+)\/feed\/live/.exec(url);
-  if(feed) body = readJSON('feed-' + feed[1] + '.json');
+  if(/\/feed\/live\/timestamps/.test(url)) body = (w && w.mlbStamps) || ['20261005_000000'];
+  else if(feed) body = readJSON('feed-' + feed[1] + '.json');
   else if(/\/schedule\?/.test(url) && /date=2026-10-03/.test(url)) body = readJSON('schedule-2026-10-03.json');
   else if(/\/roster/.test(url)) body = { roster: [] };
   return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(JSON.parse(JSON.stringify(body))) });
@@ -31,7 +34,7 @@ function loadApp(url){
     pretendToBeVisual: true
   });
   const w = dom.window;
-  w.fetch = fakeFetch;
+  w.fetch = url => fakeFetch(url, w);
   w.matchMedia = () => ({ matches: false, addEventListener(){}, removeEventListener(){} });
   w.scrollTo = () => {};
   w.HTMLElement.prototype.scrollIntoView = function(){};
