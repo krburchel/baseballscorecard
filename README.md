@@ -8,7 +8,7 @@ ballpark or on TV. It installs to an iPad or phone home screen and works offline
 ## What it does
 
 - **Score every pitch and play:** balls, strikes and fouls; hits, outs (F8, 6-3, double plays,
-  fielder's choices, errors, sacrifices); walks, HBP and strikeouts looking or swinging;
+  fielder's choices, errors, sacrifices); walks, HBP, catcher's interference and strikeouts looking or swinging;
   steals, caught stealing, wild pitches, passed balls, balks, and runners put out on the bases.
 - **ABS challenges**, including overturns that change the outcome of an at-bat.
 - **Scorecard grid:** batters by innings, with a diamond for every plate appearance (result,
@@ -93,7 +93,7 @@ The tests load the real `index.html` and scripts into jsdom, with MLB data serve
   scorecard and checks the result against MLB: zero Check vs MLB differences, team RISP and
   left on base, the score, and every batter's and pitcher's line.
 - `tests/scoring.test.js` covers the hand-scoring rules (ABS overturns, reaching on an error,
-  double plays, outs on the bases, counts kept on runner outs, RISP, innings pitched,
+  double plays, catcher's interference, outs on the bases, counts kept on runner outs, RISP, innings pitched,
   inherited runners, Undo, the cell editor, and loading older saved games).
 
 - `tests/sync.test.js` runs two simulated devices against an in-memory Firebase: games

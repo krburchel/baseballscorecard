@@ -295,6 +295,38 @@ function recordHBP(){
   }
 }
 
+// Catcher's interference: the batter is awarded first (not an at-bat), forced
+// runners move up, and the catcher is charged with an error. A run forced in
+// gets an RBI but is unearned.
+function recordCI(){
+  saveState();
+  var side = batting();
+  var idx = abIdx(side);
+  var nm = curName(side, idx);
+  activeHits(side, idx).ci++;
+  addPitch(fielding());
+  G.rhe[fielding()][2]++;
+  addLog(nm + ' — reaches on catcher\'s interference', 'CI', 't-err');
+  logBatter(side, idx, 'CI');
+
+  var runs = forceAdvance(side, nm, true);
+  if(runs > 0){
+    creditRBI(side, runs);
+    addLog(runs + ' run' + (runs > 1 ? 's' : '') + ' score', 'Run', 't-run');
+  }
+  renderBases();
+  renderScore();
+
+  G.balls = 0;
+  G.strikes = 0;
+  G.fouls = 0;
+  renderCount();
+  renderLineup(side);
+  if(!checkWalkoff()){
+    nextBatter(side);
+  }
+}
+
 function recordIBB(){
   saveState();
   var side = batting();

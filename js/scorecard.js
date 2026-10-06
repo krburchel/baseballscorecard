@@ -23,7 +23,7 @@ function logBatter(side, batterIdx, result, outsOnPlay){
     pIdx: activePIdx(side === 'home' ? 'away' : 'home'),
     who: G.lineup[side][batterIdx].subs.length - 1, // -1 = starter, else sub index
     risp: !!(G.bases[1] || G.bases[2]),             // runner on 2nd or 3rd when the PA ended
-    unearned: result[0] === 'E'
+    unearned: result[0] === 'E' || result === 'CI'
   });
   scheduleScorecardRender();
 }
@@ -68,7 +68,7 @@ function paLabelClass(res){
   if(paIsHit(res)) return ' sc-hit';
   if(res === 'K' || res === 'ꓘ') return ' sc-k';
   if(res === 'BB' || res === 'IBB' || res === 'HBP') return ' sc-walk';
-  if(res[0] === 'E') return ' sc-err';
+  if(res[0] === 'E' || res === 'CI') return ' sc-err';
   return '';
 }
 
@@ -202,7 +202,7 @@ function renderScorecard(){
 // Result "types" offered in the editor. fielders: true → needs a fielder string.
 var PE_TYPES = [
   {t:'1B'}, {t:'2B'}, {t:'3B'}, {t:'HR'},
-  {t:'BB'}, {t:'IBB'}, {t:'HBP'},
+  {t:'BB'}, {t:'IBB'}, {t:'HBP'}, {t:'CI'},
   {t:'K'}, {t:'ꓘ', label:'ꓘ'},
   {t:'F', label:'Fly', fielders:true}, {t:'G', label:'Ground', fielders:true},
   {t:'SF', fielders:true}, {t:'SAC'}, {t:'FC', fielders:true}, {t:'E', fielders:true},
@@ -240,6 +240,7 @@ function paStatKeys(res){
   else if(res === 'BB'){ k.bat.push('bb'); k.pit.push('bb'); }
   else if(res === 'IBB'){ k.bat.push('ibb'); k.pit.push('bb'); }
   else if(res === 'HBP') k.bat.push('hbp');
+  else if(res === 'CI'){ k.bat.push('ci'); k.teamErr = true; }   // catcher's interference: an error on the catcher
   else if(/^SF/.test(res)) k.bat.push('sf');
   else if(res === 'SAC') k.bat.push('sac');
   else if(/^FC/.test(res)) k.bat.push('fc');

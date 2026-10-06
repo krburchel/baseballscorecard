@@ -977,7 +977,7 @@ function mlbApplyPlay(feed, p, entries){
     var res = mlbNotation(p);
     var pa = { id: newPaId(), side: side, slot: slot, inn: a.inning, half: half, res: res,
                reached: e.reached || 0, out: e.out || 0, pIdx: pIdx,
-               who: G.lineup[side][slot].subs.length - 1, unearned: res[0] === 'E',
+               who: G.lineup[side][slot].subs.length - 1, unearned: res[0] === 'E' || res === 'CI',
                risp: e.risp !== undefined ? e.risp : !!(G.bases[1] || G.bases[2]) };
     if(pa.out && !paIsOut(res)) pa.outOnBases = true;
     G.pas.push(pa);

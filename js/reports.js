@@ -653,7 +653,7 @@ function ssBatting(games){
       x.g.lineup[side].forEach(function(sl){
         [{ name: sl.name, h: sl.hits }].concat(sl.subs.map(function(s){ return { name: s.name, h: s.hits || mkHits() }; })).forEach(function(p){
           if(!p.name) return;
-          var h = p.h, pa = abFor(h) + (h.bb || 0) + (h.ibb || 0) + (h.hbp || 0) + (h.sf || 0) + (h.sac || 0);
+          var h = p.h, pa = abFor(h) + (h.bb || 0) + (h.ibb || 0) + (h.hbp || 0) + (h.ci || 0) + (h.sf || 0) + (h.sac || 0);
           var k = tm + '|' + mlbNormName(p.name);
           var r = by[k] = by[k] || { name: p.name, team: tm, g: 0, ab: 0, r: 0, h: 0, d: 0, t: 0, hr: 0, rbi: 0, bb: 0, k: 0, sb: 0, hbp: 0, sf: 0, rh: 0, rab: 0 };
           if(pa > 0 && !seen[k]){ r.g++; seen[k] = true; }

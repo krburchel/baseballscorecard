@@ -215,3 +215,36 @@ test('saved games from older versions load with the new fields', (t) => {
   assert.equal(typeof g.mlbKeep, 'object');
   same([g.pitchers.home[0].outs, g.pitchers.home[0].balls, g.lineup.away[0].hits.roe], [0, 0, 0]);
 });
+
+test("catcher's interference: batter to first, not an at-bat, an error on the catcher's team", (t) => {
+  const w = fresh(t);
+  w.recordHit(1);                                // runner on first
+  w.addStrike(); w.addStrike();                  // 0-2, as with Liam Hicks in ALDS Game 2
+  w.recordCI();
+  const p = pa(w, -1), h = w.G.lineup.away[1].hits;
+  assert.equal(p.res, 'CI');
+  same([h.ci, w.abFor(h), w.G.rhe.home[2], w.G.rhe.away[1]], [1, 0, 1, 1], 'CI, no at-bat, one error, still one hit');
+  assert.ok(w.G.bases[0] && w.G.bases[1] && !w.G.bases[2], 'batter on first, runner forced to second');
+  same([w.G.pitchers.home[0].pitches, w.G.pitchers.home[0].bb], [4, 0], 'the pitch counts; not a walk');
+  same([w.G.balls, w.G.strikes, w.G.awayBatter], [0, 0, 2], 'count reset, next batter up');
+  assert.equal(w.paLabelClass('CI'), ' sc-err');
+});
+
+test("catcher's interference with the bases loaded: run scores, RBI, unearned", (t) => {
+  const w = fresh(t);
+  w.recordHBP(); w.recordHBP(); w.recordHBP();       // three hit batters: bases loaded
+  assert.ok(w.G.bases.every(Boolean), 'bases loaded');
+  w.recordCI();
+  same([w.G.rhe.away[0], w.G.lineup.away[3].hits.rbi], [1, 1], 'run forced in, RBI to the batter');
+  same([w.G.pitchers.home[0].r, w.G.pitchers.home[0].er], [1, 0], 'unearned');
+});
+
+test("the cell editor can change a result to catcher's interference and back", (t) => {
+  const w = fresh(t);
+  w.recordHit(1);
+  w.openPaEditor(0); w.peSet('t', 'CI'); w.savePaEditor();
+  const h = w.G.lineup.away[0].hits;
+  same([pa(w, 0).res, h.s, h.ci, w.G.rhe.away[1], w.G.rhe.home[2]], ['CI', 0, 1, 0, 1]);
+  w.openPaEditor(0); w.peSet('t', '1B'); w.savePaEditor();
+  same([h.s, h.ci, w.G.rhe.away[1], w.G.rhe.home[2]], [1, 0, 1, 0]);
+});

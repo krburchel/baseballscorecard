@@ -1,7 +1,7 @@
 // The game model: state shape and schema migrations, undo, plate-appearance records, run charging, pitch and play-log basics.
 // Loaded as a plain script; files share one global scope (see index.html for the order).
 
-function mkHits(){ return {s:0,d:0,t:0,hr:0,kl:0,ks:0,fo:0,go:0,sb:0,cs:0,err:0,roe:0,hbp:0,bb:0,sf:0,sac:0,fc:0,ibb:0,wp:0,r:0,rbi:0}; }
+function mkHits(){ return {s:0,d:0,t:0,hr:0,kl:0,ks:0,fo:0,go:0,sb:0,cs:0,err:0,roe:0,hbp:0,bb:0,sf:0,sac:0,fc:0,ibb:0,ci:0,wp:0,r:0,rbi:0}; }
 
 function mkSlot(){ return {name:'',pos:'—',hits:mkHits(),subs:[],pending:false}; }
 

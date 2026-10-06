@@ -179,6 +179,7 @@ document.addEventListener('keydown', function(e){
   if(key === 'o' && !shift){ e.preventDefault(); manualOut(); kbFlash('Out ' + G.outs); return; }
   if(key === 'w' && !shift){ e.preventDefault(); recordHBP(); kbFlash('HBP', '#BA7517'); return; }
   if(key === 'w' && shift){ e.preventDefault(); recordIBB(); kbFlash('IBB', '#0F6E56'); return; }
+  if(key === 'c' && shift){ e.preventDefault(); recordCI(); kbFlash('CI — catcher\'s interference', '#BA7517'); return; }
 
   // ── Baserunning ──
   if(key === 'r' && !shift){ e.preventDefault(); addRun(); kbFlash('Run +1', '#185FA5'); return; }
@@ -231,6 +232,7 @@ function toggleKBHelp(){
     + '<div class="kb-row"><span>Add run</span><span class="kb-key">R</span></div>'
     + '<div class="kb-row"><span>Hit by pitch</span><span class="kb-key">W</span></div>'
     + '<div class="kb-row"><span>Intentional walk</span><span><span class="kb-key">Shift</span><span class="kb-key">W</span></span></div>'
+    + '<div class="kb-row"><span>Catcher\'s interference</span><span><span class="kb-key">Shift</span><span class="kb-key">C</span></span></div>'
     + '</div>';
 
   html += '<div class="kb-section"><div class="kb-section-title">Navigation</div>'
