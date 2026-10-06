@@ -44,3 +44,31 @@ test('dark mode shows the dark-background team logos, including ones drawn later
   assert.equal(logo(), 'https://www.mlbstatic.com/team-logos/team-cap-on-dark/147.svg', 'back after printing');
   w.document.querySelectorAll('img[src*="league-on-light"]').forEach(i => assert.ok(!/cap-on-dark/.test(i.src)));
 });
+
+test('Bases card: Full field draws the home park\'s wall and signs; the choice is remembered; no home team, no toggle', (t) => {
+  const w = loadApp();
+  t.after(() => w.close());
+  const toggle = () => w.document.getElementById('fieldToggle');
+  assert.equal(toggle().children.length, 0, 'no home team: infield only, no toggle');
+
+  const home = w.document.getElementById('teamHome');
+  home.value = 'Boston Red Sox'; w.onTeamChange();
+  assert.equal(toggle().children.length, 2, 'toggle shown once there is a home park');
+  w.setFieldView('full');
+  const svg = w.document.querySelector('#infield svg');
+  assert.equal(svg.getAttribute('aria-label'), 'Field');
+  const signs = [...svg.querySelectorAll('text')].map(x => x.textContent);
+  for(const n of ['310', '420', '302']) assert.ok(signs.includes(n), 'Fenway sign ' + n);
+  assert.equal(w.localStorage.getItem('baseball_scorecard_field_view'), 'full', 'remembered');
+
+  w.toggleBase(2);                                       // runners still work at this scale
+  assert.ok(w.G.bases[1], 'runner on second');
+  assert.equal(w.document.querySelectorAll('#infield .if-base').length, 3);
+
+  w.setFieldView('infield');
+  assert.equal(w.document.querySelector('#infield svg').getAttribute('aria-label'), 'Infield');
+  for(const name of Object.keys(w.FIELD_WALLS)){
+    const f = w.FIELD_WALLS[name];
+    assert.ok(f.w.length >= 3 && f.w[0][0] < 0 && f.w.at(-1)[0] > 0, name + ': wall runs left pole to right pole');
+  }
+});

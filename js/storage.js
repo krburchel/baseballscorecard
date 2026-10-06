@@ -524,7 +524,7 @@ function onTeamChange() {
   var homeLogo = TEAM_LOGOS[home] ? '<img src="'+TEAM_LOGOS[home]+'" style="width:20px;height:20px;object-fit:contain;vertical-align:middle;margin-right:6px;" alt="" />' : '';
   document.getElementById('awayLineupTitle').innerHTML = awayLogo + awayLabel;
   document.getElementById('homeLineupTitle').innerHTML = homeLogo + homeLabel;
-  renderPitchers('home'); renderPitchers('away'); renderScore();
+  renderPitchers('home'); renderPitchers('away'); renderScore(); renderBases();
   renderStadium(home === '— Select Team —' ? null : home);
   // Auto-fill venue from home team stadium
   if(home && home !== '— Select Team —') autoFillVenue(home);

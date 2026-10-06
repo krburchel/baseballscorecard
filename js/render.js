@@ -536,6 +536,30 @@ function renderBases(){
   scheduleScorecardRender();
   var el = document.getElementById('infield');
   if(el) el.innerHTML = infieldSVG();
+  renderFieldToggle();
+}
+
+// ── Bases card view: the infield (default), or the home team's whole park ──
+// The choice is remembered on this device. Parks come from js/fields.js.
+var FIELD_VIEW_KEY = 'baseball_scorecard_field_view';
+var _fieldView = 'infield';
+try { if(localStorage.getItem(FIELD_VIEW_KEY) === 'full') _fieldView = 'full'; } catch(e){}
+
+function homeField(){ return (typeof FIELD_WALLS !== 'undefined' && FIELD_WALLS[team('home')]) || null; }
+
+function setFieldView(v){
+  _fieldView = v === 'full' ? 'full' : 'infield';
+  try { localStorage.setItem(FIELD_VIEW_KEY, _fieldView); } catch(e){}
+  renderBases();
+}
+
+function renderFieldToggle(){
+  var el = document.getElementById('fieldToggle');
+  if(!el) return;
+  if(!homeField()){ el.innerHTML = ''; return; }        // no home team yet: infield only
+  el.innerHTML = [['infield', 'Infield'], ['full', 'Full field']].map(function(o){
+    return '<button type="button" class="' + (_fieldView === o[0] ? 'on' : '') + '" aria-pressed="' + (_fieldView === o[0]) + '" onclick="setFieldView(\'' + o[0] + '\')">' + o[1] + '</button>';
+  }).join('');
 }
 
 // ── Infield drawing (Bases card) ──
@@ -553,27 +577,69 @@ var IF_PX = 260;
                                                  // typical drawn width in CSS px (sizes the labels)
 function ifP(x, y){ return Math.round(x * 10) / 10 + ',' + Math.round(-y * 10) / 10; }
 
+// Wall pulled in toward home plate by the warning track's width
+function fieldTrackLine(wall, t){
+  var out = [];
+  for(var i = 0; i < wall.length - 1; i++){
+    for(var j = 0; j < 8; j++){
+      var x = wall[i][0] + (wall[i + 1][0] - wall[i][0]) * j / 8, y = wall[i][1] + (wall[i + 1][1] - wall[i][1]) * j / 8;
+      var L = Math.sqrt(x * x + y * y) || 1;
+      out.push([x * (L - t) / L, y * (L - t) / L]);
+    }
+  }
+  var e = wall[wall.length - 1], Le = Math.sqrt(e[0] * e[0] + e[1] * e[1]) || 1;
+  out.push([e[0] * (Le - t) / Le, e[1] * (Le - t) / Le]);
+  return out;
+}
+
 function infieldSVG(){
-  var k = IF_VB[2] / IF_PX;                 // feet per CSS px, to size labels in px
-  var lpX = -280, rpX = 280;                // foul lines run off the drawing
-  var s = '<svg viewBox="' + IF_VB.join(' ') + '" role="group" aria-label="Infield">';
-  s += '<defs><clipPath id="ifFair"><polygon points="' + ifP(0, 0) + ' ' + ifP(lpX, -lpX) + ' ' + ifP(rpX, rpX) + '"/></clipPath></defs>';
-  s += '<rect x="' + IF_VB[0] + '" y="' + IF_VB[1] + '" width="' + IF_VB[2] + '" height="' + IF_VB[3] + '" fill="var(--field-foul)"/>';
-  s += '<polygon points="' + ifP(0, 0) + ' ' + ifP(lpX, -lpX) + ' ' + ifP(rpX, rpX) + '" fill="var(--field-grass)"/>';
+  var F = _fieldView === 'full' ? homeField() : null;
+  var VB = IF_VB;
+  if(F){
+    var xs = F.w.map(function(p){ return p[0]; }), ys = F.w.map(function(p){ return p[1]; });
+    var minX = Math.min.apply(null, xs) - 14, maxX = Math.max.apply(null, xs) + 14, maxY = Math.max.apply(null, ys) + 14;
+    VB = [Math.round(minX), -Math.round(maxY), Math.round(maxX - minX), Math.round(maxY + 30)];
+  }
+  var k = VB[2] / IF_PX;                    // feet per CSS px, to size labels in px
+  var lpX = -280, rpX = 280;                // infield view: foul lines run off the drawing
+  var pts = function(list){ return list.map(function(p){ return ifP(p[0], p[1]); }).join(' '); };
+  var s = '<svg viewBox="' + VB.join(' ') + '" role="group" aria-label="' + (F ? 'Field' : 'Infield') + '">';
+  if(F){
+    var fair = [[0, 0]].concat(F.w);
+    s += '<defs><clipPath id="ifFair"><polygon points="' + pts(fair) + '"/></clipPath></defs>';
+    s += '<rect x="' + VB[0] + '" y="' + VB[1] + '" width="' + VB[2] + '" height="' + VB[3] + '" fill="var(--field-foul)"/>';
+    s += '<polygon points="' + pts(fair) + '" fill="var(--field-dirt)"/>';
+    s += '<polygon points="' + pts([[0, 0]].concat(fieldTrackLine(F.w, F.t))) + '" fill="var(--field-grass)"/>';
+  } else {
+    s += '<defs><clipPath id="ifFair"><polygon points="' + ifP(0, 0) + ' ' + ifP(lpX, -lpX) + ' ' + ifP(rpX, rpX) + '"/></clipPath></defs>';
+    s += '<rect x="' + VB[0] + '" y="' + VB[1] + '" width="' + VB[2] + '" height="' + VB[3] + '" fill="var(--field-foul)"/>';
+    s += '<polygon points="' + ifP(0, 0) + ' ' + ifP(lpX, -lpX) + ' ' + ifP(rpX, rpX) + '" fill="var(--field-grass)"/>';
+  }
   s += '<circle cx="0" cy="-60.5" r="95" fill="var(--field-dirt)" clip-path="url(#ifFair)"/>';
   s += '<polygon points="' + ifP(0, 13) + ' ' + ifP(50.6, 63.64) + ' ' + ifP(0, 114.28) + ' ' + ifP(-50.6, 63.64) + '" fill="var(--field-grass)"/>';
   s += '<circle cx="0" cy="0" r="13" fill="var(--field-dirt)"/>';
   s += '<circle cx="0" cy="-60.5" r="9" fill="var(--field-dirt)"/><rect x="-1.5" y="-61" width="3" height="1" fill="var(--field-chalk)"/>';
-  s += '<line x1="0" y1="0" x2="' + lpX + '" y2="' + lpX + '" stroke="var(--field-chalk)" stroke-width="1"/>';
-  s += '<line x1="0" y1="0" x2="' + rpX + '" y2="' + (-rpX) + '" stroke="var(--field-chalk)" stroke-width="1"/>';
-  var b = 7;
+  if(F){
+    var lp = F.w[0], rp = F.w[F.w.length - 1];
+    s += '<line x1="0" y1="0" x2="' + lp[0] + '" y2="' + (-lp[1]) + '" stroke="var(--field-chalk)" stroke-width="' + (0.8 * k) + '"/>';
+    s += '<line x1="0" y1="0" x2="' + rp[0] + '" y2="' + (-rp[1]) + '" stroke="var(--field-chalk)" stroke-width="' + (0.8 * k) + '"/>';
+    s += '<polyline points="' + pts(F.w) + '" fill="none" stroke="var(--field-wall)" stroke-width="' + (2.2 * k) + '" stroke-linejoin="round" stroke-linecap="round"/>';
+    F.s.forEach(function(sg){                // MLB's posted distances, just inside the wall
+      var a = sg[0] * Math.PI / 180, d = sg[1] - 14 * k;
+      s += '<text x="' + (-Math.sin(a) * d).toFixed(1) + '" y="' + (-Math.cos(a) * d).toFixed(1) + '" text-anchor="middle" dominant-baseline="central" font-size="' + (9 * k) + '" font-weight="700" fill="var(--field-chalk)" opacity=".9">' + sg[1] + '</text>';
+    });
+  } else {
+    s += '<line x1="0" y1="0" x2="' + lpX + '" y2="' + lpX + '" stroke="var(--field-chalk)" stroke-width="1"/>';
+    s += '<line x1="0" y1="0" x2="' + rpX + '" y2="' + (-rpX) + '" stroke="var(--field-chalk)" stroke-width="1"/>';
+  }
+  var b = F ? Math.max(7, 3.2 * k) : 7;
   // home plate: point toward the catcher, flat edge toward the pitcher
   s += '<polygon points="' + ifP(-b / 2, b * 0.9) + ' ' + ifP(b / 2, b * 0.9) + ' ' + ifP(b / 2, b * 0.4) + ' ' + ifP(0, 0) + ' ' + ifP(-b / 2, b * 0.4) + '" fill="var(--field-chalk)"/>';
   IF_BASES.forEach(function(q, i){
     var occ = baseOcc(i), name = occ && typeof G.bases[i] === 'string' && G.bases[i] !== '?' ? shortName(G.bases[i]) : '';
     var label = ['First', 'Second', 'Third'][i] + ' base: ' + (occ ? (name || 'runner') + ' on. Tap to clear' : 'empty. Tap to put a runner on');
     s += '<g class="if-base" data-base="' + (i + 1) + '" role="button" tabindex="0" aria-label="' + esc(label) + '">';
-    s += '<circle cx="' + q[0] + '" cy="' + (-q[1]) + '" r="24" fill="transparent"/>';
+    s += '<circle cx="' + q[0] + '" cy="' + (-q[1]) + '" r="' + Math.max(24, 16 * k) + '" fill="transparent"/>';
     s += '<rect x="' + (q[0] - b / 2) + '" y="' + (-q[1] - b / 2) + '" width="' + b + '" height="' + b + '" fill="var(--field-chalk)" transform="rotate(45 ' + q[0] + ' ' + (-q[1]) + ')"/>';
     if(occ){
       var r = 11 * k;
