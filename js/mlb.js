@@ -420,6 +420,7 @@ function fetchRoster(side, teamName) {
     .then(function(data){
       ROSTERS[side] = (data.roster||[]).map(function(p){
         return {
+          id: p.person.id,
           name: p.person.fullName,
           pos: (p.position && p.position.abbreviation) || '—',
           jersey: p.jerseyNumber || ''

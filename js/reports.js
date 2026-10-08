@@ -590,6 +590,59 @@ function ssSavePrefs(){
   try { localStorage.setItem(SS_PREFS_KEY, JSON.stringify({ team:_ss.team, attended:_ss.attended, type:_ss.type, tab:_ss.tab, sort:_ss.sort })); } catch(e){}
 }
 
+// ── At-bat bar extras ──
+// The batter in your other saved games (cached until My Games changes), and
+// their career line against the pitcher on the mound (MLB, once per matchup).
+var _abHist = { sig: null, by: {} };
+
+function abHistory(teamName, name){
+  var activeId = gmGetActiveId();
+  // The open game saves on every pitch and isn't counted: leave it out, so scoring doesn't recompute this
+  var sig = gmGetIndex().filter(function(e){ return e.id !== activeId; }).map(function(e){ return e.id + '@' + e.savedAt; }).join() + '|' + activeId;
+  if(_abHist.sig !== sig){
+    var others = ssGames().filter(function(x){ return !x.current && x.id !== activeId; });
+    _abHist = { sig: sig, by: {} };
+    ssBattingRows(others).forEach(function(r){ _abHist.by[r.team + '|' + mlbNormName(r.name)] = r; });
+  }
+  return _abHist.by[teamName + '|' + mlbNormName(name)] || null;
+}
+
+var _abVs = {};          // 'batterId|pitcherId' → MLB's career totals, 'loading', or { failedAt }
+
+function rosterId(side, name){
+  var n = mlbNormName(name), hit = (ROSTERS[side] || []).filter(function(p){ return mlbNormName(p.name) === n; })[0];
+  return hit && hit.id;
+}
+
+function abVsPitcher(bSide, bName, pName){
+  var bid = rosterId(bSide, bName), pid = rosterId(bSide === 'home' ? 'away' : 'home', pName);
+  if(!bid || !pid) return null;
+  var key = bid + '|' + pid, v = _abVs[key];
+  if(v === undefined || (v && v.failedAt && Date.now() - v.failedAt > 300000)){
+    _abVs[key] = 'loading';
+    mlbFetchJSON(MLB_API + '/people/' + bid + '/stats?stats=vsPlayer&opposingPlayerId=' + pid + '&group=hitting').then(function(d){
+      var tot = (d.stats || []).filter(function(s){ return s.type && s.type.displayName === 'vsPlayerTotal'; })[0];
+      var st = (tot && tot.splits && tot.splits[0] && tot.splits[0].stat) || {};
+      _abVs[key] = { pa: st.plateAppearances || 0, ab: st.atBats || 0, h: st.hits || 0, hr: st.homeRuns || 0, bb: st.baseOnBalls || 0, k: st.strikeOuts || 0 };
+      renderAtBatBar();
+    }, function(){ _abVs[key] = { failedAt: Date.now() }; });
+    return null;
+  }
+  return v && v.pa !== undefined ? v : null;
+}
+
+// "7-for-25 · 2 HR · 3 BB"
+function abLine(h, ab, hr, bb){
+  return h + '-for-' + ab + (hr ? ' · ' + hr + ' HR' : '') + (bb ? ' · ' + bb + ' BB' : '');
+}
+
+function abExtrasHtml(bSide, bName, pName){
+  var parts = [], hist = abHistory(team(bSide), bName), vs = abVsPitcher(bSide, bName, pName);
+  if(hist) parts.push('<span title="In your other saved games">📒 Your scorecards: ' + esc(abLine(hist.h, hist.ab, hist.hr, hist.bb)) + ' · ' + hist.g + ' game' + (hist.g === 1 ? '' : 's') + '</span>');
+  if(vs) parts.push('<span title="Career, from MLB">vs ' + esc(shortName(pName)) + ': ' + (vs.pa ? esc(abLine(vs.h, vs.ab, vs.hr, vs.bb)) : 'first meeting') + '</span>');
+  return parts.length ? '<div class="atbat-extra">' + parts.join('') + '</div>' : '';
+}
+
 function ssTeamLabel(v, fallback){ return (!v || v === '— Select Team —') ? fallback : v; }
 
 // Every game with plays: saved slots, with the live game taken from memory
@@ -635,6 +688,11 @@ function ssPaPlayer(g, pa){
 }
 
 function ssBatting(games){
+  return ssBattingRows(games).filter(function(r){ return _ss.team === 'all' || r.team === _ss.team; });
+}
+
+// Batting totals per player (team + name) across the given games
+function ssBattingRows(games){
   var by = {};
   games.forEach(function(x){
     var seen = {};
@@ -667,7 +725,7 @@ function ssBatting(games){
     r.obp = obpDen ? (r.h + r.bb + r.hbp) / obpDen : null;
     r.slg = r.ab ? (singles + 2 * r.d + 3 * r.t + 4 * r.hr) / r.ab : null;
     return r;
-  }).filter(function(r){ return r.g > 0 && (_ss.team === 'all' || r.team === _ss.team); });
+  }).filter(function(r){ return r.g > 0; });
 }
 
 function ssPitching(games){

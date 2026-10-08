@@ -443,6 +443,9 @@ function renderAtBatBar(){
   html += '<span class="atbat-ondeck">On deck: ' + esc(shortName(onDeckName)) + '</span>';
   html += '<span class="atbat-inhole">In hole: ' + esc(shortName(inHoleName)) + '</span>';
 
+  // The batter in your other scorecards, and career vs this pitcher
+  if(bSlot.name || bSlot.subs.length) html += abExtrasHtml(bSide, bName, pitcher.name);
+
   el.innerHTML = html;
 }
 
