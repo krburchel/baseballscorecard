@@ -991,6 +991,17 @@ function mlbSideOfPlayer(feed, id){
   return t.away.players['ID' + id] ? 'away' : t.home.players['ID' + id] ? 'home' : null;
 }
 
+// A runner from MLB's matchup.postOnFirst/Second/Third → the name to show on
+// base, but only if the player belongs to the batting side. At an inning
+// boundary MLB briefly leaves the previous half's runner on the new half's
+// in-progress matchup; dropping anyone who's on the fielding team keeps the
+// other team off the bases. (Unknown side — not yet in the box score — is kept.)
+function mlbOnBase(feed, x, side){
+  if(!x) return null;
+  var s = mlbSideOfPlayer(feed, x.id);
+  return s && s !== side ? null : x.fullName;
+}
+
 // Stats object for a runner by name (whoever holds that name in the lineup)
 function mlbRunnerHits(side, name){
   var slot = findRunnerSlot(side, name);
@@ -1084,7 +1095,7 @@ function mlbApplyPlay(feed, p, entries){
   if(outsAfter > G.outs) P.outs += outsAfter - G.outs;
   G.outs = outsAfter;
   var m = p.matchup;
-  G.bases = [m.postOnFirst, m.postOnSecond, m.postOnThird].map(function(x){ return x ? x.fullName : null; });
+  G.bases = [m.postOnFirst, m.postOnSecond, m.postOnThird].map(function(x){ return mlbOnBase(feed, x, side); });
   G.balls = 0; G.strikes = 0; G.fouls = 0;
   addLog('MLB: ' + (p.result.description || p.result.event || 'Play'), label || 'MLB', cls);
   if(isPA) G.log[0].paId = pa.id;
@@ -1145,13 +1156,13 @@ function mlbApplyCatchUp(feed){
     G.balls = Math.min(3, last.count.balls || 0); G.strikes = Math.min(2, last.count.strikes || 0);
     G.fouls = (last.playEvents || []).filter(function(e){ return e.isPitch && /^Foul(?! Tip)/i.test((e.details && e.details.description) || ''); }).length;
     var lm = last.matchup;
-    G.bases = [lm.postOnFirst, lm.postOnSecond, lm.postOnThird].map(function(x){ return x ? x.fullName : null; });
+    G.bases = [lm.postOnFirst, lm.postOnSecond, lm.postOnThird].map(function(x){ return mlbOnBase(feed, x, side); });
     if(!lm.postOnFirst && !lm.postOnSecond && !lm.postOnThird){
       // In-progress play: MLB reports runners before it as the previous play's result
       var prev = plays[plays.length - 2];
       if(prev && prev.about.inning === a.inning && prev.about.halfInning === a.halfInning){
         var pm = prev.matchup;
-        G.bases = [pm.postOnFirst, pm.postOnSecond, pm.postOnThird].map(function(x){ return x ? x.fullName : null; });
+        G.bases = [pm.postOnFirst, pm.postOnSecond, pm.postOnThird].map(function(x){ return mlbOnBase(feed, x, side); });
       }
     }
   }
