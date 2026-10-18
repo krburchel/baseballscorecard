@@ -101,5 +101,22 @@ for(var oi = 0; oi < 3; oi++){
     if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); e.stopPropagation(); this.click(); }
   });
 }
+// Color theme: Auto (match the device) / Light / Dark, remembered per device.
+// The <head> applies a saved explicit choice before paint; this reflects it in
+// the control and handles clicks.
+function setTheme(mode){
+  if(['auto', 'light', 'dark'].indexOf(mode) < 0) return;
+  if(mode === 'auto') document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme', mode);
+  try{ localStorage.setItem('sb-theme', mode); }catch(e){}
+  document.querySelectorAll('[data-theme-set]').forEach(function(b){
+    b.setAttribute('aria-pressed', String(b.dataset.themeSet === mode));
+  });
+}
+document.querySelectorAll('[data-theme-set]').forEach(function(b){
+  b.addEventListener('click', function(){ setTheme(b.dataset.themeSet); });
+});
+(function(){ var m = 'auto'; try{ m = localStorage.getItem('sb-theme') || 'auto'; }catch(e){} setTheme(m); })();
+
 setWorkspaceView('live');
 renderWorkspace();

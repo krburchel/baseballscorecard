@@ -15,6 +15,7 @@
 <title>Scorebook · Baseball Scorecard</title>
 <link rel="stylesheet" href="css/app.css" />
 <link rel="stylesheet" href="css/scorebook.css" />
+<script>try{var t=localStorage.getItem('sb-theme');if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
 </head>
 <body>
 <a class="skip-link" href="#workspace">Skip to scorecard</a>
@@ -27,6 +28,7 @@
       <button class="library-btn" onclick="showGameManager()">My games</button><span class="hdr-spacer"></span><button class="export-btn" onclick="exportPDF()">Export PDF <span aria-hidden="true">↗</span></button>
       <button class="sync-pill" id="followPill" onclick="followPillTap()" hidden></button>
       <button class="sync-pill" id="syncPill" onclick="openSyncPanel()" hidden></button>
+      <div class="theme-toggle" role="group" aria-label="Color theme"><button type="button" data-theme-set="auto" aria-pressed="true" title="Match your device">Auto</button><button type="button" data-theme-set="light" aria-pressed="false">Light</button><button type="button" data-theme-set="dark" aria-pressed="false">Dark</button></div>
       <button class="reset-btn" id="undoBtn" onclick="undoAction()" disabled>↶ Undo</button>
       <div class="save-menu-wrap">
         <button class="pdf-btn" onclick="toggleSaveMenu()" id="saveMenuBtn" aria-haspopup="true">More <span aria-hidden="true">⌄</span></button>
