@@ -8,37 +8,28 @@
 <meta name="apple-mobile-web-app-title" content="Scorecard" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="description" content="Digital baseball scorecard for tracking plays, lineups, and stats in real time." />
-<meta name="theme-color" content="#1D9E75" />
+<meta name="theme-color" content="#173e33" />
 <link rel="manifest" href="manifest.json" />
 <link rel="apple-touch-icon" href="apple-touch-icon.png" />
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png" />
-<title>Baseball Scorecard</title>
+<title>Scorebook · Baseball Scorecard</title>
 <link rel="stylesheet" href="css/app.css" />
+<link rel="stylesheet" href="css/scorebook.css" />
 </head>
 <body>
-<div class="app">
-
-  <div class="kb-flash" id="kbFlash" role="status" aria-live="polite"></div>
-
-<div class="print-header" id="printHeader">⚾ Official Game Scorecard</div>
-<div class="print-sub" id="printSub"></div>
-
-  <!-- Wide screens: scoring controls on the left, scorecard / pitchers / log on the right -->
-  <div class="col-main">
-  <div class="header">
-    <!-- The team pickers sit in the box score's team cells (renderScore moves them there) -->
-    <div id="teamSelHolder" hidden>
-      <select class="team-sel" id="teamAway" aria-label="Away team" onchange="onTeamChange()"></select>
-      <select class="team-sel" id="teamHome" aria-label="Home team" onchange="onTeamChange()"></select>
-    </div>
+<a class="skip-link" href="#workspace">Skip to scorecard</a>
+<header class="site-header">
+  <div class="site-header-inner">
+    <a class="brand" href="./" aria-label="Scorebook home"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><path d="M16 3 29 16 16 29 3 16Z" stroke="currentColor" stroke-width="1.5"/><path d="M16 10 22 16 16 22 10 16Z" fill="currentColor"/><path d="M16 22v5" stroke="currentColor" stroke-width="1.5"/></svg></span><span>scorebook<span class="brand-period">.</span></span></a>
+    <span class="brand-tagline">FOR THE LOVE OF THE GAME</span>
     <div class="hdr-btns">
-      <button class="today-btn" id="todayBtn" onclick="showTodaysGames()">📅 Today</button>
-      <span class="hdr-spacer"></span>
+      <button class="today-btn" id="todayBtn" onclick="showTodaysGames()">Today’s games</button>
+      <button class="library-btn" onclick="showGameManager()">My games</button><span class="hdr-spacer"></span><button class="export-btn" onclick="exportPDF()">Export PDF <span aria-hidden="true">↗</span></button>
       <button class="sync-pill" id="followPill" onclick="followPillTap()" hidden></button>
       <button class="sync-pill" id="syncPill" onclick="openSyncPanel()" hidden></button>
-      <button class="reset-btn" id="undoBtn" onclick="undoAction()" disabled>↩ Undo</button>
+      <button class="reset-btn" id="undoBtn" onclick="undoAction()" disabled>↶ Undo</button>
       <div class="save-menu-wrap">
-        <button class="pdf-btn" onclick="toggleSaveMenu()" id="saveMenuBtn" aria-haspopup="true">☰ Menu</button>
+        <button class="pdf-btn" onclick="toggleSaveMenu()" id="saveMenuBtn" aria-haspopup="true">More <span aria-hidden="true">⌄</span></button>
         <div class="save-menu" id="saveMenu">
           <button class="save-menu-item" onclick="closeSaveMenu(); openMlbCheck()">⚾ Check vs MLB</button>
           <button class="save-menu-item" onclick="closeSaveMenu(); toggleFollow()">📡 Follow MLB live<span class="save-menu-hint">Keeps the game caught up while you watch</span></button>
@@ -61,19 +52,41 @@
       <input type="file" id="jsonFileInput" accept=".json,.scorecard" style="display:none" onchange="importJSON(event)" />
     </div>
   </div>
+</header>
+<div class="app" data-view="live">
+  <div class="kb-flash" id="kbFlash" role="status" aria-live="polite"></div>
+  <div class="print-header" id="printHeader">Official Game Scorecard</div><div class="print-sub" id="printSub"></div>
+  <div id="teamSelHolder" hidden>
+      <select class="team-sel" id="teamAway" aria-label="Away team" onchange="onTeamChange()"></select>
+      <select class="team-sel" id="teamHome" aria-label="Home team" onchange="onTeamChange()"></select>
+    </div>
+  <section class="page-heading"><div><div class="eyebrow" id="gameDate">BASEBALL, ONE PLAY AT A TIME</div><h1>A good day for baseball.</h1></div><div class="save-status"><span></span> Auto-saves on this device <button onclick="toggleKBHelp()" aria-label="Keyboard shortcuts" title="Keyboard shortcuts">?</button></div></section>
+  <section class="scoreboard" aria-label="Game scoreboard">
+    <div class="board-topline"><span><span class="board-dot"></span><span id="boardStatus">READY FOR FIRST PITCH</span></span><span id="boardVenue">YOUR GAME. YOUR SCORECARD.</span></div>
+    <div class="board-content">
+      <div class="matchup" id="matchup"></div>
+      <div class="linescore"><div class="linescore-title">LINE SCORE <span>Select a team below to get started</span></div><div class="score-strip"><table class="score-table" id="scoreTable" aria-label="Inning by inning score"></table></div></div>
+    </div>
+    <div class="board-bottom"><span id="boardSituation">Top of the 1st · 0 outs · Bases empty</span><button class="mobile-linescore" onclick="toggleLineScore()" aria-expanded="false">Line score ⌄</button><button onclick="toggleFollow()" id="liveFollowBtn">Follow MLB live <span aria-hidden="true">↗</span></button></div>
+  </section>
+  <nav class="workspace-nav" aria-label="Scorebook views"><div class="view-tabs" role="tablist" aria-label="Game workspace">
+    <button role="tab" id="tab-live" aria-selected="true" aria-controls="workspace" tabindex="0" data-view="live" onclick="setWorkspaceView('live')"><span aria-hidden="true">◉</span> Live scoring</button>
+    <button role="tab" id="tab-scorecard" aria-selected="false" aria-controls="workspace" tabindex="-1" data-view="scorecard" onclick="setWorkspaceView('scorecard')">Scorecard</button>
+    <button role="tab" id="tab-lineups" aria-selected="false" aria-controls="workspace" tabindex="-1" data-view="lineups" onclick="setWorkspaceView('lineups')">Lineups</button>
+    <button role="tab" id="tab-notes" aria-selected="false" aria-controls="workspace" tabindex="-1" data-view="notes" onclick="setWorkspaceView('notes')">Game notes</button>
+    </div><button class="shortcuts-btn" onclick="toggleKBHelp()"><span aria-hidden="true">⌨</span> Shortcuts <kbd>?</kbd></button>
+  </nav>
+  <div class="workspace" id="workspace" role="tabpanel" aria-labelledby="tab-live" tabindex="-1">
+    <main class="col-main" id="scoringPanel">
+      <div class="section-heading"><h2>Keep the game.</h2><span>One pitch at a time.</span></div>
+      <div class="setup-tip" id="setupTip"><span class="tip-icon" aria-hidden="true">↗</span><div><strong>Start with a matchup.</strong><p>Choose teams in the line score, or load a game with today’s lineups.</p></div><button onclick="showTodaysGames()">Find a game →</button></div>
 
-  <!-- Score strip -->
-  <div class="score-strip">
-    <table class="score-table" id="scoreTable"></table>
-  </div>
-
-  <!-- Current at-bat bar -->
   <div class="backup-nudge" id="backupNudge" role="status" hidden></div>
   <div class="atbat-bar" id="atbatBar"></div>
 
   <!-- Game state -->
   <div class="game-state">
-    <div class="card">
+    <div class="card inning-card">
       <div class="label">Inning</div>
       <div class="inn-ctrl">
         <button class="arr" onclick="changeInning(-1)" aria-label="Previous inning">&#8249;</button>
@@ -97,7 +110,7 @@
       <div id="stadiumWrap" class="stadium-slot"></div>
     </div>
 
-    <div class="card">
+    <div class="card count-card">
       <div class="label">Count</div>
       <div style="margin-bottom:5px">
         <span class="dlabel">B</span>
@@ -118,9 +131,9 @@
         <div class="foul-note" id="foulNote"></div>
       </div>
       <div class="btns">
-        <button class="btn big ball" onclick="addBall()">Ball</button>
-        <button class="btn big strike" onclick="addStrike()">Strike</button>
-        <button class="btn big foul" onclick="addFoul()">Foul</button>
+        <button class="btn big ball" onclick="addBall()">Ball <kbd>B</kbd></button>
+        <button class="btn big strike" onclick="addStrike()">Strike <kbd>S</kbd></button>
+        <button class="btn big foul" onclick="addFoul()">Foul <kbd>F</kbd></button>
         <button class="btn" onclick="clearCount()">Clear</button>
         <button class="btn abs-btn" onclick="toggleABSPicker()">ABS</button>
       </div>
@@ -141,7 +154,7 @@
       </div>
     </div>
 
-    <div class="card">
+    <div class="card bases-card">
       <div class="label bases-label">Bases <span class="field-toggle" id="fieldToggle" role="group" aria-label="Field view"></span></div>
       <div class="bases-field">
         <div class="infield" id="infield" aria-label="Bases"></div>
@@ -157,8 +170,8 @@
 
   <!-- Actions -->
   <div class="action-row">
-    <div class="card">
-      <div class="label">Record hit — active batter</div>
+    <div class="card hits-card">
+      <div class="label">Put it in play</div>
       <div class="hit-btns">
         <button class="hit-btn h1b" onclick="recordHit(1)">1B<span class="hlabel">Single</span></button>
         <button class="hit-btn h2b" onclick="recordHit(2)">2B<span class="hlabel">Double</span></button>
@@ -174,19 +187,19 @@
       </div>
       <div id="rpPickerAnchor"></div>
     </div>
-    <div class="card">
-      <div class="label">Strikeout — active batter</div>
+    <div class="card strikeout-card">
+      <div class="label">Strikeout</div>
       <div class="ko-btns">
         <button class="ko-btn kol" onclick="recordKO('looking')">&#x24C0;<span class="kolabel">Looking</span></button>
         <button class="ko-btn kos" onclick="recordKO('swinging')">K<span class="kolabel">Swinging</span></button>
       </div>
-      <div style="font-size:11px;color:var(--muted);margin-top:6px">Records out + pitch. Use instead of Strike on K.</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px">Looking or swinging — count and outs update together.</div>
     </div>
   </div>
 
   <!-- Flyout / Groundout recording -->
-  <div class="out-card">
-    <div class="label">Record out / error — active batter</div>
+  <details class="out-card" open><summary>Outs &amp; fielding <span>Flyouts, groundouts, errors &amp; more</span></summary><div class="fielding-body">
+    <div class="label">Choose a play, then the fielders</div>
     <div class="out-type-row">
       <button class="out-type-btn otf" id="outTypeFly" onclick="selectOutType('fly')">
         F<span style="font-size:10px;font-weight:400;display:block;opacity:.75;margin-top:1px">Flyout</span>
@@ -220,13 +233,57 @@
     </div>
     <button class="rec-out-btn" id="recordOutBtn" onclick="recordOut()" disabled>Select type &amp; fielder to record</button>
     <div class="out-hint" id="outHint"></div>
+  </div></details>
+
+
+    </main>
+    <aside class="col-side" id="scorecardPanel">
+  <!-- Scorecard grid -->
+  <div class="section-heading"><h2>The scorecard</h2><span>Every play, in its place.</span></div>
+  <div class="scorecard-wrap" id="scorecard"></div>
+
+  <!-- Pitchers -->
+  <div class="section-heading small"><h2>On the mound</h2></div>
+  <div class="lineup-grid">
+    <div class="pitcher-panel" id="awayPitcherPanel"></div>
+    <div class="pitcher-panel" id="homePitcherPanel"></div>
   </div>
 
-  <!-- Lineups -->
-  <!-- Game info / notes -->
+  <!-- Log -->
+  <div class="section-heading small sec-title-log"><h2>Play by play</h2><span>Most recent first</span></div>
+  <div class="log-panel">
+    <div class="log-filters" id="logFilters" style="display:none">
+      <span class="log-filter-label">Filter:</span>
+      <select class="log-filter-inn" id="logFilterInn"><option value="">All innings</option></select>
+      <button class="log-fpill" data-filter="hits">Hits</button>
+      <button class="log-fpill" data-filter="outs">Outs</button>
+      <button class="log-fpill" data-filter="runs">Runs</button>
+      <button class="log-fpill" data-filter="pitches">Pitches</button>
+      <button class="log-fpill" data-filter="abs">ABS</button>
+      <button class="log-fpill" data-filter="">All</button>
+    </div>
+    <div class="log-inner" id="logInner"><div class="empty-log">No plays logged yet</div></div>
+    <div class="log-toggle" id="logToggle" onclick="toggleLog()" style="display:none">▼ Show full log</div>
+  </div>
+</aside>
+    <section class="workspace-view" id="lineupsPanel" hidden>
+  <div class="view-heading"><div><span class="eyebrow">THE STARTING NINE</span><h2>Set your lineup.</h2><p>Add your players and positions. Use At bat to choose the active hitter.</p></div></div>
+  <div class="lineup-grid">
+    <div class="lineup-panel">
+      <div class="lineup-hdr"><span id="awayLineupTitle">Away</span><span style="font-size:11px;color:var(--muted)">Pos / Name</span></div>
+      <div id="awayLineup"></div>
+    </div>
+    <div class="lineup-panel">
+      <div class="lineup-hdr"><span id="homeLineupTitle">Home</span><span style="font-size:11px;color:var(--muted)">Pos / Name</span></div>
+      <div id="homeLineup"></div>
+    </div>
+  </div>
+
+</section>
+    <section class="workspace-view" id="notesPanel" hidden><div class="view-heading"><div><span class="eyebrow">MORE THAN A BOX SCORE</span><h2>Remember the game.</h2><p>The ballpark, the weather, and the moments worth keeping.</p></div></div>
   <div class="game-info" id="gameInfoPanel">
     <div class="game-info-toggle" onclick="toggleGameInfo()">
-      <span class="game-info-title">📋 Game Info &amp; Notes</span>
+      <span class="game-info-title">Game details &amp; notes</span>
       <span class="game-info-arrow" id="giArrow">▼</span>
     </div>
     <div class="game-info-body" id="giBody">
@@ -311,56 +368,11 @@
     </div>
   </div>
 
-  <!-- Batting lineups -->
-  <div class="sec-title">Batting lineups</div>
-  <div class="lineup-grid">
-    <div class="lineup-panel">
-      <div class="lineup-hdr"><span id="awayLineupTitle">Away</span><span style="font-size:11px;color:var(--muted)">Pos / Name</span></div>
-      <div id="awayLineup"></div>
-    </div>
-    <div class="lineup-panel">
-      <div class="lineup-hdr"><span id="homeLineupTitle">Home</span><span style="font-size:11px;color:var(--muted)">Pos / Name</span></div>
-      <div id="homeLineup"></div>
-    </div>
+</section>
   </div>
-
-  </div><!-- /col-main -->
-
-  <div class="col-side">
-  <!-- Scorecard grid -->
-  <div class="sec-title">Scorecard</div>
-  <div class="scorecard-wrap" id="scorecard"></div>
-
-  <!-- Pitchers -->
-  <div class="sec-title">Pitchers</div>
-  <div class="lineup-grid">
-    <div class="pitcher-panel" id="awayPitcherPanel"></div>
-    <div class="pitcher-panel" id="homePitcherPanel"></div>
-  </div>
-
-  <!-- Log -->
-  <div class="sec-title sec-title-log">Play log</div>
-  <div class="log-panel">
-    <div class="log-filters" id="logFilters" style="display:none">
-      <span class="log-filter-label">Filter:</span>
-      <select class="log-filter-inn" id="logFilterInn"><option value="">All innings</option></select>
-      <button class="log-fpill" data-filter="hits">Hits</button>
-      <button class="log-fpill" data-filter="outs">Outs</button>
-      <button class="log-fpill" data-filter="runs">Runs</button>
-      <button class="log-fpill" data-filter="pitches">Pitches</button>
-      <button class="log-fpill" data-filter="abs">ABS</button>
-      <button class="log-fpill" data-filter="">All</button>
-    </div>
-    <div class="log-inner" id="logInner"><div class="empty-log">No plays logged yet</div></div>
-    <div class="log-toggle" id="logToggle" onclick="toggleLog()" style="display:none">▼ Show full log</div>
-  </div>
-  </div><!-- /col-side -->
-
-  <!-- Print-only box score -->
+  <footer class="site-footer"><span class="footer-wordmark">scorebook.</span><span>A ballgame worth remembering.</span><button onclick="backupAllGames()">Back up your games <span aria-hidden="true">↗</span></button></footer>
   <div class="print-boxscore" id="printBoxScore"></div>
-
-</div><!-- /app -->
-
+</div>
 <script src="js/data.js"></script>
 <script src="js/fields.js"></script>
 <script src="js/game.js"></script>
@@ -374,5 +386,6 @@
 <script src="js/sync.js"></script>
 <script src="js/follow.js"></script>
 <script src="js/ui.js"></script>
+<script src="js/workspace.js"></script>
 </body>
 </html>

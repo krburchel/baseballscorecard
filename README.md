@@ -122,3 +122,11 @@ The tests also run on every push (GitHub Actions).
 - Outfield walls: [GeomMLBStadiums](https://github.com/bdilday/GeomMLBStadiums) (MIT, Ben Dilday),
   adjusted by hand against satellite imagery; Truist Park from OpenStreetMap (© OpenStreetMap
   contributors, ODbL). Edited with a local tool and exported to `js/fields.js`.
+
+## Scorebook redesign
+
+The interface now includes a full matchup scoreboard, dedicated Live scoring / Scorecard / Lineups / Game notes views, and a compact game layout on phones. Use the **Line score** button on phones to expand the inning table after choosing both teams. Scoring, MLB follow, saved-game formats, sync, and backups use the existing game model.
+
+The view tabs support Left / Right / Home / End, and the out indicators support Enter or Space. Print/PDF includes both teams and game notes regardless of the selected view. The service worker cache includes the new interface assets.
+
+Run `npm test` for the 80 offline regression tests. Open `index.html` for a local visual preview, or serve this directory for full offline installation and network features. Browser-local saved games belong to their original site: use **More → Back up all games** and **More → Restore from backup** when moving to a different origin.
