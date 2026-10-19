@@ -67,6 +67,8 @@ function renderWorkspace(){
   var occupied = G.bases.filter(Boolean).length;
   var bases = occupied === 3 ? 'Bases loaded' : occupied ? occupied + ' on base' : 'Bases empty';
   document.getElementById('boardSituation').textContent = half + ' of the ' + ordinalInning(G.inning) + ' · ' + G.outs + (G.outs === 1 ? ' out' : ' outs') + ' · ' + bases;
+  document.getElementById('boardMini').textContent = away + ' ' + G.rhe.away[0] + ' · ' + G.rhe.home[0] + ' ' + home;
+  document.getElementById('boardMiniInn').textContent = half + ' ' + G.inning;
   document.getElementById('boardStatus').textContent = G.mlbFollow ? 'FOLLOWING MLB LIVE' : G.log.length ? 'SCORING IN PROGRESS' : 'READY FOR FIRST PITCH';
   document.getElementById('liveFollowBtn').firstChild.textContent = G.mlbFollow ? 'Manage live follow ' : 'Follow MLB live ';
   document.getElementById('boardVenue').textContent = G.notes.venue || 'YOUR GAME. YOUR SCORECARD.';
@@ -117,6 +119,26 @@ document.querySelectorAll('[data-theme-set]').forEach(function(b){
   b.addEventListener('click', function(){ setTheme(b.dataset.themeSet); });
 });
 (function(){ var m = 'auto'; try{ m = localStorage.getItem('sb-theme') || 'auto'; }catch(e){} setTheme(m); })();
+
+// Manual scoreboard collapse: fold the board to a slim score strip so the
+// scoring controls and scorecard lead. Remembered per device.
+function toggleScoreboard(){
+  var sb = document.querySelector('.scoreboard');
+  if(!sb) return;
+  var collapsed = sb.classList.toggle('collapsed');
+  try{ localStorage.setItem('sb-board-collapsed', collapsed ? '1' : '0'); }catch(e){}
+  var btn = sb.querySelector('.board-collapse');
+  if(btn) btn.setAttribute('aria-expanded', String(!collapsed));
+}
+(function(){
+  var c; try{ c = localStorage.getItem('sb-board-collapsed'); }catch(e){}
+  if(c === '1'){
+    var sb = document.querySelector('.scoreboard');
+    if(sb){ sb.classList.add('collapsed'); var b = sb.querySelector('.board-collapse'); if(b) b.setAttribute('aria-expanded', 'false'); }
+  }
+  var bc = document.getElementById('boardCollapsed');
+  if(bc) bc.addEventListener('keydown', function(e){ if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); toggleScoreboard(); } });
+})();
 
 setWorkspaceView('live');
 renderWorkspace();
