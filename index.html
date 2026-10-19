@@ -76,7 +76,7 @@
     <button role="tab" id="tab-scorecard" aria-selected="false" aria-controls="workspace" tabindex="-1" data-view="scorecard" onclick="setWorkspaceView('scorecard')">Scorecard</button>
     <button role="tab" id="tab-lineups" aria-selected="false" aria-controls="workspace" tabindex="-1" data-view="lineups" onclick="setWorkspaceView('lineups')">Lineups</button>
     <button role="tab" id="tab-notes" aria-selected="false" aria-controls="workspace" tabindex="-1" data-view="notes" onclick="setWorkspaceView('notes')">Game notes</button>
-    </div><button class="shortcuts-btn" onclick="toggleKBHelp()"><span aria-hidden="true">⌨</span> Shortcuts <kbd>?</kbd></button>
+    </div><div class="nav-right"><button class="focus-toggle" id="focusToggle" onclick="toggleFocus()" aria-pressed="false" title="Hide the header and heading for scoring"><span class="ft-label">Hide top</span> <span aria-hidden="true">⤢</span></button><button class="shortcuts-btn" onclick="toggleKBHelp()"><span aria-hidden="true">⌨</span> Shortcuts <kbd>?</kbd></button></div>
   </nav>
   <div class="workspace" id="workspace" role="tabpanel" aria-labelledby="tab-live" tabindex="-1">
     <main class="col-main" id="scoringPanel">

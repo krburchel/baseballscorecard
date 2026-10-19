@@ -113,6 +113,14 @@ h1 { font-family:var(--font-serif); font-size:36px; font-weight:400; letter-spac
 .board-collapsed .bc-inn { font-size:10px; letter-spacing:1.3px; text-transform:uppercase; color:#e0c58a; white-space:nowrap; flex:none; }
 .board-collapsed .bc-expand { margin-left:auto; font-size:10px; letter-spacing:.6px; color:#c1d0bc; white-space:nowrap; flex:none; }
 .board-collapsed:hover .bc-expand { color:#fffdf3; }
+/* Focus mode: once scoring starts, hide the header + page heading so the board
+   strip and workspace lead. "Show menu / Hide top" in the tab row brings them
+   back (Undo is also Ctrl/Cmd-Z or U). */
+body.game-focus .site-header, body.game-focus .page-heading { display:none; }
+.nav-right { display:flex; align-items:center; gap:16px; }
+.focus-toggle { display:none; background:transparent; border:0; font:inherit; font-size:10px; color:var(--muted); padding-bottom:16px; white-space:nowrap; cursor:pointer; align-items:center; gap:5px; }
+.focus-toggle:hover { color:var(--green); }
+.app.has-plays .focus-toggle { display:inline-flex; }
 .board-dot { width:5px; height:5px; background:#d8b36d; border-radius:50%; flex:none; }
 .board-content { display:grid; grid-template-columns:minmax(300px,.85fr) minmax(450px,1.45fr); align-items:center; gap:18px; padding:15px 26px; }
 .matchup { display:grid; grid-template-columns:1fr auto 1fr; gap:18px; align-items:center; }

@@ -53,6 +53,7 @@ function renderWorkspace(){
   var away = workspaceTeam('away'), home = workspaceTeam('home');
   document.querySelector('.app').classList.toggle('has-plays', G.log.length > 0);
   setBoardCollapsed(boardOverride === null ? G.log.length > 0 : boardOverride);   // auto-collapse once scoring starts
+  setChromeHidden(chromeOverride === null ? G.log.length > 0 : chromeOverride);    // auto-hide header + heading once scoring starts
   document.querySelector('.app').classList.toggle('has-matchup', !!(TEAM_IDS[away] && TEAM_IDS[home]));
   var half = G.half === 'top' ? 'Top' : 'Bottom';
   function teamMarkup(name, side){
@@ -143,6 +144,24 @@ function toggleScoreboard(){
   var bc = document.getElementById('boardCollapsed');
   if(bc) bc.addEventListener('keydown', function(e){ if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); toggleScoreboard(); } });
 })();
+
+// Focus mode: hide the header + page heading during a game, revealed on demand.
+// Auto once scoring starts; the tab-row control overrides for the session and a
+// reload returns to automatic.
+var chromeOverride = null;
+function setChromeHidden(on){
+  document.body.classList.toggle('game-focus', on);
+  var btn = document.getElementById('focusToggle');
+  if(btn){
+    btn.setAttribute('aria-pressed', String(on));
+    var lbl = btn.querySelector('.ft-label');
+    if(lbl) lbl.textContent = on ? 'Show menu' : 'Hide top';
+  }
+}
+function toggleFocus(){
+  chromeOverride = !document.body.classList.contains('game-focus');
+  setChromeHidden(chromeOverride);
+}
 
 setWorkspaceView('live');
 renderWorkspace();
