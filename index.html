@@ -64,12 +64,11 @@
     </div>
   <section class="page-heading"><div><div class="eyebrow" id="gameDate">BASEBALL, ONE PLAY AT A TIME</div><h1>A good day for baseball.</h1></div><div class="save-status"><span></span> Auto-saves on this device <button onclick="toggleKBHelp()" aria-label="Keyboard shortcuts" title="Keyboard shortcuts">?</button></div></section>
   <section class="scoreboard" aria-label="Game scoreboard">
-    <div class="board-topline"><span><span class="board-dot"></span><span id="boardStatus">READY FOR FIRST PITCH</span></span><span id="boardVenue">YOUR GAME. YOUR SCORECARD.</span></div>
     <div class="board-content">
       <div class="matchup" id="matchup"></div>
       <div class="linescore"><div class="linescore-title">LINE SCORE <span>Select a team below to get started</span></div><div class="score-strip"><table class="score-table" id="scoreTable" aria-label="Inning by inning score"></table></div></div>
     </div>
-    <div class="board-bottom"><span id="boardSituation">Top of the 1st · 0 outs · Bases empty</span><button class="mobile-linescore" onclick="toggleLineScore()" aria-expanded="false">Line score ⌄</button><button onclick="toggleFollow()" id="liveFollowBtn">Follow MLB live <span aria-hidden="true">↗</span></button></div>
+    <div class="board-bottom"><span class="bb-left"><span class="board-dot"></span><span id="boardStatus">READY FOR FIRST PITCH</span><span class="bb-sep" aria-hidden="true">·</span><span id="boardSituation">Top of the 1st · 0 outs · Bases empty</span></span><button class="mobile-linescore" onclick="toggleLineScore()" aria-expanded="false">Line score ⌄</button><span class="bb-right"><span id="boardVenue">YOUR GAME. YOUR SCORECARD.</span><button onclick="toggleFollow()" id="liveFollowBtn">Follow MLB live <span aria-hidden="true">↗</span></button></span></div>
   </section>
   <nav class="workspace-nav" aria-label="Scorebook views"><div class="view-tabs" role="tablist" aria-label="Game workspace">
     <button role="tab" id="tab-live" aria-selected="true" aria-controls="workspace" tabindex="0" data-view="live" onclick="setWorkspaceView('live')"><span aria-hidden="true">◉</span> Live scoring</button>
