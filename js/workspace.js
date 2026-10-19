@@ -52,6 +52,7 @@ function renderWorkspace(){
   if(!document.getElementById('matchup')) return;
   var away = workspaceTeam('away'), home = workspaceTeam('home');
   document.querySelector('.app').classList.toggle('has-plays', G.log.length > 0);
+  setBoardCollapsed(boardOverride === null ? G.log.length > 0 : boardOverride);   // auto-collapse once scoring starts
   document.querySelector('.app').classList.toggle('has-matchup', !!(TEAM_IDS[away] && TEAM_IDS[home]));
   var half = G.half === 'top' ? 'Top' : 'Bottom';
   function teamMarkup(name, side){
@@ -120,22 +121,25 @@ document.querySelectorAll('[data-theme-set]').forEach(function(b){
 });
 (function(){ var m = 'auto'; try{ m = localStorage.getItem('sb-theme') || 'auto'; }catch(e){} setTheme(m); })();
 
-// Manual scoreboard collapse: fold the board to a slim score strip so the
-// scoring controls and scorecard lead. Remembered per device.
+// Scoreboard collapse: it auto-folds to a slim score strip once scoring starts
+// (handled in renderWorkspace) so the scoring controls and scorecard lead. The
+// Collapse / Show board control overrides that for the session; a reload returns
+// to the automatic behavior.
+var boardOverride = null;   // null = follow auto; true/false = manual this session
+function setBoardCollapsed(on){
+  var sb = document.querySelector('.scoreboard');
+  if(!sb) return;
+  sb.classList.toggle('collapsed', on);
+  var btn = sb.querySelector('.board-collapse');
+  if(btn) btn.setAttribute('aria-expanded', String(!on));
+}
 function toggleScoreboard(){
   var sb = document.querySelector('.scoreboard');
   if(!sb) return;
-  var collapsed = sb.classList.toggle('collapsed');
-  try{ localStorage.setItem('sb-board-collapsed', collapsed ? '1' : '0'); }catch(e){}
-  var btn = sb.querySelector('.board-collapse');
-  if(btn) btn.setAttribute('aria-expanded', String(!collapsed));
+  boardOverride = !sb.classList.contains('collapsed');
+  setBoardCollapsed(boardOverride);
 }
 (function(){
-  var c; try{ c = localStorage.getItem('sb-board-collapsed'); }catch(e){}
-  if(c === '1'){
-    var sb = document.querySelector('.scoreboard');
-    if(sb){ sb.classList.add('collapsed'); var b = sb.querySelector('.board-collapse'); if(b) b.setAttribute('aria-expanded', 'false'); }
-  }
   var bc = document.getElementById('boardCollapsed');
   if(bc) bc.addEventListener('keydown', function(e){ if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); toggleScoreboard(); } });
 })();
