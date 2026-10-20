@@ -258,8 +258,8 @@ kbd { font:9px inherit; border:1px solid currentColor; border-radius:3px; paddin
 .sc-table th,.sc-table td { border-color:var(--border); }
 .sc-table thead th { font-size:9px; padding:10px 3px; background:var(--header-bg); }
 .sc-name { min-width:110px; max-width:130px; padding:5px 9px; }
-.sc-pname { font-size:10px; font-weight:500; }
-.sc-ppos { font-size:8px; }
+.sc-pname { font-size:12px; font-weight:500; }
+.sc-ppos { font-size:9px; }
 .sc-cell { min-width:39px; width:39px; height:44px; }
 .sc-pa { width:36px; height:36px; }
 .sc-tot { min-width:24px; font-size:10px!important; }
@@ -303,7 +303,7 @@ kbd { font:9px inherit; border:1px solid currentColor; border-radius:3px; paddin
 .app[data-view=scorecard] .workspace { grid-template-columns:1fr; }
 .app[data-view=scorecard] .sc-cell { height:63px; }
 .app[data-view=scorecard] .sc-pa { width:53px; height:53px; }
-.app[data-view=scorecard] .sc-pname { font-size:13px; }
+.app[data-view=scorecard] .sc-pname { font-size:14px; }
 .app[data-view=scorecard] .sc-name { min-width:175px; }
 .app[data-view=lineups] .workspace,.app[data-view=notes] .workspace { grid-template-columns:1fr; }
 .site-footer { display:flex; align-items:center; gap:22px; padding:23px 0; border-top:1px solid var(--border); margin-top:35px; color:var(--muted); font-size:10px; }
