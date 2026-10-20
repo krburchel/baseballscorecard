@@ -90,7 +90,7 @@ test('catch-up continues from a hand-scored start and ends mid at-bat on MLB\'s 
     else if(r === 'ꓘ') w.recordKO('looking');
     else if(r === 'BB'){ w.G.balls = 3; w.addBall(); }
     else if(/^F\d/.test(r)){ w.outState.type = 'fly'; w.outState.fielder = fd[0]; w.recordOut(); }
-    else if(/^G\d/.test(r)){ w.outState.type = 'ground'; w.outState.fielder = fd[0]; w.outState.throwTo = fd[1] || null; w.recordOut(); }
+    else if(/^G\d/.test(r)){ w.outState.type = 'ground'; w.outState.fielder = fd[0]; w.outState.throwTo = fd.slice(1); w.recordOut(); }
   }
   assert.equal(w.G.pas.length, 14);
 

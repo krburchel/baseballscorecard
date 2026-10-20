@@ -95,7 +95,8 @@ function loadFromStorage(){
     if(payload.outState){
       outState.type = payload.outState.type || null;
       outState.fielder = payload.outState.fielder || null;
-      outState.throwTo = payload.outState.throwTo || null;
+      var _tt = payload.outState.throwTo;   // array now; tolerate old single-value / missing saves
+      outState.throwTo = Array.isArray(_tt) ? _tt : (_tt ? [_tt] : []);
       outState.multiOut = payload.outState.multiOut || null;
       outState.sacType = payload.outState.sacType || null;
     }

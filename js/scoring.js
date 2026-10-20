@@ -514,13 +514,13 @@ function recordBalk(){
 }
 
 // ── Flyout / Groundout state ──
-var outState = { type: null, fielder: null, throwTo: null, multiOut: null, sacType: null, runScores: false };
+var outState = { type: null, fielder: null, throwTo: [], multiOut: null, sacType: null, runScores: false };
 
 // Reset out-panel state and DOM to default
 function resetOutState(){
   outState.type = null;
   outState.fielder = null;
-  outState.throwTo = null;
+  outState.throwTo = [];
   outState.multiOut = null;
   outState.sacType = null;
   outState.runScores = false;
@@ -634,7 +634,7 @@ function buildFielderGrid(){
 function buildThrowToGrid(){
   var g = document.getElementById('throwToGrid'); if(!g) return;
   g.innerHTML = FIELDERS.map(function(f){
-    var isSelected = outState.throwTo===f.num;
+    var isSelected = outState.throwTo.indexOf(f.num) >= 0;
     var isPrimary  = outState.fielder===f.num;
     var selClass   = isSelected ? ' sel' : '';
     return '<button class="fld-btn'+selClass+'" data-action="sel-throwto" data-num="'+f.num+'" '+(isPrimary?'style="opacity:.4"':'')+' title="'+f.pos+'">'
@@ -646,24 +646,36 @@ function buildThrowToGrid(){
 
 function selectFielder(num){
   outState.fielder = outState.fielder===num ? null : num;
-  // If throw-to was same position, clear it
-  if(outState.throwTo===num) outState.throwTo=null;
+  // Keep the new primary out of the throw chain
+  outState.throwTo = outState.throwTo.filter(function(n){ return n !== num; });
   buildFielderGrid();
   updateOutBtn();
 }
 
 function selectThrowTo(num){
-  // Toggle; don't allow same as primary fielder
+  // Toggle membership in the throw chain (tap in order, e.g. 4 then 6 then 3);
+  // never the same position as the primary fielder.
   if(num===outState.fielder) return;
-  outState.throwTo = outState.throwTo===num ? null : num;
+  var i = outState.throwTo.indexOf(num);
+  if(i >= 0) outState.throwTo.splice(i, 1);
+  else outState.throwTo.push(num);
   buildThrowToGrid();
   updateOutBtn();
+}
+
+// The fielder chain for the current out: primary then each throw, e.g. "4-6-3".
+function outFldSeq(){ return [outState.fielder].concat(outState.throwTo || []).join('-'); }
+function outFldPosDesc(){
+  return [outState.fielder].concat(outState.throwTo || []).map(function(n){
+    var fi = FIELDERS.filter(function(f){ return f.num === n; })[0];
+    return fi ? fi.pos : n;
+  }).join(' to ');
 }
 
 function selectOutType(type){
   outState.type = outState.type===type ? null : type;
   // Clear throwTo when switching away from groundout/fc
-  if(outState.type !== 'ground' && outState.type !== 'fc') outState.throwTo = null;
+  if(outState.type !== 'ground' && outState.type !== 'fc') outState.throwTo = [];
   renderOutPanel();
 }
 
@@ -680,7 +692,7 @@ function updateOutBtn(){
   if(outState.type && outState.fielder){
     var tLabel = outState.type === 'fly' ? 'Flyout' : outState.type === 'ground' ? 'Groundout' : outState.type === 'fc' ? "Fielder's Choice" : 'Error';
     var fInfo = FIELDERS.filter(function(f){ return f.num === outState.fielder; })[0];
-    var ttInfo = outState.throwTo ? FIELDERS.filter(function(f){ return f.num === outState.throwTo; })[0] : null;
+    var hasThrow = outState.throwTo.length > 0;
 
     if(isErr){
       btn.disabled = false;
@@ -688,17 +700,17 @@ function updateOutBtn(){
       hint.textContent = 'Does NOT record an out. Increments E column.';
     } else if(isFC){
       btn.disabled = false;
-      if(ttInfo){
-        btn.textContent = "Record FC — " + outState.fielder + '-' + outState.throwTo + ' (' + fInfo.pos + ' to ' + ttInfo.pos + ')';
+      if(hasThrow){
+        btn.textContent = "Record FC — " + outFldSeq() + ' (' + outFldPosDesc() + ')';
       } else {
         btn.textContent = "Record FC — " + outState.fielder + ' (' + fInfo.pos + ')';
       }
       hint.textContent = 'Batter reaches; out recorded on another runner.';
-    } else if(isGround && ttInfo){
+    } else if(isGround && hasThrow){
       var dpTag = outState.multiOut === 'dp' ? ' — Double play' : outState.multiOut === 'tp' ? ' — Triple play' : '';
       btn.disabled = false;
-      btn.textContent = 'Record ' + sacLabel + 'Groundout — ' + outState.fielder + '-' + outState.throwTo + ' (' + fInfo.pos + ' to ' + ttInfo.pos + ')' + dpTag;
-      hint.textContent = outState.sacType === 'sac' ? 'Advances runner(s) 1 base' : outState.multiOut === 'dp' ? 'Records 2 outs' : outState.multiOut === 'tp' ? 'Records 3 outs' : '';
+      btn.textContent = 'Record ' + sacLabel + 'Groundout — ' + outFldSeq() + ' (' + outFldPosDesc() + ')' + dpTag;
+      hint.textContent = outState.sacType === 'sac' ? 'Advances runner(s) 1 base' : outState.multiOut === 'dp' ? 'Records 2 outs — tap more fielders for the chain (e.g. 4-6-3)' : outState.multiOut === 'tp' ? 'Records 3 outs' : 'Tap another fielder to extend the chain';
     } else {
       var moSuffix = outState.multiOut === 'dp' ? ' (DP)' : outState.multiOut === 'tp' ? ' (TP)' : '';
       btn.disabled = false;
@@ -707,7 +719,7 @@ function updateOutBtn(){
       if(outState.sacType === 'sf') hintText = 'Scores runner from 3B';
       else if(outState.sacType === 'sac') hintText = 'Advances runner(s) 1 base';
       else if(outState.runScores) hintText = 'Runner scores from 3B, RBI credited to batter';
-      else if(isGround) hintText = 'Tap "Thrown to" to add receiving fielder.';
+      else if(isGround) hintText = 'Tap each fielder in order, e.g. 4-6-3.';
       else if(outState.multiOut === 'dp') hintText = 'Records 2 outs';
       else if(outState.multiOut === 'tp') hintText = 'Records 3 outs';
       hint.textContent = hintText;
@@ -741,7 +753,9 @@ function _buildOutCtx(){
     nm: curName(side, idx),
     h: activeHits(side, idx),
     fInfo: FIELDERS.filter(function(f){ return f.num === outState.fielder; })[0],
-    ttInfo: outState.throwTo ? FIELDERS.filter(function(f){ return f.num === outState.throwTo; })[0] : null,
+    hasThrow: outState.throwTo.length > 0,
+    seq: outFldSeq(),
+    seqDesc: outFldPosDesc(),
     isSacFly: outState.sacType === 'sf',
     isSacBunt: outState.sacType === 'sac'
   };
@@ -803,9 +817,9 @@ function _applyError(ctx){
 // Fielder's choice — batter to 1B, lead runner retired.
 function _applyFieldersChoice(ctx){
   ctx.h.fc++;
-  var fcTag = ctx.ttInfo ? 'FC' + outState.fielder + '-' + outState.throwTo : 'FC' + outState.fielder;
-  var throwDesc = ctx.ttInfo
-    ? outState.fielder + '-' + outState.throwTo + ' (' + ctx.fInfo.pos + ' to ' + ctx.ttInfo.pos + ')'
+  var fcTag = ctx.hasThrow ? 'FC' + ctx.seq : 'FC' + outState.fielder;
+  var throwDesc = ctx.hasThrow
+    ? ctx.seq + ' (' + ctx.seqDesc + ')'
     : outState.fielder + ' (' + ctx.fInfo.pos + ')';
   addLog(ctx.nm + " — fielder's choice " + throwDesc, fcTag, 't-fc');
   logBatter(ctx.side, ctx.idx, fcTag);
@@ -856,11 +870,11 @@ function _applyRecordedOut(ctx){
     if(ctx.isSacBunt){
       goTag = 'SAC'; goCls = 't-sac';
     } else {
-      goTag = ctx.ttInfo ? 'G' + outState.fielder + '-' + outState.throwTo : 'G' + outState.fielder;
+      goTag = ctx.hasThrow ? 'G' + ctx.seq : 'G' + outState.fielder;
       goCls = 't-go';
     }
-    var goDesc = ctx.ttInfo
-      ? outState.fielder + '-' + outState.throwTo + ' (' + ctx.fInfo.pos + ' to ' + ctx.ttInfo.pos + ')'
+    var goDesc = ctx.hasThrow
+      ? ctx.seq + ' (' + ctx.seqDesc + ')'
       : outState.fielder + ' (' + ctx.fInfo.pos + ')';
     addLog(ctx.nm + ' — ' + sacPrefix + 'groundout ' + goDesc + dpSuffix, goTag, goCls);
     logBatter(ctx.side, ctx.idx, goTag, outsOnPlay);

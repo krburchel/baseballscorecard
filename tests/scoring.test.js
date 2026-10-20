@@ -60,11 +60,20 @@ test('double play: the runner from first is retired before the batter (out 1, ba
   const w = fresh(t);
   w.recordHit(1);
   const runner = pa(w, 0);
-  Object.assign(w.outState, { type: 'ground', fielder: 6, throwTo: 4, multiOut: 'dp' });
+  Object.assign(w.outState, { type: 'ground', fielder: 6, throwTo: [4], multiOut: 'dp' });
   w.recordOut();
   same([w.G.outs, w.G.bases], [2, [null, null, null]]);
   same([runner.out, runner.outOnBases, pa(w, -1).out], [1, true, 2]);
   assert.equal(w.G.pitchers.home[0].outs, 2);
+});
+
+test('double play with a 3-fielder throw chain reads G4-6-3', (t) => {
+  const w = fresh(t);
+  w.recordHit(1);                                                        // runner on first
+  Object.assign(w.outState, { type: 'ground', fielder: 4, throwTo: [6, 3], multiOut: 'dp' });
+  w.recordOut();
+  assert.equal(pa(w, -1).res, 'G4-6-3', 'the full chain is in the batter cell');
+  same([w.G.outs, w.G.bases], [2, [null, null, null]], 'two outs, bases cleared');
 });
 
 test('out on the bases: runner thrown out advancing; the batter keeps his count', (t) => {
