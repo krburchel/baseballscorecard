@@ -619,10 +619,13 @@ function buildFielderGrid(){
   var g = document.getElementById('fielderGrid'); if(!g) return;
   var isErr = outState.type === 'error';
   g.innerHTML = FIELDERS.map(function(f){
-    var selClass = outState.fielder===f.num ? (isErr ? ' sel-err' : ' sel') : '';
+    var isPrimary = outState.fielder===f.num;
+    var selClass = isPrimary ? (isErr ? ' sel-err' : ' sel') : '';
+    // When there's a throw chain, the primary fielder is step 1 of the sequence
+    var seqBadge = (isPrimary && !isErr && outState.throwTo.length > 0) ? '<span class="fld-seq">1</span>' : '';
     return '<button class="fld-btn'+selClass+'" data-action="sel-fielder" data-num="'+f.num+'">'
       +'<span class="fld-num">'+f.num+'</span>'
-      +'<span class="fld-pos-name">'+f.pos+'</span>'
+      +'<span class="fld-pos-name">'+f.pos+'</span>'+seqBadge
       +'</button>';
   }).join('');
   // Show/hide throw-to grid for groundouts and FC
@@ -634,12 +637,13 @@ function buildFielderGrid(){
 function buildThrowToGrid(){
   var g = document.getElementById('throwToGrid'); if(!g) return;
   g.innerHTML = FIELDERS.map(function(f){
-    var isSelected = outState.throwTo.indexOf(f.num) >= 0;
+    var order      = outState.throwTo.indexOf(f.num);   // step in the chain after the primary (step 1)
     var isPrimary  = outState.fielder===f.num;
-    var selClass   = isSelected ? ' sel' : '';
+    var selClass   = order >= 0 ? ' sel' : '';
+    var seqBadge   = order >= 0 ? '<span class="fld-seq">'+(order+2)+'</span>' : '';
     return '<button class="fld-btn'+selClass+'" data-action="sel-throwto" data-num="'+f.num+'" '+(isPrimary?'style="opacity:.4"':'')+' title="'+f.pos+'">'
       +'<span class="fld-num">'+f.num+'</span>'
-      +'<span class="fld-pos-name">'+f.pos+'</span>'
+      +'<span class="fld-pos-name">'+f.pos+'</span>'+seqBadge
       +'</button>';
   }).join('');
 }
