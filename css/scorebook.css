@@ -191,6 +191,8 @@ kbd { font:9px inherit; border:1px solid currentColor; border-radius:3px; paddin
 .atbat-inhole { display:none; }
 .atbat-ondeck { font-size:10px; }
 .game-state { grid-template-columns:.8fr 1.25fr 1fr; gap:10px; margin-bottom:12px; }
+/* Only the count buttons set a floor; the photo caption must not widen the inning card and squeeze the bases. */
+.game-state>.inning-card,.game-state>.bases-card { min-width:0; }
 .card { padding:15px 13px; border-radius:10px; box-shadow:0 2px 0 #183c3003; }
 .label { font-size:9px; letter-spacing:1.2px; font-weight:600; margin-bottom:12px; }
 .inn-ctrl { gap:5px; }
@@ -215,6 +217,8 @@ kbd { font:9px inherit; border:1px solid currentColor; border-radius:3px; paddin
 .abs-tally,.foul-note { font-size:9px; }
 .stadium-slot { margin-top:12px; }
 .stadium-photo img { max-height:70px; object-fit:cover; }
+.stadium-photo figcaption { flex-direction:column; align-items:flex-start; gap:1px; }
+.stadium-credit { white-space:normal; }
 .stadium-name { font-size:9px; }
 .stadium-credit { font-size:8px; }
 .bases-label { flex-wrap:wrap; gap:6px; }
